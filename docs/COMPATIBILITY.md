@@ -1,0 +1,18 @@
+# Compatibility status
+
+No commercial PS2 game has been tested by this Gate 0 spike.
+
+| Test item | Type | Current result | What this result means |
+|---|---|---|---|
+| `gate0-r5900-subset.elf` | Original synthetic ELF32/EM_MIPS fixture | `Inspect passed` / `Recompile passed` on Linux GCC | The specific instruction sequence compiles to native C++ and matches its test oracle. It is not a PS2 retail game and is not a compatibility claim. |
+| Any PS2 ISO | Retail game | `Not tested` | ISO Inspector is not implemented in this spike. |
+| Windows/MSVC | Build platform check | `Blocked` | Run the same spike with `cl.exe` on Windows before requesting Gate 0 review. |
+
+Fixture metadata:
+
+- SHA-256 of synthetic ELF: `b21f1f7793236d1ccba7308cc82f42d9f89915c87c0b037c46d8170f28349ca9`
+- Generated C++ SHA-256: `5316e0f51ba8b1fa1252e409f38cb9ac7db7606fee17b28ef0dcf1be162ae795`
+- Supported subset: ADDIU, ADDU, LW, SW, BEQ, BNE, J, JAL, JR, NOP.
+- Latest observed host trace: 22 instruction PCs; identical to the reference interpreter for this fixture path.
+
+A status may only be promoted for a real game after its serial/region, executable hash, RPTP version, tested behaviors, log and known issues are recorded. Do not include ISO hashes or game assets unless policy explicitly allows the metadata; this initial report includes only the synthetic fixture hash.

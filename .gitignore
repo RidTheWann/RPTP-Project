@@ -1,0 +1,12 @@
+/build/
+/out/
+/cmake-build-*/
+__pycache__/
+*.py[cod]
+*.obj
+*.pdb
+*.exe
+*.dll
+*.lib
+*.o
+*.a
