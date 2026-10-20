@@ -1,0 +1,39 @@
+{
+  "assertions": {
+    "beq_taken_delay_slot_executed": true,
+    "bne_not_taken_delay_slot_executed": true,
+    "jal_jr_delay_slots_executed": true,
+    "return_value_v0_is_42": true,
+    "returned_to_sentinel": true,
+    "stored_and_loaded_value_is_12": true,
+    "zero_register_remains_zero": true
+  },
+  "compiler": "/usr/local/swift/usr/bin/clang++",
+  "compiler_command": [
+    "/usr/local/swift/usr/bin/clang++",
+    "-std=c++20",
+    "-Wall",
+    "-Wextra",
+    "-Wpedantic",
+    "-Werror",
+    "-O2",
+    "/mnt/data/RPTP-Gate0-B1a/build/gate0-clang/generated.cpp",
+    "-o",
+    "/mnt/data/RPTP-Gate0-B1a/build/gate0-clang/rptp-gate0-spike"
+  ],
+  "elf": {
+    "entry": 1048576,
+    "instruction_count": 28,
+    "segment_size": 112,
+    "segment_vaddr": 1048576
+  },
+  "fixture_sha256": "b21f1f7793236d1ccba7308cc82f42d9f89915c87c0b037c46d8170f28349ca9",
+  "generated_cpp_sha256": "5316e0f51ba8b1fa1252e409f38cb9ac7db7606fee17b28ef0dcf1be162ae795",
+  "host_platform": "linux",
+  "native_matches_oracle": true,
+  "note": "The Windows MSVC field is true only when this run actually executes on Windows with cl.exe. A host compiler pass does not prove an MSVC/Windows build.",
+  "scope": "synthetic ELF32/EM_MIPS; ADDIU, ADDU, LW, SW, BEQ, BNE, J, JAL, JR, NOP; delay slots",
+  "status": "PASS_LOCAL_DIFFERENTIAL_SPIKE",
+  "trace_steps": 22,
+  "windows_msvc_verified": false
+}

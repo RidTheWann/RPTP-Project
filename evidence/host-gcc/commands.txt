@@ -1,0 +1,8 @@
+Commands executed successfully on the host:
+python3 -m unittest discover -s tests -v
+python3 tools/check_forbidden_artifacts.py --root .
+python3 tools/rptp_gate0_spike.py --out build/gate0-final --compiler g++
+python3 tools/rptp_gate0_spike.py --out build/gate0-final-repeat --compiler g++
+python3 tools/rptp_gate0_spike.py --out build/gate0-clang --compiler clang++
+
+A Windows MSVC build has not been executed. Run scripts/run-msvc.ps1 from Visual Studio Developer PowerShell.

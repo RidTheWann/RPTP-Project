@@ -1,0 +1,1 @@
+Artifact guard passed: only manifest-registered synthetic binary fixtures are permitted.
