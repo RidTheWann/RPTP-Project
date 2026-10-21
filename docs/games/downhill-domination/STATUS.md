@@ -2,7 +2,7 @@
 
 - **Status:** Inspected (read-only)
 - **Last updated:** 2026-10-21
-- **RPTP inspector:** `tools/rptp_inspect.py` at `14e6f02`
+- **RPTP inspector:** `tools/rptp_inspect.py` at `5d9db90` (pre-push `14e6f02`; content unchanged)
 - **Source:** owner-provided local ISO; not committed
 - **Filename:** `Downhill Domination (USA).iso`
 - **Serial:** SCUS-97177

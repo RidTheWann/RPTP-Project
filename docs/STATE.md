@@ -3,7 +3,7 @@
 - **Snapshot date:** 2026-10-21
 - **Remote repository:** RidTheWann/RPTP-Project, public, default branch main.
 - **Current main:** `371cec896095738ff16b9a81460b8b183063eae3`; the latest RPTP CI run on this commit is green.
-- **Reconciliation branch:** `chore/post-gate0-reconcile`; it has local Gate 0 reconciliation, environment-alignment and ISO inspector hardening commits. It has not been pushed, so no branch CI exists.
+- **Reconciliation branch:** `chore/post-gate0-reconcile`; it has local Gate 0 reconciliation, environment-alignment and ISO inspector hardening commits. It was pushed to origin on 2026-10-21 after an email-only rewrite to GitHub noreply identities (content unchanged); the workflow triggers on main pushes, pull requests and manual dispatch, so no branch CI result exists yet.
 - **Architecture:** from-scratch static ahead-of-time recompilation of supported Emotion Engine code to C++, plus a native Windows x64 runtime planned.
 - **License:** GPL-3.0-or-later was confirmed by the owner on 2026-10-21. The decision remains recorded in ADR-0001; no license decision was changed here.
 - **CLI/log/error language:** English.
@@ -12,7 +12,7 @@
 ## Single current status
 
 - **Gate 0 technical spike:** passed on Windows x64/MSVC and on the recorded Linux host toolchains. Formal Gate 0 disposition remains pending owner review.
-- **B1b repository/toolchain baseline:** CMake presets, the RPTP doctor, CTest targets and Windows/Linux CI are present. CI is green on current main only. The Windows preset passed locally on the work laptop and in a clean clone at commit `83459c1`; the branch itself has not run CI, so B1b is not passed. The build/CI/doctor layer is `Review required` in `docs/CLEAN_ROOM_AUDIT.md` and is not clean-room certified.
+- **B1b repository/toolchain baseline:** CMake presets, the RPTP doctor, CTest targets and Windows/Linux CI are present. CI is green on current main only. The Windows preset passed locally on the work laptop and in a clean clone at pre-push commit `83459c1` (now `b4d6fa7`; content unchanged); the branch was pushed on 2026-10-21 but has not run CI, so B1b is not passed. The build/CI/doctor layer is `Review required` in `docs/CLEAN_ROOM_AUDIT.md` and is not clean-room certified.
 - **B1c ISO inspector prototype / Gate 2 synthetic hardening:** single-volume PVD parsing, root `SYSTEM.CNF` regular single-extent validation, BOOT path resolution, PVD/root/boot metadata, SHA-256, ELF PT_LOAD checks, warnings and an explicit error taxonomy are implemented. 33 ISO inspector tests and 53 total tests pass. An initial real-disc inspection is recorded for Downhill Domination (USA); broader retail ISO layouts, multi-extent support, safe extraction boundaries and broad disc compatibility remain unverified.
 - **Game work record:** Downhill Domination (USA) was inspected read-only; the record is `docs/games/downhill-domination/STATUS.md`. No boot, recompilation or native port exists.
 - **Clean-room/source-exposure:** on 2026-10-21 the owner selected the sealed-source policy in ADR-0003. PS2Recomp, PS2 Web Recomp, PCSX2, Play! and comparable implementations are sealed; do not access them again. Prior exposure remains documented and cannot be erased. Component-level provenance is tracked in `docs/CLEAN_ROOM_AUDIT.md`; no existing file is certified clean-room, and the build/CI/doctor layer is `Review required`.
@@ -36,7 +36,7 @@ The commands below were run from Developer PowerShell x64 on the work laptop. Th
 
 ### Work-laptop clean-checkout run (C2)
 
-On 2026-10-21 the branch was cloned into `<temp>\rptp-clean` from the local repository at commit `83459c1`, outside the working tree. From Developer PowerShell for Visual Studio 2022 (x64), in that clean clone:
+On 2026-10-21 the branch was cloned into `<temp>\rptp-clean` from the local repository at pre-push commit `83459c1` (now `b4d6fa7` after an email-only rewrite; tree unchanged), outside the working tree. From Developer PowerShell for Visual Studio 2022 (x64), in that clean clone:
 
     python tools/rptp_doctor.py
     cmake --preset windows-msvc
@@ -48,7 +48,7 @@ On 2026-10-21 the branch was cloned into `<temp>\rptp-clean` from the local repo
 - CMake build/CTest: PASS; 3 of 3 tests passed.
 - Python unit tests: PASS; 34 tests.
 - Generated Gate 0 report: `PASS_LOCAL_DIFFERENTIAL_SPIKE`, `windows_msvc_verified: true`, `native_matches_oracle: true`, 22 trace steps; fixture and generated-C++ SHA-256 values match the recorded values.
-- This is a **clean-checkout local run**, not a substitute for CI on this branch. The branch was not pushed, so no branch CI result exists.
+- This is a **clean-checkout local run**, not a substitute for CI on this branch. The branch was pushed on 2026-10-21, but no branch CI result exists because the workflow triggers on main pushes, pull requests and manual dispatch.
 
 ### Work-laptop license-header verification (C3)
 
