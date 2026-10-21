@@ -3,7 +3,12 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+import json
 from pathlib import Path
+import random
+import subprocess
+import sys
+import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -15,6 +20,7 @@ SPEC.loader.exec_module(inspector)
 
 BLOCK = 2048
 VOLUME_BLOCKS = 32
+DEFAULT_CONFIG = b"BOOT2 = cdrom0:\\SLUS_123.45;1\nVER = 1.00\nVMODE = NTSC\n"
 
 
 def _both32(value: int) -> bytes:
@@ -38,22 +44,38 @@ def _record(extent: int, size: int, name: bytes, flags: int = 0) -> bytes:
     return bytes(data)
 
 
-def _elf(machine: int = 8, phnum: int = 1) -> bytes:
-    data = bytearray(84)
+def _elf(machine: int = 8, phnum: int = 1, elf_type: int = 2, entry_point: int = 0x00100000,
+         load_offset: int = 84, load_filesz: int = 44, load_memsz: int | None = None,
+         load_align: int = 0x1000, load_vaddr: int | None = None, data_size: int = 128) -> bytes:
+    if load_memsz is None:
+        load_memsz = load_filesz
+    if load_vaddr is None:
+        load_vaddr = entry_point
+    data = bytearray(data_size)
     data[:7] = b"\x7fELF" + bytes((1, 1, 1))
-    data[16:18] = (2).to_bytes(2, "little")
+    data[16:18] = elf_type.to_bytes(2, "little")
     data[18:20] = machine.to_bytes(2, "little")
     data[20:24] = (1).to_bytes(4, "little")
-    data[24:28] = (0x00100000).to_bytes(4, "little")
+    data[24:28] = entry_point.to_bytes(4, "little")
     data[28:32] = (52).to_bytes(4, "little")
     data[40:42] = (52).to_bytes(2, "little")
     data[42:44] = (32).to_bytes(2, "little")
     data[44:46] = phnum.to_bytes(2, "little")
+    if phnum and 52 + 32 <= data_size:
+        data[52:56] = (1).to_bytes(4, "little")
+        data[56:60] = load_offset.to_bytes(4, "little")
+        data[60:64] = load_vaddr.to_bytes(4, "little")
+        data[64:68] = load_vaddr.to_bytes(4, "little")
+        data[68:72] = load_filesz.to_bytes(4, "little")
+        data[72:76] = load_memsz.to_bytes(4, "little")
+        data[76:80] = (5).to_bytes(4, "little")
+        data[80:84] = load_align.to_bytes(4, "little")
     return bytes(data)
 
 
-def _iso(config: bytes | None = b"BOOT2 = cdrom0:\\SLUS_123.45;1\nVER = 1.00\nVMODE = NTSC\n",
-         executable: bytes | None = None, boot_lba: int = 21, block_size: int = BLOCK) -> bytearray:
+def _iso(config: bytes | None = DEFAULT_CONFIG,
+         executable: bytes | None = None, boot_lba: int = 21, block_size: int = BLOCK,
+         system_flags: int = 0, boot_flags: int = 0) -> bytearray:
     image = bytearray(VOLUME_BLOCKS * BLOCK)
     pvd = bytearray(BLOCK)
     pvd[0], pvd[1:6], pvd[6] = 1, b"CD001", 1
@@ -71,9 +93,9 @@ def _iso(config: bytes | None = b"BOOT2 = cdrom0:\\SLUS_123.45;1\nVER = 1.00\nVM
 
     records = [_record(19, BLOCK, b"\x00", 0x02), _record(19, BLOCK, b"\x01", 0x02)]
     if config is not None:
-        records.append(_record(20, len(config), b"SYSTEM.CNF;1"))
+        records.append(_record(20, len(config), b"SYSTEM.CNF;1", system_flags))
     exe = executable if executable is not None else _elf()
-    records.append(_record(boot_lba, len(exe), b"SLUS_123.45;1"))
+    records.append(_record(boot_lba, len(exe), b"SLUS_123.45;1", boot_flags))
     directory = bytearray(BLOCK)
     offset = 0
     for record in records:
@@ -99,6 +121,17 @@ class IsoInspectorTests(unittest.TestCase):
         self.assertEqual(report["boot_executable"]["sha256"], hashlib.sha256(_elf()).hexdigest())
         self.assertEqual(report["boot_executable"]["elf"]["machine_id"], 8)
         self.assertEqual(report["boot_executable"]["elf"]["entry_point"], 0x00100000)
+        self.assertEqual(report["boot_executable"]["elf"]["load_segment_count"], 1)
+        self.assertEqual(report["boot_executable"]["resolved_path"], ["SLUS_123.45;1"])
+        self.assertEqual(report["boot_executable"]["device"], "cdrom0")
+        self.assertEqual(report["boot_executable"]["extent"]["extent_lba"], 21)
+        self.assertEqual(report["boot_executable"]["extent"]["extent_bytes"], len(_elf()))
+        self.assertEqual(report["system_cnf"]["size_bytes"], len(DEFAULT_CONFIG))
+        self.assertEqual(report["system_cnf"]["sha256"], hashlib.sha256(DEFAULT_CONFIG).hexdigest())
+        self.assertEqual(report["system_cnf"]["device"], "cdrom0")
+        self.assertEqual(report["iso9660"]["volume_set_size"], 1)
+        self.assertEqual(report["iso9660"]["volume_sequence_number"], 1)
+        self.assertEqual(report["iso9660"]["root_directory"]["extent_lba"], 19)
 
     def test_supports_legacy_boot_key(self):
         report = inspector.inspect_bytes(bytes(_iso(config=b"BOOT = cdrom0:\\SLUS_123.45;1\n")))
@@ -168,7 +201,7 @@ class IsoInspectorTests(unittest.TestCase):
 
     def test_rejects_program_header_table_out_of_bounds(self):
         with self.assertRaises(inspector.InspectError) as ctx:
-            inspector.inspect_bytes(bytes(_iso(executable=_elf(phnum=2))))
+            inspector.inspect_bytes(bytes(_iso(executable=_elf(phnum=3))))
         self.assertEqual(ctx.exception.code, "ELF_PROGRAM_HEADERS_OUT_OF_BOUNDS")
 
     def test_non_mips_machine_is_reported_as_warning(self):
@@ -181,6 +214,140 @@ class IsoInspectorTests(unittest.TestCase):
         with self.assertRaises(inspector.InspectError) as ctx:
             inspector.inspect_bytes(bytes(_iso(config=path)))
         self.assertEqual(ctx.exception.code, "BOOT_PATH_DEPTH_LIMIT")
+
+    def test_report_is_deterministic(self):
+        data = bytes(_iso())
+        first = json.dumps(inspector.inspect_bytes(data), sort_keys=True)
+        second = json.dumps(inspector.inspect_bytes(data), sort_keys=True)
+        self.assertEqual(first, second)
+
+    def test_rejects_system_cnf_directory(self):
+        with self.assertRaises(inspector.InspectError) as ctx:
+            inspector.inspect_bytes(bytes(_iso(system_flags=0x02)))
+        self.assertEqual(ctx.exception.code, "SYSTEM_CNF_IS_DIRECTORY")
+
+    def test_rejects_multi_extent_system_cnf(self):
+        with self.assertRaises(inspector.InspectError) as ctx:
+            inspector.inspect_bytes(bytes(_iso(system_flags=0x80)))
+        self.assertEqual(ctx.exception.code, "MULTI_EXTENT_UNSUPPORTED")
+
+    def test_rejects_multi_extent_boot_executable(self):
+        with self.assertRaises(inspector.InspectError) as ctx:
+            inspector.inspect_bytes(bytes(_iso(boot_flags=0x80)))
+        self.assertEqual(ctx.exception.code, "MULTI_EXTENT_UNSUPPORTED")
+
+    def test_rejects_multi_volume_set(self):
+        image = _iso()
+        image[16 * BLOCK + 120:16 * BLOCK + 124] = _both16(2)
+        with self.assertRaises(inspector.InspectError) as ctx:
+            inspector.inspect_bytes(bytes(image))
+        self.assertEqual(ctx.exception.code, "UNSUPPORTED_VOLUME_SET")
+
+    def test_rejects_multi_volume_sequence(self):
+        image = _iso()
+        image[16 * BLOCK + 124:16 * BLOCK + 128] = _both16(2)
+        with self.assertRaises(inspector.InspectError) as ctx:
+            inspector.inspect_bytes(bytes(image))
+        self.assertEqual(ctx.exception.code, "UNSUPPORTED_VOLUME_SET")
+
+    def test_rejects_directory_record_volume_sequence(self):
+        image = _iso()
+        image[19 * BLOCK + 28:19 * BLOCK + 32] = _both16(2)
+        with self.assertRaises(inspector.InspectError) as ctx:
+            inspector.inspect_bytes(bytes(image))
+        self.assertEqual(ctx.exception.code, "UNSUPPORTED_VOLUME_SEQUENCE")
+
+    def test_rejects_empty_directory_identifier(self):
+        image = _iso()
+        image[16 * BLOCK + 156 + 32] = 0
+        with self.assertRaises(inspector.InspectError) as ctx:
+            inspector.inspect_bytes(bytes(image))
+        self.assertEqual(ctx.exception.code, "DIRECTORY_IDENTIFIER_EMPTY")
+
+    def test_rejects_out_of_bounds_load_segment(self):
+        with self.assertRaises(inspector.InspectError) as ctx:
+            inspector.inspect_bytes(bytes(_iso(executable=_elf(load_filesz=1000))))
+        self.assertEqual(ctx.exception.code, "ELF_LOAD_SEGMENT_OUT_OF_BOUNDS")
+
+    def test_rejects_load_segment_size_inversion(self):
+        with self.assertRaises(inspector.InspectError) as ctx:
+            inspector.inspect_bytes(bytes(_iso(executable=_elf(load_filesz=44, load_memsz=10))))
+        self.assertEqual(ctx.exception.code, "ELF_LOAD_SEGMENT_SIZE_INVALID")
+
+    def test_rejects_load_segment_bad_alignment(self):
+        with self.assertRaises(inspector.InspectError) as ctx:
+            inspector.inspect_bytes(bytes(_iso(executable=_elf(load_align=3))))
+        self.assertEqual(ctx.exception.code, "ELF_LOAD_SEGMENT_ALIGNMENT_INVALID")
+
+    def test_warns_when_elf_has_no_load_segments(self):
+        report = inspector.inspect_bytes(bytes(_iso(executable=_elf(phnum=0))))
+        self.assertEqual(report["status"], "INSPECTED_WITH_WARNINGS")
+        self.assertTrue(any("PT_LOAD" in warning for warning in report["warnings"]))
+
+    def test_warns_when_entry_point_is_outside_load_segments(self):
+        executable = _elf(entry_point=0x00200000, load_vaddr=0x00100000)
+        report = inspector.inspect_bytes(bytes(_iso(executable=executable)))
+        self.assertEqual(report["status"], "INSPECTED_WITH_WARNINGS")
+        self.assertTrue(any("entry point" in warning for warning in report["warnings"]))
+
+    def test_warns_for_non_executable_elf(self):
+        report = inspector.inspect_bytes(bytes(_iso(executable=_elf(elf_type=3))))
+        self.assertEqual(report["status"], "INSPECTED_WITH_WARNINGS")
+        self.assertTrue(any("ET_EXEC" in warning for warning in report["warnings"]))
+
+    def test_warns_when_boot_path_has_no_device(self):
+        report = inspector.inspect_bytes(bytes(_iso(config=b"BOOT2 = \\SLUS_123.45;1\n")))
+        self.assertEqual(report["status"], "INSPECTED_WITH_WARNINGS")
+        self.assertTrue(any("device prefix" in warning for warning in report["warnings"]))
+
+    def test_cli_json_success_and_error(self):
+        with tempfile.TemporaryDirectory() as directory:
+            good = Path(directory) / "good.iso"
+            good.write_bytes(bytes(_iso()))
+            result = subprocess.run(
+                [sys.executable, str(ROOT / "tools/rptp_inspect.py"), str(good), "--json"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["status"], "INSPECTED")
+            self.assertEqual(payload["system_cnf"]["boot_key"], "BOOT2")
+
+            bad = Path(directory) / "bad.iso"
+            bad.write_bytes(b"not an iso")
+            result = subprocess.run(
+                [sys.executable, str(ROOT / "tools/rptp_inspect.py"), str(bad), "--json"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 2, result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["status"], "ERROR")
+            self.assertEqual(payload["error_code"], "IMAGE_TOO_SMALL")
+
+    def test_malformed_mutations_raise_only_inspect_errors(self):
+        base = bytes(_iso())
+        rng = random.Random(20261021)
+        for _ in range(250):
+            data = bytearray(base)
+            mode = rng.randrange(3)
+            if mode == 0:
+                for _ in range(rng.randint(1, 4)):
+                    data[rng.randrange(len(data))] = rng.randrange(256)
+            elif mode == 1:
+                data = data[:rng.randrange(len(data) + 1)]
+            else:
+                start = rng.randrange(len(data))
+                chunk = data[start:start + rng.randint(1, 64)]
+                data[start:start + len(chunk)] = b"\x00" * len(chunk)
+            try:
+                report = inspector.inspect_bytes(bytes(data), "mutated.iso")
+            except inspector.InspectError:
+                continue
+            self.assertIn(report["status"], ("INSPECTED", "INSPECTED_WITH_WARNINGS"))
 
 
 if __name__ == "__main__":

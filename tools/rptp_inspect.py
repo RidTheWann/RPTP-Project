@@ -20,6 +20,9 @@ MAX_DIRECTORY_ENTRIES = 100_000
 MAX_BOOT_COMPONENTS = 32
 MAX_PROGRAM_HEADERS = 4096
 CHUNK_SIZE = 1024 * 1024
+ELF_HEADER_SIZE = 52
+ELF_PROGRAM_HEADER_SIZE = 32
+PT_LOAD = 1
 
 
 class InspectError(Exception):
@@ -57,9 +60,23 @@ def _name(raw: bytes) -> str:
     return raw.decode("ascii", errors="replace").rstrip("\x00")
 
 
+def _text(raw: bytes) -> str:
+    return raw.decode("ascii", errors="replace").replace("\x00", "").strip()
+
+
 def _key(raw: bytes | str) -> str:
     value = _name(raw) if isinstance(raw, bytes) else raw
     return value.split(";", 1)[0].rstrip(".").casefold()
+
+
+def _entry_metadata(entry: dict[str, object]) -> dict[str, object]:
+    return {
+        "extent_lba": entry["lba"],
+        "extent_bytes": entry["size"],
+        "xa_length": entry["xa_len"],
+        "flags": entry["flags"],
+        "volume_sequence": entry["volume_sequence"],
+    }
 
 
 class IsoReader:
@@ -93,10 +110,18 @@ class IsoReader:
             raise InspectError("DIRECTORY_RECORD_LENGTH_INVALID", "Invalid or truncated ISO 9660 directory record.")
         rec = rec[:rec[0]]
         name_len = rec[32]
+        if name_len == 0:
+            raise InspectError("DIRECTORY_IDENTIFIER_EMPTY", "Directory record has an empty identifier.")
         name_end = 33 + name_len
         pad = 1 if name_len % 2 == 0 else 0
         if name_end + pad > len(rec):
             raise InspectError("DIRECTORY_IDENTIFIER_TRUNCATED", "Directory identifier extends beyond its record.")
+        volume_sequence = _u723(rec, 28, "volume sequence number")
+        if volume_sequence != 1:
+            raise InspectError(
+                "UNSUPPORTED_VOLUME_SEQUENCE",
+                f"Directory record volume sequence {volume_sequence} is not supported; only single-volume sets are accepted.",
+            )
         entry = {
             "name": _name(rec[33:name_end]),
             "id": rec[33:name_end],
@@ -107,7 +132,7 @@ class IsoReader:
             "directory": bool(rec[25] & 0x02),
             "multi_extent": bool(rec[25] & 0x80),
             "record_length": rec[0],
-            "volume_sequence": _u723(rec, 28, "volume sequence number"),
+            "volume_sequence": volume_sequence,
         }
         self.extent(entry)
         return entry
@@ -136,8 +161,15 @@ class IsoReader:
     def parse_pvd(self, pvd: bytes) -> dict[str, object]:
         self.volume_blocks = _u733(pvd, 80, "volume space size")
         block_size = _u723(pvd, 128, "logical block size")
+        volume_set_size = _u723(pvd, 120, "volume set size")
+        volume_sequence = _u723(pvd, 124, "volume sequence number")
         if block_size != BLOCK:
             raise InspectError("UNSUPPORTED_LOGICAL_BLOCK_SIZE", f"Only {BLOCK}-byte logical blocks are supported; found {block_size}.")
+        if volume_set_size != 1 or volume_sequence != 1:
+            raise InspectError(
+                "UNSUPPORTED_VOLUME_SET",
+                f"Only single-volume ISO sets are supported; found size {volume_set_size}, sequence {volume_sequence}.",
+            )
         if self.volume_blocks <= PVD_LBA:
             raise InspectError("INVALID_VOLUME_SIZE", "Declared volume is too small.")
         if self.volume_blocks * BLOCK > self.size:
@@ -150,10 +182,25 @@ class IsoReader:
             raise InspectError("ROOT_RECORD_INVALID", "PVD root record is not a valid non-empty root directory.")
         self.root = root
         return {
-            "volume_id": pvd[40:72].decode("ascii", errors="replace").replace("\x00", "").strip(),
+            "volume_id": _text(pvd[40:72]),
+            "volume_set_size": volume_set_size,
+            "volume_sequence_number": volume_sequence,
+            "system_identifier": _text(pvd[8:40]),
+            "volume_set_identifier": _text(pvd[190:318]),
+            "publisher_identifier": _text(pvd[318:446]),
+            "data_preparer_identifier": _text(pvd[446:574]),
+            "application_identifier": _text(pvd[574:702]),
+            "copyright_file_identifier": _text(pvd[702:739]),
+            "abstract_file_identifier": _text(pvd[739:776]),
+            "bibliographic_file_identifier": _text(pvd[776:813]),
             "volume_space_blocks": self.volume_blocks,
             "logical_block_size": block_size,
             "primary_volume_descriptor_lba": PVD_LBA,
+            "root_directory": {
+                "extent_lba": root["lba"],
+                "size_bytes": root["size"],
+                "xa_length": root["xa_len"],
+            },
         }
 
     def list_dir(self, entry: dict[str, object]) -> list[dict[str, object]]:
@@ -193,12 +240,12 @@ class IsoReader:
             raise InspectError("AMBIGUOUS_PATH", f"Multiple entries match BOOT path component: {component}.")
         return matches[0]
 
-    def resolve_boot(self, value: str) -> tuple[dict[str, object], str | None]:
+    def resolve_boot(self, value: str) -> tuple[dict[str, object], str | None, list[str]]:
         value = value.strip().strip('"').strip("'")
         device = None
         if ":" in value:
             device, value = value.split(":", 1)
-            device = device.strip().casefold()
+            device = device.strip().casefold() or None
         components = [part for part in re.split(r"[\\/]+", value) if part]
         if not components:
             raise InspectError("BOOT_PATH_EMPTY", "BOOT path is empty.")
@@ -208,15 +255,17 @@ class IsoReader:
             raise InspectError("UNSAFE_BOOT_PATH", "BOOT path contains a dot or parent-directory component.")
         assert self.root is not None
         entry = self.root
+        resolved_path: list[str] = []
         for index, component in enumerate(components):
             entry = self.find_child(entry, component)
+            resolved_path.append(str(entry["name"]))
             if index < len(components) - 1 and not entry["directory"]:
                 raise InspectError("BOOT_PATH_NOT_DIRECTORY", f"Intermediate BOOT path component is not a directory: {component}.")
         if entry["directory"]:
             raise InspectError("BOOT_TARGET_IS_DIRECTORY", "BOOT path identifies a directory.")
         if entry["multi_extent"]:
             raise InspectError("MULTI_EXTENT_UNSUPPORTED", "Multi-extent BOOT executable is not supported.")
-        return entry, device
+        return entry, device, resolved_path
 
     def read_entry(self, entry: dict[str, object], max_size: int) -> bytes:
         start, size = self.extent(entry)
@@ -236,7 +285,7 @@ class IsoReader:
 
     def parse_elf(self, entry: dict[str, object]) -> dict[str, object]:
         start, size = self.extent(entry)
-        if size < 52:
+        if size < ELF_HEADER_SIZE:
             raise InspectError("BOOT_ELF_HEADER_TRUNCATED", "BOOT executable is smaller than an ELF32 header.")
         h = self.read_at(start, min(size, 64))
         if h[:4] != b"\x7fELF":
@@ -254,13 +303,51 @@ class IsoReader:
         ehsize = int.from_bytes(h[40:42], "little")
         phentsize = int.from_bytes(h[42:44], "little")
         phnum = int.from_bytes(h[44:46], "little")
-        if ehsize < 52 or ehsize > size:
+        if ehsize < ELF_HEADER_SIZE or ehsize > size:
             raise InspectError("ELF_HEADER_SIZE_INVALID", "ELF32 header size is invalid.")
         if phnum > MAX_PROGRAM_HEADERS:
             raise InspectError("ELF_PROGRAM_HEADER_LIMIT", f"Program header count exceeds {MAX_PROGRAM_HEADERS}.")
         if phnum:
-            if phentsize < 32 or phoff < ehsize or phoff + phentsize * phnum > size:
+            if phentsize < ELF_PROGRAM_HEADER_SIZE or phoff < ehsize or phoff + phentsize * phnum > size:
                 raise InspectError("ELF_PROGRAM_HEADERS_OUT_OF_BOUNDS", "ELF program header table is invalid or out of bounds.")
+        load_segments: list[dict[str, object]] = []
+        for index in range(phnum):
+            ph = self.read_at(start + phoff + index * phentsize, ELF_PROGRAM_HEADER_SIZE)
+            segment_type = int.from_bytes(ph[0:4], "little")
+            file_offset = int.from_bytes(ph[4:8], "little")
+            virtual_address = int.from_bytes(ph[8:12], "little")
+            physical_address = int.from_bytes(ph[12:16], "little")
+            file_size = int.from_bytes(ph[16:20], "little")
+            memory_size = int.from_bytes(ph[20:24], "little")
+            flags = int.from_bytes(ph[24:28], "little")
+            alignment = int.from_bytes(ph[28:32], "little")
+            if segment_type != PT_LOAD:
+                continue
+            if file_offset + file_size > size:
+                raise InspectError(
+                    "ELF_LOAD_SEGMENT_OUT_OF_BOUNDS",
+                    f"ELF PT_LOAD segment {index} extends beyond the executable.",
+                )
+            if file_size > memory_size:
+                raise InspectError(
+                    "ELF_LOAD_SEGMENT_SIZE_INVALID",
+                    f"ELF PT_LOAD segment {index} has file size {file_size} greater than memory size {memory_size}.",
+                )
+            if alignment not in (0, 1) and alignment & (alignment - 1):
+                raise InspectError(
+                    "ELF_LOAD_SEGMENT_ALIGNMENT_INVALID",
+                    f"ELF PT_LOAD segment {index} has non-power-of-two alignment {alignment}.",
+                )
+            load_segments.append({
+                "type": segment_type,
+                "file_offset": file_offset,
+                "virtual_address": virtual_address,
+                "physical_address": physical_address,
+                "file_size": file_size,
+                "memory_size": memory_size,
+                "flags": flags,
+                "alignment": alignment,
+            })
         return {
             "class": "ELF32",
             "endianness": "little",
@@ -271,6 +358,8 @@ class IsoReader:
             "program_header_offset": phoff,
             "program_header_entry_size": phentsize,
             "program_header_count": phnum,
+            "load_segment_count": len(load_segments),
+            "load_segments": load_segments,
         }
 
     def inspect(self) -> dict[str, object]:
@@ -286,6 +375,10 @@ class IsoReader:
         if len(system_matches) != 1:
             raise InspectError("SYSTEM_CNF_AMBIGUOUS", "Multiple root entries match SYSTEM.CNF.")
         system = system_matches[0]
+        if system["directory"]:
+            raise InspectError("SYSTEM_CNF_IS_DIRECTORY", "SYSTEM.CNF is a directory, not a regular file.")
+        if system["multi_extent"]:
+            raise InspectError("MULTI_EXTENT_UNSUPPORTED", "Multi-extent SYSTEM.CNF is not supported.")
         raw_config = self.read_entry(system, MAX_SYSTEM_CNF).decode("ascii", errors="replace").replace("\x00", "")
         config: dict[str, str] = {}
         for line in raw_config.splitlines():
@@ -296,25 +389,56 @@ class IsoReader:
         boot_key = "BOOT2" if config.get("BOOT2") else ("BOOT" if config.get("BOOT") else None)
         if boot_key is None:
             raise InspectError("BOOT_CONFIG_MISSING", "SYSTEM.CNF has no non-empty BOOT2 or BOOT entry.")
-        executable, device = self.resolve_boot(config[boot_key])
+        executable, device, resolved_path = self.resolve_boot(config[boot_key])
         elf = self.parse_elf(executable)
         warnings: list[str] = []
-        if device and device != "cdrom0":
+        if device is None:
+            warnings.append("BOOT path has no device prefix; cdrom0 is expected for a typical PS2 disc.")
+        elif device != "cdrom0":
             warnings.append(f"BOOT device is {device!r}; cdrom0 is expected for a typical PS2 disc.")
         if elf["machine_id"] != 8:
             warnings.append(f"BOOT ELF machine id is {elf['machine_id']}; EM_MIPS (8) is expected for PS2.")
+        if elf["type"] != 2:
+            warnings.append(f"BOOT ELF type is {elf['type']}; ET_EXEC (2) is expected for a PS2 executable.")
+        if elf["load_segment_count"] == 0:
+            warnings.append("BOOT ELF has no PT_LOAD segment.")
+        else:
+            entry_point = int(elf["entry_point"])
+            entry_in_segment = any(
+                int(segment["virtual_address"]) <= entry_point < int(segment["virtual_address"]) + int(segment["memory_size"])
+                for segment in elf["load_segments"]
+            )
+            if not entry_in_segment:
+                warnings.append("BOOT ELF entry point is outside all PT_LOAD segments.")
         return {
             "status": "INSPECTED_WITH_WARNINGS" if warnings else "INSPECTED",
             "input_name": self.name,
             "image_size_bytes": self.size,
             "iso9660": iso,
-            "system_cnf": {"path": system["name"], "boot_key": boot_key, "boot_value": config[boot_key], "fields": config},
-            "boot_executable": {"path": executable["name"], "size_bytes": executable["size"], "sha256": self.hash_entry(executable), "elf": elf},
+            "system_cnf": {
+                "path": system["name"],
+                "size_bytes": system["size"],
+                "sha256": self.hash_entry(system),
+                "boot_key": boot_key,
+                "boot_value": config[boot_key],
+                "device": device,
+                "fields": config,
+                "extent": _entry_metadata(system),
+            },
+            "boot_executable": {
+                "path": executable["name"],
+                "resolved_path": resolved_path,
+                "device": device,
+                "size_bytes": executable["size"],
+                "sha256": self.hash_entry(executable),
+                "extent": _entry_metadata(executable),
+                "elf": elf,
+            },
             "warnings": warnings,
             "limitations": [
-                "Read-only ISO 9660 primary-volume-descriptor prototype; files are not extracted or modified.",
-                "Supports 2048-byte logical blocks and non-multi-extent path components only.",
-                "ELF inspection checks header and program-header table bounds; it does not recompile or launch the game.",
+                "Read-only ISO 9660 primary-volume-descriptor inspector; files are not extracted or modified.",
+                "Supports single-volume ISO 9660 images with 2048-byte logical blocks; multi-extent entries are rejected.",
+                "ELF inspection validates the header, program-header table and PT_LOAD file bounds; it does not recompile or launch the game.",
                 "No retail/commercial ISO is included in tests; broader PS2 disc compatibility is unverified.",
             ],
         }
@@ -357,12 +481,16 @@ def main() -> int:
             print(f"Input: {report['input_name']}")
             print(f"Volume: {iso['volume_id'] or '(no volume identifier)'}")
             print(f"Block size: {iso['logical_block_size']}; volume blocks: {iso['volume_space_blocks']}")
-            print(f"SYSTEM.CNF: {cfg['path']}")
+            print(f"SYSTEM.CNF: {cfg['path']} ({cfg['size_bytes']} bytes)")
+            print(f"SYSTEM.CNF SHA-256: {cfg['sha256']}")
             print(f"{cfg['boot_key']}: {cfg['boot_value']}")
-            print(f"BOOT executable: {boot['path']} ({boot['size_bytes']} bytes)")
+            print(f"BOOT executable: {'/'.join(boot['resolved_path'])} ({boot['size_bytes']} bytes)")
             print(f"SHA-256: {boot['sha256']}")
             elf = boot["elf"]
-            print(f"ELF: {elf['class']} {elf['endianness']}-endian, machine={elf['machine_id']}, entry=0x{elf['entry_point']:08X}")
+            print(
+                f"ELF: {elf['class']} {elf['endianness']}-endian, machine={elf['machine_id']}, "
+                f"entry=0x{elf['entry_point']:08X}, load_segments={elf['load_segment_count']}"
+            )
             for warning in report["warnings"]:
                 print(f"WARNING: {warning}")
             print("No files were extracted or modified.")
