@@ -37,4 +37,6 @@ Exit code is `0` for an inspected image and `2` for an expected inspection error
 
 ## Verification status
 
-The source and unit tests have been added, but this document should be considered pending verification until the repository's Windows/MSVC and Linux/GCC CI jobs complete successfully.
+- Verified locally on 2026-10-21 from Developer PowerShell for Visual Studio 2022 (x64): the 16 ISO inspector unit tests pass as part of the full 34-test Python suite, and the Windows MSVC CMake preset passes all 3 CTest targets.
+- Verified in CI: GitHub Actions run `39561754883` on main commit `371cec8` completed successfully for both Windows x64/MSVC and Linux/GCC.
+- Not verified: real retail ISO layouts, multi-extent files/directories, other ISO 9660 variants, and any claim of broad PS2 disc compatibility. Validation with owner-authorized real images remains pending and must not add game data to the repository.

@@ -6,7 +6,7 @@
 
 RPTP is an open-source research project exploring how to transform a user-owned PlayStation 2 game image into a native Windows x64 build by statically recompiling supported Emotion Engine (EE) code to C++, alongside a from-scratch runtime for the PS2 services a game needs.
 
-> **Development status: early research.** The published Gate 0 spike is a narrow, passing synthetic differential test. It is not a PS2 ISO loader, a complete R5900 recompiler, or evidence that any commercial game boots or runs.
+> **Development status: early research.** The published Gate 0 spike is a narrow, passing synthetic differential test, and the repository CI is green on both supported CI jobs. This is not a PS2 game loader, a complete R5900 recompiler, or evidence that any commercial game boots or runs.
 
 ## Project goals
 
@@ -33,7 +33,7 @@ The published spike currently demonstrates:
 
 The Windows run used MSVC x64 with C++20 and strict warnings. Both `windows_msvc_verified` and `native_matches_oracle` were true in the run report. The tested native trace contains 22 steps.
 
-**Not implemented or proven:** retail ISO inspection/boot, full R5900 semantics, function discovery for real games, EE kernel/syscalls, VU, GS graphics, IOP, CDVD, audio, controller, memory card, timing, or commercial-game compatibility.
+**Not implemented or proven:** retail ISO compatibility/boot, full R5900 semantics, function discovery for real games, EE kernel/syscalls, VU, GS graphics, IOP, CDVD, audio, controller, memory card, timing, or commercial-game compatibility. The ISO inspector prototype below is not a game loader and does not establish disc compatibility.
 
 ## ISO Inspector prototype
 
@@ -44,14 +44,14 @@ python tools/rptp_inspect.py "D:\Games\your-owned-game.iso"
 python tools/rptp_inspect.py "D:\Games\your-owned-game.iso" --json
 ```
 
-The inspector currently supports 2048-byte logical blocks and non-multi-extent entries. It is a first ISO-inspection milestone, not proof of compatibility with all PS2 disc layouts. Synthetic-only tests cover valid metadata and malformed-input paths; no commercial ISO is included in the repository.
+The inspector currently supports 2048-byte logical blocks and non-multi-extent entries. It is a first ISO-inspection milestone, not proof of compatibility with all PS2 disc layouts. Synthetic-only tests cover valid metadata and malformed-input paths; the complete test suite and both CI jobs are green, but no real retail image has been validated. No commercial ISO is included in the repository.
 
 ## Development phases
 
-1. **Gate 0 — Foundation and spike:** technical differential test completed; formal review remains open.
-2. **B1a — Project foundation:** license and architecture decision recorded; clean-room/source-exposure review remains an explicit concern.
-3. **B1b — Repository/toolchain baseline:** CLI, CMake, diagnostics, CI, dependency/license checks and reproducible builds.
-4. **ISO Inspector:** read-only ISO9660 and `SYSTEM.CNF` inspection, executable metadata, hashing, safe extraction and malformed-input tests.
+1. **Gate 0 — Foundation and spike:** technical differential test completed and CI verified; formal review remains open.
+2. **B1a — Project foundation:** license and architecture decision recorded; clean-room/source-exposure review remains an explicit concern, and the owner must confirm the license for this session.
+3. **B1b — Repository/toolchain baseline:** CMake, diagnostics, tests and CI are implemented and green; a clean-checkout Windows re-run remains open.
+4. **B1c — ISO Inspector prototype:** read-only ISO9660 and `SYSTEM.CNF` inspection, executable metadata, hashing and synthetic malformed-input tests are implemented. Real-disc validation and the broader Gate 2 work (including safe extraction boundaries) remain open.
 5. **Recompiler MVP:** verified instruction catalog, decoder, IR, function discovery, deterministic code generation and differential tests.
 6. **First-game vertical slice:** boot, minimum runtime services, graphics, audio/input/save and repeatable gameplay.
 7. **Compatibility and release:** expand subsystem coverage using measured blockers, then validate clean-machine builds and release artifacts.

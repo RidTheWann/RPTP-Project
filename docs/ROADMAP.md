@@ -30,24 +30,39 @@ This verifies only the synthetic ELF32/EM_MIPS instruction subset. It does not p
 
 ## B1b — Repository/toolchain baseline
 
-**Infrastructure scaffold added; automated CI result pending. This work does not expand the PS2 instruction/runtime implementation.**
+**Infrastructure and automated CI are verified on current main. The clean-checkout re-run remains open. This work does not expand the PS2 instruction/runtime implementation.**
 
 - [x] Add a CMake project baseline and repeatable windows-msvc / host presets.
 - [x] Add rptp doctor environment and artifact-guard diagnostics.
 - [x] Add unit tests for doctor checks and error-path reporting.
 - [x] Add GitHub Actions jobs for Windows x64/MSVC and Linux/GCC.
 - [x] Ignore CMake/Visual Studio outputs and keep build files local.
-- [ ] Confirm both GitHub Actions jobs pass on the published commit.
-- [ ] Confirm dependency/license inventory remains complete before introducing any dependency.
+- [x] Confirm both GitHub Actions jobs pass on the published commit (`371cec8`, run `39561754883`).
+- [x] Confirm dependency/license inventory remains complete before introducing any dependency; no third-party code is currently vendored or linked.
 - [ ] Re-run the full Windows CMake preset from a clean checkout.
 
 ### B1b pass criteria
 
 A clean checkout can configure/build/test using documented commands; CI is green on supported jobs; dependency and artifact checks pass; no unapproved dependency or proprietary game data is introduced; build results are reproducible enough to compare and diagnose.
 
-## Gate 2 — ISO Inspector
+## B1c — Read-only ISO inspection prototype
 
-- Implement read-only ISO9660 parsing and SYSTEM.CNF inspection.
+**Prototype implemented; synthetic tests and CI are green. Real-disc validation and broad compatibility remain unverified.**
+
+- [x] Parse ISO 9660 primary volume descriptor and validate dual-endian fields.
+- [x] Locate root `SYSTEM.CNF` and resolve `BOOT2` / legacy `BOOT` path safely.
+- [x] Validate basic ELF32 little-endian header and program-header table bounds.
+- [x] Report boot executable size, metadata and SHA-256 without extracting or modifying files.
+- [x] Add synthetic-only tests for valid input and malformed-image paths.
+- [x] Confirm CI passes on Windows/MSVC and Linux/GCC with the new inspector tests.
+- [ ] Validate against a small, owner-authorized set of real ISO layouts; record exact hashes and test outcomes without committing game images.
+- [ ] Review ISO 9660 variants and multi-extent handling before claiming broad disc compatibility.
+
+This phase is an inspector only. It does not launch a game, implement the PS2 runtime, or establish clean-room/legal disposition.
+
+## Gate 2 — ISO Inspector expansion
+
+- Expand the B1c prototype into read-only ISO9660 parsing and SYSTEM.CNF inspection across the documented formats.
 - Identify boot executable metadata and calculate hashes.
 - Design safe extraction boundaries, path validation and an explicit error taxonomy.
 - Add synthetic ISO/ELF fixtures only, plus malformed-input and fuzz-oriented tests.
@@ -91,18 +106,3 @@ Windows clean-machine testing, reproducible build checks, dependency/license aud
 ## Planning note
 
 The effort ranges in RISKS.md are low-confidence planning data, not delivery promises. The agent may recommend changes; the human project owner approves architecture, licensing and clean-room decisions.
-
-## B1c — Read-only ISO inspection
-
-**Prototype implemented and CI-verified on Windows x64/MSVC and Linux/GCC.**
-
-- [x] Parse ISO 9660 primary volume descriptor and validate dual-endian fields.
-- [x] Locate root `SYSTEM.CNF` and resolve `BOOT2` / legacy `BOOT` path safely.
-- [x] Validate basic ELF32 little-endian header and program-header table bounds.
-- [x] Report boot executable size, metadata and SHA-256 without extracting or modifying files.
-- [x] Add synthetic-only tests for valid input and malformed-image paths.
-- [x] Confirm CI passes on Windows/MSVC and Linux/GCC with the new inspector tests.
-- [ ] Validate against a small, owner-authorized set of real ISO layouts; record exact hashes and test outcomes without committing game images.
-- [ ] Review ISO 9660 variants and multi-extent handling before claiming broad disc compatibility.
-
-This phase is an inspector only. It does not launch a game, implement the PS2 runtime, or establish clean-room/legal disposition.
