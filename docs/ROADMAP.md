@@ -73,7 +73,7 @@ This phase is an inspector only. It does not launch a game, implement the PS2 ru
 
 ## Gate 2 — ISO Inspector expansion
 
-**Status: synthetic hardening and a read-only retail sample validation are implemented and locally verified; multi-extent/ISO-variant review, safe extraction boundaries and formal Gate 0 disposition remain open. Gate 2 is not passed.**
+**Status: synthetic hardening and a read-only retail sample validation are implemented and locally verified; multi-extent/ISO-variant review, safe extraction boundaries and formal Gate 0 disposition remain open. Gate 2 is not passed.** The criterion-to-evidence map is maintained in [GATE2_EVIDENCE.md](GATE2_EVIDENCE.md); it is evidence, not a disposition.
 
 - Expand the B1c prototype into read-only ISO9660 parsing and SYSTEM.CNF inspection across the documented formats.
 - Identify boot executable metadata and calculate hashes.
