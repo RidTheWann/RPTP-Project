@@ -3,7 +3,6 @@ name: RPTP CI
 
 on:
   push:
-    branches: [main, development]
   pull_request:
   workflow_dispatch:
 
@@ -11,20 +10,6 @@ permissions:
   contents: read
 
 jobs:
-  branch-policy:
-    name: Branch policy
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Require development -> main
-        env:
-          BASE_REF: ${{ github.base_ref }}
-          HEAD_REF: ${{ github.head_ref }}
-        run: |
-          test "$BASE_REF" = "main"
-          test "$HEAD_REF" = "development"
-
   windows-msvc:
     name: Windows x64 / MSVC
     runs-on: windows-latest

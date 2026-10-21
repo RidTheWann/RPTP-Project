@@ -9,7 +9,7 @@ No commercial PS2 game has been booted or tested for gameplay. One owner-authori
 | Downhill Domination (USA) | Retail PS2 ISO | `Inspect passed (read-only)` | The inspector resolved `SYSTEM.CNF` and `BOOT2` and reported ELF32/EM_MIPS metadata. No boot, recompilation or gameplay was tested. See [the game record](games/downhill-domination/STATUS.md). |
 | Other retail PS2 ISOs | Retail game | `Not tested` | One real ISO layout is not evidence of broad compatibility. No boot or game-compatibility claim is made. |
 | Windows/MSVC | Build platform check | `Verified` | Visual Studio 2026 Build Tools, MSVC 19.51.36260.0: doctor, configure, CTest 3/3 and Gate 0 differential spike pass locally. |
-| Linux/GCC | Build platform check | `Verified on main and development CI` | Main run `39594267744`, PR #1 run `39594147110`, and development sync run `39594304857` passed. See `docs/BRANCH_POLICY.md`. |
+| Linux/GCC | Build platform check | `Verified in CI` | Runs `39594267744`, `39594147110` and `39594304857` passed. |
 
 Fixture metadata:
 

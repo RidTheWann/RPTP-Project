@@ -137,5 +137,5 @@ A warning does not mean the image is safe to boot or compatible with RPTP.
 - The full Python suite passes with 53 tests: 33 ISO-inspector tests (valid metadata, malformed inputs, multi-volume/multi-extent rejection, ELF PT_LOAD validation, deterministic mutation smoke, and CLI JSON success/error paths), one game-record policy test, and the existing Gate 0/doctor/license checks.
 - The Windows MSVC CMake preset passes all 3 CTest targets.
 - One real sample: Downhill Domination (USA), 2,530,869,248 bytes, is `INSPECTED`; `BOOT2` resolves to `SCUS_971.77`, an ELF32/EM_MIPS executable with one PT_LOAD segment and no warnings. The record is `docs/games/downhill-domination/STATUS.md`.
-- Main CI run `39594267744`, PR #1 run `39594147110`, and development sync run `39594304857` are green for Windows x64/MSVC and Linux/GCC; PR #1 also passed the `Branch policy` job. See `docs/BRANCH_POLICY.md`.
+- CI runs `39594267744`, `39594147110` and `39594304857` are green for Windows x64/MSVC and Linux/GCC.
 - Not verified: broader retail ISO layouts, multi-extent support, other ISO 9660 variants, game boot and broad PS2 disc compatibility.

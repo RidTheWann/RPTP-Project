@@ -31,19 +31,18 @@ This verifies only the synthetic ELF32/EM_MIPS instruction subset. It does not p
 
 ## B1b — Repository/toolchain baseline
 
-**Status: technical baseline verified. CI is green on main and development, and the clean-checkout local Windows run passed. The build/CI/doctor layer is `Review required` in `docs/CLEAN_ROOM_AUDIT.md` and must not be described as clean-room certified. Formal Gate 0 remains pending. This work does not expand the PS2 instruction/runtime implementation.**
+**Status: technical baseline verified. CI is green, and the clean-checkout local Windows run passed. The build/CI/doctor layer is `Review required` in `docs/CLEAN_ROOM_AUDIT.md` and must not be described as clean-room certified. Formal Gate 0 remains pending. This work does not expand the PS2 instruction/runtime implementation.**
 
 - [x] Add a CMake project baseline and repeatable windows-msvc / host presets.
 - [x] Add rptp doctor environment and artifact-guard diagnostics.
 - [x] Add unit tests for doctor checks and error-path reporting.
 - [x] Add GitHub Actions jobs for Windows x64/MSVC and Linux/GCC.
 - [x] Ignore CMake/Visual Studio outputs and keep build files local.
-- [x] Adopt the strict two-branch policy: `main` for releases and `development` for work; pull requests are `development -> main` only.
-- [x] Confirm both GitHub Actions jobs passed on the previously published main commit (`371cec8`, run `39561754883`).
-- [x] Confirm PR #1 CI (`39594147110`) passed the branch-policy, Windows and Linux jobs, then merge to main.
-- [x] Confirm main CI (`39594267744`) and the development sync CI (`39594304857`) passed after the merge.
+- [x] Confirm both GitHub Actions jobs passed on the previously published commit (`371cec8`, run `39561754883`).
+- [x] Confirm PR #1 CI (`39594147110`) passed the Windows and Linux jobs, then merge.
+- [x] Confirm CI runs (`39594267744`) and (`39594304857`) passed after the merge.
 - [x] Confirm dependency/license inventory remains complete before introducing any dependency; no third-party code is currently vendored or linked.
-- [x] Re-run the full Windows CMake preset from a clean checkout (local run at pre-push commit `83459c1` (now `b4d6fa7`; content unchanged); not a substitute for branch CI).
+- [x] Re-run the full Windows CMake preset from a clean checkout (local run at pre-push commit `83459c1` (now `b4d6fa7`; content unchanged); not a substitute for CI).
 
 ### B1b pass criteria
 
@@ -51,7 +50,7 @@ A clean checkout can configure/build/test using documented commands; CI is green
 
 ## B1c — Read-only ISO inspection prototype
 
-**Prototype expanded with metadata, explicit validation and deterministic malformed-input tests. 33 ISO inspector tests and 53 total tests pass locally; CI is green on main and development. One owner-authorized retail ISO (Downhill Domination USA) has been inspected read-only; broad compatibility remains unverified.**
+**Prototype expanded with metadata, explicit validation and deterministic malformed-input tests. 33 ISO inspector tests and 53 total tests pass locally; CI is green. One owner-authorized retail ISO (Downhill Domination USA) has been inspected read-only; broad compatibility remains unverified.**
 
 - [x] Parse ISO 9660 primary volume descriptor and validate dual-endian fields.
 - [x] Enforce single-volume PVD and directory volume sequences.
@@ -63,7 +62,7 @@ A clean checkout can configure/build/test using documented commands; CI is green
 - [x] Define an explicit, stable inspection error taxonomy.
 - [x] Add synthetic-only tests for valid input, malformed-image paths and deterministic mutation smoke.
 - [x] Add CLI JSON success/error tests.
-- [x] Confirm main and development CI passes on Windows/MSVC and Linux/GCC.
+- [x] Confirm CI passes on Windows/MSVC and Linux/GCC.
 - [x] Record an initial owner-authorized real-ISO inspection (Downhill Domination USA) in `docs/games/downhill-domination/STATUS.md`.
 - [ ] Validate against a broader owner-authorized set of real ISO layouts; record exact hashes and test outcomes without committing game images.
 - [ ] Review ISO 9660 variants and multi-extent handling before claiming broad disc compatibility.
@@ -83,7 +82,7 @@ This phase is an inspector only. It does not launch a game, implement the PS2 ru
 
 **Verified locally:** single-volume PVD validation, root `SYSTEM.CNF` inspection, BOOT path resolution, PVD/root/boot metadata, SHA-256, ELF PT_LOAD checks, explicit error codes, deterministic JSON, CLI JSON success/error, 33 ISO inspector tests and 53 total tests. CTest is 3/3 on Windows/MSVC.
 
-**Still open:** broader owner-authorized real-disc validation, multi-extent and ISO-variant review, safe extraction boundaries, Linux branch CI and the owner's formal Gate 0 disposition. Clean-room handling is recorded in ADR-0003.
+**Still open:** broader owner-authorized real-disc validation, multi-extent and ISO-variant review, safe extraction boundaries, Linux CI and the owner's formal Gate 0 disposition. Clean-room handling is recorded in ADR-0003.
 
 **Pass criteria:** deterministic inspection results on synthetic fixtures, robust rejection of malformed inputs, no writes outside the requested output directory, and clear reporting when an image is unsupported.
 
