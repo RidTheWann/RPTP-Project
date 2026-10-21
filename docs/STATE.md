@@ -3,6 +3,7 @@
 - **Snapshot date:** 2026-10-21
 - **Remote repository:** RidTheWann/RPTP-Project, public, default branch main.
 - **Current main:** `371cec896095738ff16b9a81460b8b183063eae3`; the latest RPTP CI run on this commit is green.
+- **Reconciliation branch:** `chore/post-gate0-reconcile`; it has local Gate 0 reconciliation, environment-alignment and ISO inspector hardening commits. It has not been pushed, so no branch CI exists.
 - **Architecture:** from-scratch static ahead-of-time recompilation of supported Emotion Engine code to C++, plus a native Windows x64 runtime planned.
 - **License:** GPL-3.0-or-later was confirmed by the owner on 2026-10-21. The decision remains recorded in ADR-0001; no license decision was changed here.
 - **CLI/log/error language:** English.
@@ -12,7 +13,7 @@
 
 - **Gate 0 technical spike:** passed on Windows x64/MSVC and on the recorded Linux host toolchains. Formal Gate 0 disposition remains pending owner review.
 - **B1b repository/toolchain baseline:** CMake presets, the RPTP doctor, CTest targets and Windows/Linux CI are present. CI is green on current main only. The Windows preset passed locally on the work laptop and in a clean clone at commit `83459c1`; the branch itself has not run CI, so B1b is not passed.
-- **B1c ISO inspector prototype:** implemented and covered by synthetic valid/malformed-input tests. It is not validated against real retail ISO layouts and does not establish broad disc compatibility.
+- **B1c ISO inspector prototype / Gate 2 synthetic hardening:** single-volume PVD parsing, root `SYSTEM.CNF` regular single-extent validation, BOOT path resolution, PVD/root/boot metadata, SHA-256, ELF PT_LOAD checks, warnings and an explicit error taxonomy are implemented. 33 ISO inspector tests and 52 total tests pass. Real retail ISO layouts, multi-extent support, safe extraction boundaries and broad disc compatibility remain unverified.
 - **Owner decisions still open:** formal Gate 0 review and clean-room/source-exposure handling.
 
 ## Verification performed on 2026-10-21
@@ -68,9 +69,17 @@ The work laptop was aligned to the `371cec8` software reference and the checks w
 - RPTP doctor: PASS (Python 3.13.16, MSVC 19.51.36260, CMake, Ninja, git, artifact guard).
 - CMake configure: PASS; compiler identified as MSVC 19.51.36260.0.
 - CMake build/CTest: PASS; 3 of 3 tests passed.
-- Python unit tests: PASS; 35 tests.
+- Python unit tests: PASS; 52 tests (12 Gate 0, 33 ISO inspector, 6 doctor, 1 license-header check).
 - Gate 0 report: `PASS_LOCAL_DIFFERENTIAL_SPIKE`, `windows_msvc_verified: true`, `native_matches_oracle: true`, 22 trace steps; local ignored reports at `build/cmake-msvc/gate0/report.json` and `build/gate0-msvc/report.json`.
 - Branch CI has not run; B1b is still not passed.
+
+### ISO inspector hardening verification (Gate 2 synthetic scope)
+
+- CTest: PASS; 3 of 3 targets after the inspector changes (`artifact_guard`, `python_unit_tests`, `gate0_differential_spike`).
+- Full Python suite: PASS; 52 tests.
+- ISO inspector suite: PASS; 33 tests covering PVD/root metadata, single-volume enforcement, `SYSTEM.CNF` directory/multi-extent rejection, BOOT path resolution, ELF PT_LOAD bounds/size/alignment validation, warnings, deterministic reports, CLI JSON success/error and a 250-case seeded mutation smoke test.
+- Determinism: repeated inspection of the same bytes produces identical JSON.
+- Scope: synthetic images only. No retail ISO, multi-extent merging, extraction, emulation or recompilation was tested.
 
 ## Windows x64/MSVC evidence
 
