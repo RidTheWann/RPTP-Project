@@ -28,7 +28,11 @@ This is a work log, not a compatibility claim. An inspected ISO is not a bootabl
 
 | Game | Region | Status | Last updated | Record |
 |---|---|---|---|---|
-| Downhill Domination | USA | Inspected (read-only) | 2026-10-21 | [downhill-domination](downhill-domination/STATUS.md) |
+| Black | USA | Inspected (read-only) | 2026-10-22 | [black](black/STATUS.md) |
+| Downhill Domination | USA | Inspected (read-only) | 2026-10-22 | [downhill-domination](downhill-domination/STATUS.md) |
+| God of War II | USA | Inspected (read-only) | 2026-10-22 | [god-of-war-ii](god-of-war-ii/STATUS.md) |
+| Need for Speed - Most Wanted (v2.00) | USA | Inspected (read-only) | 2026-10-22 | [need-for-speed-most-wanted](need-for-speed-most-wanted/STATUS.md) |
+| Resident Evil 4 | USA | Inspected (read-only) | 2026-10-22 | [resident-evil-4](resident-evil-4/STATUS.md) |
 
 ## STATUS.md template
 

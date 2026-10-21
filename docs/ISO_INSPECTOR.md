@@ -145,13 +145,24 @@ A warning does not mean the image is safe to boot or compatible with RPTP.
 - ELF validation is intentionally limited to the header, program-header table and PT_LOAD file bounds; it does not validate every loader convention or PS2-specific memory layout.
 - The inspector does not prove that the executable is a valid PS2 game, does not emulate or recompile it, and does not prove compatibility.
 - Tests use synthetic images generated in memory and in temporary directories. Do not upload commercial ISO images or extracted copyrighted game files to the repository.
-- One owner-authorized real ISO (Downhill Domination USA) has been inspected read-only. Broader retail layouts and owner-authorized disc validation remain pending.
+- The current owner-authorized retail sample has been inspected read-only; broader retail layouts and compatibility remain unverified.
+
+## Retail validation
+
+The current owner-authorized sample was inspected read-only on 2026-10-22 with inspector `25b4ab8`. The runtime folder path is intentionally omitted; per-title metadata and whole-file SHA-256 values are in the [game records](games/README.md).
+
+- All sampled images are 2048-byte aligned, expose a 2048-byte logical block size and completed as `INSPECTED` with no warnings.
+- Four images report PVD volume space equal to the file sector count. `God of War II (USA)` reports a smaller PVD volume space; dual-layer media is **Dugaan**, not verified.
+- Directory surveys found no multi-extent or interleaved records and no skipped unsupported directories in the sample. This does not validate the interleave field offsets, which remain **Belum diverifikasi: not checked against the spec text**.
+- Boot executable sizes range from 1,691,684 to 4,918,740 bytes. The `Need for Speed - Most Wanted` boot executable exceeds the 4 MiB default materialization cap; the cap was not changed.
+- Surveying is metadata-only. The existing inspection pass still hashes `SYSTEM.CNF` and boot data and reads ELF metadata; no game files were extracted, executed or modified.
+- The sample is not evidence of broad retail-layout support, boot support or game compatibility.
 
 ## Verification status
 
 - Verified locally on 2026-10-21 with Visual Studio 2026 Build Tools 18.11.1, MSVC 19.51.36260.0, Python 3.13.16, CMake 4.1.0 and Ninja 1.13.2.
 - The full Python suite passes; the ISO-inspector tests cover valid metadata, malformed inputs, multi-volume/multi-extent/interleaved rejection, ELF PT_LOAD validation, deterministic in-memory and file-based mutation checks, and CLI JSON success/error paths, alongside the existing Gate 0/doctor/license/game-record checks. Results are recorded in [docs/VERIFICATION_LOG.md](VERIFICATION_LOG.md).
 - The Windows MSVC CMake preset passes its CTest targets; results are recorded in the verification log.
-- One real sample: Downhill Domination (USA), 2,530,869,248 bytes, is `INSPECTED`; `BOOT2` resolves to `SCUS_971.77`, an ELF32/EM_MIPS executable with one PT_LOAD segment and no warnings. The record is `docs/games/downhill-domination/STATUS.md`.
+- The current owner-authorized retail sample is `INSPECTED` with no warnings; the records are indexed at `docs/games/README.md`. The directory survey and test-first evidence are recorded in [docs/VERIFICATION_LOG.md](VERIFICATION_LOG.md).
 - CI runs `39594267744`, `39594147110` and `39594304857` are green for Windows x64/MSVC and Linux/GCC.
-- Not verified: broader retail ISO layouts, multi-extent support, other ISO 9660 variants, game boot and broad PS2 disc compatibility.
+- Not verified: retail ISO layouts beyond the current sample, interleave field offsets, multi-extent support, other ISO 9660 variants, game boot and broad PS2 disc compatibility.

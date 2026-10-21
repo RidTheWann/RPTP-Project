@@ -50,7 +50,7 @@ A clean checkout can configure/build/test using documented commands; CI is green
 
 ## B1c — Read-only ISO inspection prototype
 
-**Prototype expanded with metadata, explicit validation and deterministic malformed-input tests. The ISO inspector suite and the full Python suite pass locally; CI is green. One owner-authorized retail ISO (Downhill Domination USA) has been inspected read-only; broad compatibility remains unverified.**
+**Prototype expanded with metadata, explicit validation and deterministic malformed-input tests. The ISO inspector suite and the full Python suite pass locally; CI is green. The current owner-authorized retail sample has been inspected read-only; broad compatibility remains unverified.**
 
 - [x] Parse ISO 9660 primary volume descriptor and validate dual-endian fields.
 - [x] Enforce single-volume PVD and directory volume sequences.
@@ -64,14 +64,14 @@ A clean checkout can configure/build/test using documented commands; CI is green
 - [x] Add CLI JSON success/error tests.
 - [x] Confirm CI passes on Windows/MSVC and Linux/GCC.
 - [x] Record an initial owner-authorized real-ISO inspection (Downhill Domination USA) in `docs/games/downhill-domination/STATUS.md`.
-- [ ] Validate against a broader owner-authorized set of real ISO layouts; record exact hashes and test outcomes without committing game images.
+- [x] Validate against a broader owner-authorized set of real ISO layouts; record exact hashes and test outcomes without committing game images.
 - [ ] Review ISO 9660 variants and multi-extent handling before claiming broad disc compatibility.
 
 This phase is an inspector only. It does not launch a game, implement the PS2 runtime, or establish clean-room/legal disposition.
 
 ## Gate 2 — ISO Inspector expansion
 
-**Status: synthetic hardening and an initial real-disc inspection are implemented and locally verified; broader real-disc validation, ISO variants and safe extraction boundaries remain open. Gate 2 is not passed.**
+**Status: synthetic hardening and a read-only retail sample validation are implemented and locally verified; multi-extent/ISO-variant review, safe extraction boundaries and formal Gate 0 disposition remain open. Gate 2 is not passed.**
 
 - Expand the B1c prototype into read-only ISO9660 parsing and SYSTEM.CNF inspection across the documented formats.
 - Identify boot executable metadata and calculate hashes.
@@ -80,9 +80,9 @@ This phase is an inspector only. It does not launch a game, implement the PS2 ru
 - Do not require or commit user game images to CI.
 - Keep the inspector read-only and fail explicitly on unsupported layouts; do not infer game compatibility.
 
-**Verified locally:** single-volume PVD validation, root `SYSTEM.CNF` inspection, BOOT path resolution, PVD/root/boot metadata, SHA-256, ELF PT_LOAD checks, explicit error codes, deterministic JSON, CLI JSON success/error, the ISO inspector suite and the full Python suite. CTest results are recorded in `docs/VERIFICATION_LOG.md`.
+**Verified locally:** single-volume PVD validation, root `SYSTEM.CNF` inspection, BOOT path resolution, PVD/root/boot metadata, SHA-256, ELF PT_LOAD checks, metadata-only directory survey, explicit error codes, deterministic JSON, CLI JSON success/error, the ISO inspector suite and the full Python suite. CTest results and the retail sample are recorded in `docs/VERIFICATION_LOG.md`.
 
-**Still open:** broader owner-authorized real-disc validation, multi-extent and ISO-variant review, safe extraction boundaries and the owner's formal Gate 0 disposition. Clean-room handling is recorded in ADR-0003.
+**Still open:** retail layouts beyond the current sample, interleave-field verification, multi-extent and ISO-variant review, safe extraction boundaries and the owner's formal Gate 0 disposition. Clean-room handling is recorded in ADR-0003.
 
 **Pass criteria:** deterministic inspection results on synthetic fixtures, robust rejection of malformed inputs, no writes outside the requested output directory, and clear reporting when an image is unsupported.
 
