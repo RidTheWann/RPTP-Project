@@ -68,5 +68,7 @@ The spike covers a synthetic ELF32/EM_MIPS fixture and only ADDIU, ADDU, LW, SW,
 - Added `tools/rptp_inspect.py`, a read-only standard-library ISO 9660 inspector.
 - Added `tests/test_iso_inspector.py` with synthetic-only valid and malformed-input cases.
 - Added `docs/ISO_INSPECTOR.md` for usage, scope and known limitations.
-- The inspector is not yet CI-verified at this snapshot; wait for the Windows/MSVC and Linux/GCC workflow result.
+- CI run `39561621916` completed successfully on Windows x64/MSVC and Linux/GCC. The workflow ran artifact guard, Python unit tests, and Gate 0 differential spike; all three CTest targets passed on both platforms.
 - No commercial ISO, extracted game content, or copyrighted executable is added to the repository.
+
+- Latest verification commit: `bc207adf0b208112ebaad88698927a92c242d89f` (CI run completed successfully).
