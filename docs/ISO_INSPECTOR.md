@@ -129,12 +129,13 @@ A warning does not mean the image is safe to boot or compatible with RPTP.
 - ELF validation is intentionally limited to the header, program-header table and PT_LOAD file bounds; it does not validate every loader convention or PS2-specific memory layout.
 - The inspector does not prove that the executable is a valid PS2 game, does not emulate or recompile it, and does not prove compatibility.
 - Tests use synthetic images generated in memory. Do not upload commercial ISO images or extracted copyrighted game files to the repository.
-- Real retail ISO layouts and owner-authorized disc validation remain pending.
+- One owner-authorized real ISO (Downhill Domination USA) has been inspected read-only. Broader retail layouts and owner-authorized disc validation remain pending.
 
 ## Verification status
 
 - Verified locally on 2026-10-21 with Visual Studio 2026 Build Tools 18.11.1, MSVC 19.51.36260.0, Python 3.13.16, CMake 4.1.0 and Ninja 1.13.2.
-- The full Python suite passes with 52 tests, including 33 ISO-inspector tests (valid metadata, malformed inputs, multi-volume/multi-extent rejection, ELF PT_LOAD validation, deterministic mutation smoke, and CLI JSON success/error paths).
+- The full Python suite passes with 53 tests: 33 ISO-inspector tests (valid metadata, malformed inputs, multi-volume/multi-extent rejection, ELF PT_LOAD validation, deterministic mutation smoke, and CLI JSON success/error paths), one game-record policy test, and the existing Gate 0/doctor/license checks.
 - The Windows MSVC CMake preset passes all 3 CTest targets.
+- One real sample: Downhill Domination (USA), 2,530,869,248 bytes, is `INSPECTED`; `BOOT2` resolves to `SCUS_971.77`, an ELF32/EM_MIPS executable with one PT_LOAD segment and no warnings. The record is `docs/games/downhill-domination/STATUS.md`.
 - Main-branch CI run `39561754883` on commit `371cec8` is green for Windows x64/MSVC and Linux/GCC. The reconciliation branch has not been pushed, so it has no branch CI result.
-- Not verified: real retail ISO layouts, multi-extent support, other ISO 9660 variants, and broad PS2 disc compatibility.
+- Not verified: broader retail ISO layouts, multi-extent support, other ISO 9660 variants, game boot and broad PS2 disc compatibility.

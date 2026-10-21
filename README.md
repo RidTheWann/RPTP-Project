@@ -44,14 +44,16 @@ python tools/rptp_inspect.py "D:\Games\your-owned-game.iso"
 python tools/rptp_inspect.py "D:\Games\your-owned-game.iso" --json
 ```
 
-The inspector currently supports single-volume ISO 9660 images with 2048-byte logical blocks and rejects multi-extent entries explicitly. It is a first ISO-inspection milestone, not proof of compatibility with all PS2 disc layouts. Synthetic-only tests cover valid metadata, malformed-input paths, deterministic mutation smoke and CLI JSON behavior; main-branch CI is green, but this reconciliation branch has not run CI and no real retail image has been validated. No commercial ISO is included in the repository.
+The inspector currently supports single-volume ISO 9660 images with 2048-byte logical blocks and rejects multi-extent entries explicitly. It is a first ISO-inspection milestone, not proof of compatibility with all PS2 disc layouts. Synthetic tests cover valid metadata, malformed-input paths, deterministic mutation smoke and CLI JSON behavior; one owner-authorized retail ISO has been inspected read-only, but no boot or native port has been validated. No commercial ISO is included in the repository.
+
+Every game RPTP works on gets a durable record under [docs/games](docs/games/README.md). The record tracks inspection, boot-analysis, runtime and playability status; game images and extracted assets are never committed.
 
 ## Development phases
 
 1. **Gate 0 — Foundation and spike:** technical differential test completed and CI verified; formal review remains open.
 2. **B1a — Project foundation:** license and architecture decision recorded; the owner confirmed GPL-3.0-or-later on 2026-10-21. Clean-room handling is governed by the owner-approved sealed-source policy in ADR-0003; prior exposure remains documented.
 3. **B1b — Repository/toolchain baseline:** CMake, diagnostics, tests and CI are implemented; main CI is green and the clean-checkout local Windows run passed. Branch CI remains open.
-4. **B1c — ISO Inspector prototype:** read-only ISO9660 and `SYSTEM.CNF` inspection, boot metadata, an explicit error taxonomy, ELF PT_LOAD checks, hashing and synthetic malformed-input tests are implemented. Real-disc validation and the broader Gate 2 work (including safe extraction boundaries) remain open.
+4. **B1c — ISO Inspector prototype:** read-only ISO9660 and `SYSTEM.CNF` inspection, boot metadata, an explicit error taxonomy, ELF PT_LOAD checks, hashing and synthetic malformed-input tests are implemented. An initial real-disc inspection is recorded for Downhill Domination (USA); broader validation and the Gate 2 work (including safe extraction boundaries) remain open.
 5. **Recompiler MVP:** verified instruction catalog, decoder, IR, function discovery, deterministic code generation and differential tests.
 6. **First-game vertical slice:** boot, minimum runtime services, graphics, audio/input/save and repeatable gameplay.
 7. **Compatibility and release:** expand subsystem coverage using measured blockers, then validate clean-machine builds and release artifacts.

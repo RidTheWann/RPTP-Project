@@ -13,7 +13,8 @@
 
 - **Gate 0 technical spike:** passed on Windows x64/MSVC and on the recorded Linux host toolchains. Formal Gate 0 disposition remains pending owner review.
 - **B1b repository/toolchain baseline:** CMake presets, the RPTP doctor, CTest targets and Windows/Linux CI are present. CI is green on current main only. The Windows preset passed locally on the work laptop and in a clean clone at commit `83459c1`; the branch itself has not run CI, so B1b is not passed. The build/CI/doctor layer is `Review required` in `docs/CLEAN_ROOM_AUDIT.md` and is not clean-room certified.
-- **B1c ISO inspector prototype / Gate 2 synthetic hardening:** single-volume PVD parsing, root `SYSTEM.CNF` regular single-extent validation, BOOT path resolution, PVD/root/boot metadata, SHA-256, ELF PT_LOAD checks, warnings and an explicit error taxonomy are implemented. 33 ISO inspector tests and 52 total tests pass. Real retail ISO layouts, multi-extent support, safe extraction boundaries and broad disc compatibility remain unverified.
+- **B1c ISO inspector prototype / Gate 2 synthetic hardening:** single-volume PVD parsing, root `SYSTEM.CNF` regular single-extent validation, BOOT path resolution, PVD/root/boot metadata, SHA-256, ELF PT_LOAD checks, warnings and an explicit error taxonomy are implemented. 33 ISO inspector tests and 53 total tests pass. An initial real-disc inspection is recorded for Downhill Domination (USA); broader retail ISO layouts, multi-extent support, safe extraction boundaries and broad disc compatibility remain unverified.
+- **Game work record:** Downhill Domination (USA) was inspected read-only; the record is `docs/games/downhill-domination/STATUS.md`. No boot, recompilation or native port exists.
 - **Clean-room/source-exposure:** on 2026-10-21 the owner selected the sealed-source policy in ADR-0003. PS2Recomp, PS2 Web Recomp, PCSX2, Play! and comparable implementations are sealed; do not access them again. Prior exposure remains documented and cannot be erased. Component-level provenance is tracked in `docs/CLEAN_ROOM_AUDIT.md`; no existing file is certified clean-room, and the build/CI/doctor layer is `Review required`.
 - **Owner decisions still open:** formal Gate 0 review.
 
@@ -70,17 +71,18 @@ The work laptop was aligned to the `371cec8` software reference and the checks w
 - RPTP doctor: PASS (Python 3.13.16, MSVC 19.51.36260, CMake, Ninja, git, artifact guard).
 - CMake configure: PASS; compiler identified as MSVC 19.51.36260.0.
 - CMake build/CTest: PASS; 3 of 3 tests passed.
-- Python unit tests: PASS; 52 tests (12 Gate 0, 33 ISO inspector, 6 doctor, 1 license-header check).
+- Python unit tests: PASS; 53 tests (12 Gate 0, 33 ISO inspector, 6 doctor, 1 license-header check, 1 game-record check).
 - Gate 0 report: `PASS_LOCAL_DIFFERENTIAL_SPIKE`, `windows_msvc_verified: true`, `native_matches_oracle: true`, 22 trace steps; local ignored reports at `build/cmake-msvc/gate0/report.json` and `build/gate0-msvc/report.json`.
 - Branch CI has not run; B1b is still not passed.
 
 ### ISO inspector hardening verification (Gate 2 synthetic scope)
 
 - CTest: PASS; 3 of 3 targets after the inspector changes (`artifact_guard`, `python_unit_tests`, `gate0_differential_spike`).
-- Full Python suite: PASS; 52 tests.
+- Full Python suite: PASS; 53 tests.
 - ISO inspector suite: PASS; 33 tests covering PVD/root metadata, single-volume enforcement, `SYSTEM.CNF` directory/multi-extent rejection, BOOT path resolution, ELF PT_LOAD bounds/size/alignment validation, warnings, deterministic reports, CLI JSON success/error and a 250-case seeded mutation smoke test.
+- Game work-record check: PASS; every folder under `docs/games/` has an indexed `STATUS.md`.
 - Determinism: repeated inspection of the same bytes produces identical JSON.
-- Scope: synthetic images only. No retail ISO, multi-extent merging, extraction, emulation or recompilation was tested.
+- Automated tests use synthetic images only. One owner-authorized real ISO, Downhill Domination (USA), was inspected read-only with `rptp_inspect.py`; no extraction, boot, emulation or recompilation was tested. Its status is recorded under `docs/games/downhill-domination/STATUS.md`.
 
 ## Windows x64/MSVC evidence
 
@@ -131,5 +133,5 @@ The spike covers a synthetic ELF32/EM_MIPS fixture and only ADDIU, ADDU, LW, SW,
 1. Owner records the formal Gate 0 disposition and applies ADR-0003 before further implementation.
 2. Arrange an independent review or re-derivation of the build/CI/doctor layer marked `Review required` in `docs/CLEAN_ROOM_AUDIT.md`; do not claim clean-room certification before it is recorded.
 3. Push the branch and require green CI before treating B1b as passed; the clean-checkout local run is not branch CI.
-4. Validate the ISO inspector only against owner-authorized discs, recording hashes and outcomes without committing game images.
-5. Continue only with the next owner-approved phase; do not infer game compatibility from the synthetic spike.
+4. Continue validating the ISO inspector only against owner-authorized discs, and update the per-game records without committing game images.
+5. Continue only with the next owner-approved phase; do not infer game compatibility from the synthetic spike or a single read-only inspection.
