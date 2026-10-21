@@ -16,9 +16,15 @@ RPTP is an open-source research project exploring how to transform a user-owned 
 - Keep the implementation from scratch; do not copy emulator or recompiler implementation source.
 - Build an open, transparent project that can be inspected, tested and improved by the community.
 
-## Current status
+## Status
 
-A standalone [HTML progress page](docs/progress.html) shows the verified foundation checklist and the still-unimplemented runtime checklist. Its percentages are scope labels, not overall completion or game compatibility.
+[![Foundation checklist: 75.0% verified](https://ridthewann.github.io/RPTP-Project/assets/badge-foundation.svg)](https://ridthewann.github.io/RPTP-Project/progress.html) [![Runtime checklist: 0.0% verified](https://ridthewann.github.io/RPTP-Project/assets/badge-runtime.svg)](https://ridthewann.github.io/RPTP-Project/progress.html)
+
+[![RPTP progress map](https://ridthewann.github.io/RPTP-Project/assets/progress.svg)](https://ridthewann.github.io/RPTP-Project/progress.html)
+
+*Foundation and runtime are 20-item scope checklists; percentages are not overall completion, boot support or game compatibility.*
+
+## Current status
 
 ### Gate 0 — synthetic recompilation spike
 
