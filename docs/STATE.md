@@ -73,7 +73,7 @@ Each run is recorded separately; older notes are not rewritten as if they were c
 - **Reconciliation session C1, 2026-10-21, local checkout:** Windows 11 x64, Developer PowerShell for Visual Studio 2022 Build Tools 17.14.32 x64, `cl` 19.44.35227 for x64, toolset `14.44.35207`; CMake identified `19.44.35227.0`. Status: **Terverifikasi** by `evidence/windows-msvc/report.json` and `commands.txt`.
 - **Reconciliation session C2, 2026-10-21, clean clone at `83459c1`:** Windows 11 x64, Developer PowerShell for Visual Studio 2022 Build Tools 17.14.32 x64, `cl` 19.44.35227 for x64, toolset `14.44.35207`; CMake identified `19.44.35227.0`; doctor PASS, 3/3 CTest targets passed, 34 Python tests passed. Status: **Terverifikasi** as a local clean-checkout run, not as branch CI.
 
-The earlier `19.51.36260.0` value and the verified `19.44.35227` value are therefore separate runs, not a replacement of one historical note by another. The sanitized report contains the compiler executable path for toolset `14.44.35207`; its `cl` banner version is `19.44.35227`, as recorded in `commands.txt`.
+The earlier `19.51.36260.0` value and the verified `19.44.35227` value are therefore separate runs, not a replacement of one historical note by another. The report JSON does not contain a separate `cl` version field; it records the compiler executable path for toolset `14.44.35207`. The matching `cl` banner version from the same environment is `19.44.35227`, as recorded in `commands.txt`.
 
 ## Linux host toolchain evidence
 
