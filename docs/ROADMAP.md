@@ -30,14 +30,14 @@ This verifies only the synthetic ELF32/EM_MIPS instruction subset. It does not p
 
 ## B1b — Repository/toolchain baseline
 
-**Infrastructure and automated CI are verified on current main. The clean-checkout re-run remains open. This work does not expand the PS2 instruction/runtime implementation.**
+**Status: not passed. Infrastructure and CI exist, and CI is green on the previously published main commit. This branch has not run CI, and the clean-checkout re-run remains open. This work does not expand the PS2 instruction/runtime implementation.**
 
 - [x] Add a CMake project baseline and repeatable windows-msvc / host presets.
 - [x] Add rptp doctor environment and artifact-guard diagnostics.
 - [x] Add unit tests for doctor checks and error-path reporting.
 - [x] Add GitHub Actions jobs for Windows x64/MSVC and Linux/GCC.
 - [x] Ignore CMake/Visual Studio outputs and keep build files local.
-- [x] Confirm both GitHub Actions jobs pass on the published commit (`371cec8`, run `39561754883`).
+- [x] Confirm both GitHub Actions jobs passed on the previously published main commit (`371cec8`, run `39561754883`); this does not verify the current branch.
 - [x] Confirm dependency/license inventory remains complete before introducing any dependency; no third-party code is currently vendored or linked.
 - [ ] Re-run the full Windows CMake preset from a clean checkout.
 
@@ -47,7 +47,7 @@ A clean checkout can configure/build/test using documented commands; CI is green
 
 ## B1c — Read-only ISO inspection prototype
 
-**Prototype implemented; synthetic tests and CI are green. Real-disc validation and broad compatibility remain unverified.**
+**Prototype implemented; synthetic tests are green, and main-branch CI is green. This branch has not run CI. Real-disc validation and broad compatibility remain unverified.**
 
 - [x] Parse ISO 9660 primary volume descriptor and validate dual-endian fields.
 - [x] Locate root `SYSTEM.CNF` and resolve `BOOT2` / legacy `BOOT` path safely.
