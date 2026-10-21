@@ -13,6 +13,8 @@ Access date for the public technical references below: 2026-10-21.
 | RPTP-REF-005 | [MIPS architecture overview](https://en.wikipedia.org/wiki/MIPS_architecture), as a secondary cross-check | Background statement that classic MIPS control-flow instructions use a branch delay slot. | Secondary source; not authoritative for R5900-specific or PS2-specific behavior. The spike tests only its own narrow model; R5900 confirmation remains open. |
 | RPTP-REF-006 | Ecma International, [ECMA-119 (ISO 9660)](https://ecma-international.org/publications-and-standards/standards/ecma-119/) | Primary-volume-descriptor, directory-record and volume-sequence structures used by the read-only ISO inspector. | Generic ISO 9660 standard; does not cover Joliet/Rock Ridge, raw 2352-byte sectors or retail PS2 disc variants. |
 
+**ECMA-119 spec text:** `NONE` was provided in the 2026-10-22 session. Directory-record field offsets, including the interleaving fields, are **Belum diverifikasi: not checked against the spec text**. The parser rejects non-zero interleaving fields defensively; the synthetic tests define the accepted behavior.
+
 ## Verification labels
 
 - **Verified by local test:** the synthetic fixture is reproducible; its parser accepts it and rejects selected malformed inputs; generated C++ matches the reference interpreter for the supported fixture path. The recorded runs include Linux/GCC, Linux/Clang and Windows x64/MSVC.

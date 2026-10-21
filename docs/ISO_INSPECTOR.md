@@ -80,6 +80,7 @@ Expected failures use these stable codes.
 - `UNSUPPORTED_VOLUME_SEQUENCE`: a directory record references another volume sequence.
 - `NOT_A_DIRECTORY`: a directory operation was requested on a file.
 - `MULTI_EXTENT_UNSUPPORTED`: a multi-extent directory, `SYSTEM.CNF`, or boot executable was encountered.
+- `INTERLEAVED_UNSUPPORTED`: a directory record declares a non-zero file-unit or interleave-gap value; interleaved layouts are not supported.
 
 ### SYSTEM.CNF and BOOT path
 
@@ -125,8 +126,8 @@ A warning does not mean the image is safe to boot or compatible with RPTP.
 ## Current limitations
 
 - Only ISO 9660 primary volume descriptors with 2048-byte logical blocks and a single volume are supported.
-- Joliet, Rock Ridge, multi-extent files/directories, 2352-byte raw sectors and other disc-image variants are not supported.
-- Multi-extent entries are rejected explicitly rather than merged.
+- Joliet, Rock Ridge, multi-extent files/directories, interleaved files/directories, 2352-byte raw sectors and other disc-image variants are not supported.
+- Multi-extent and interleaved entries are rejected explicitly rather than merged or decoded.
 - ELF validation is intentionally limited to the header, program-header table and PT_LOAD file bounds; it does not validate every loader convention or PS2-specific memory layout.
 - The inspector does not prove that the executable is a valid PS2 game, does not emulate or recompile it, and does not prove compatibility.
 - Tests use synthetic images generated in memory. Do not upload commercial ISO images or extracted copyrighted game files to the repository.

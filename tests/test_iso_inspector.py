@@ -32,13 +32,22 @@ def _both16(value: int) -> bytes:
     return value.to_bytes(2, "little") + value.to_bytes(2, "big")
 
 
-def _record(extent: int, size: int, name: bytes, flags: int = 0) -> bytes:
+def _record(
+    extent: int,
+    size: int,
+    name: bytes,
+    flags: int = 0,
+    file_unit_size: int = 0,
+    interleave_gap: int = 0,
+) -> bytes:
     padding = 1 if len(name) % 2 == 0 else 0
     data = bytearray(33 + len(name) + padding)
     data[0] = len(data)
     data[2:10] = _both32(extent)
     data[10:18] = _both32(size)
     data[25] = flags
+    data[26] = file_unit_size
+    data[27] = interleave_gap
     data[28:32] = _both16(1)
     data[32] = len(name)
     data[33:33 + len(name)] = name
@@ -76,7 +85,10 @@ def _elf(machine: int = 8, phnum: int = 1, elf_type: int = 2, entry_point: int =
 
 def _iso(config: bytes | None = DEFAULT_CONFIG,
          executable: bytes | None = None, boot_lba: int = 21, block_size: int = BLOCK,
-         system_flags: int = 0, boot_flags: int = 0) -> bytearray:
+         system_flags: int = 0, boot_flags: int = 0, subdir_flags: int | None = None,
+         system_interleave: tuple[int, int] = (0, 0),
+         boot_interleave: tuple[int, int] = (0, 0),
+         subdir_interleave: tuple[int, int] = (0, 0)) -> bytearray:
     image = bytearray(VOLUME_BLOCKS * BLOCK)
     pvd = bytearray(BLOCK)
     pvd[0], pvd[1:6], pvd[6] = 1, b"CD001", 1
@@ -93,10 +105,12 @@ def _iso(config: bytes | None = DEFAULT_CONFIG,
     image[17 * BLOCK:18 * BLOCK] = terminator
 
     records = [_record(19, BLOCK, b"\x00", 0x02), _record(19, BLOCK, b"\x01", 0x02)]
+    if subdir_flags is not None:
+        records.append(_record(19, BLOCK, b"SUBDIR;1", subdir_flags | 0x02, *subdir_interleave))
     if config is not None:
-        records.append(_record(20, len(config), b"SYSTEM.CNF;1", system_flags))
+        records.append(_record(20, len(config), b"SYSTEM.CNF;1", system_flags, *system_interleave))
     exe = executable if executable is not None else _elf()
-    records.append(_record(boot_lba, len(exe), b"SLUS_123.45;1", boot_flags))
+    records.append(_record(boot_lba, len(exe), b"SLUS_123.45;1", boot_flags, *boot_interleave))
     directory = bytearray(BLOCK)
     offset = 0
     for record in records:
@@ -302,6 +316,26 @@ class IsoInspectorTests(unittest.TestCase):
         with self.assertRaises(inspector.InspectError) as ctx:
             inspector.inspect_bytes(bytes(_iso(boot_flags=0x80)))
         self.assertEqual(ctx.exception.code, "MULTI_EXTENT_UNSUPPORTED")
+
+    def test_rejects_multi_extent_subdirectory(self):
+        with self.assertRaises(inspector.InspectError) as ctx:
+            inspector.inspect_bytes(bytes(_iso(subdir_flags=0x80)))
+        self.assertEqual(ctx.exception.code, "MULTI_EXTENT_UNSUPPORTED")
+
+    def test_rejects_interleaved_system_cnf(self):
+        with self.assertRaises(inspector.InspectError) as ctx:
+            inspector.inspect_bytes(bytes(_iso(system_interleave=(1, 1))))
+        self.assertEqual(ctx.exception.code, "INTERLEAVED_UNSUPPORTED")
+
+    def test_rejects_interleaved_boot_executable(self):
+        with self.assertRaises(inspector.InspectError) as ctx:
+            inspector.inspect_bytes(bytes(_iso(boot_interleave=(1, 1))))
+        self.assertEqual(ctx.exception.code, "INTERLEAVED_UNSUPPORTED")
+
+    def test_rejects_interleaved_directory(self):
+        with self.assertRaises(inspector.InspectError) as ctx:
+            inspector.inspect_bytes(bytes(_iso(subdir_flags=0, subdir_interleave=(1, 1))))
+        self.assertEqual(ctx.exception.code, "INTERLEAVED_UNSUPPORTED")
 
     def test_rejects_multi_volume_set(self):
         image = _iso()

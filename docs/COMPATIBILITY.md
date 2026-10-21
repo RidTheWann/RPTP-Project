@@ -23,7 +23,7 @@ ISO inspector evidence:
 - The ISO inspector suite and the full Python suite pass; local Windows CTest and Gate 0 results are recorded in [docs/VERIFICATION_LOG.md](VERIFICATION_LOG.md).
 - Supported: single-volume ISO 9660 primary volume descriptors, 2048-byte logical blocks, root `SYSTEM.CNF`, `BOOT2`/`BOOT` path resolution, and ELF32 PT_LOAD metadata.
 - Real-world sample: `Downhill Domination (USA)` passed read-only inspection; `BOOT2` resolves to `SCUS_971.77`, an ELF32/EM_MIPS executable with one PT_LOAD segment and no warnings. No boot or port exists.
-- Explicitly unsupported: multi-volume sets, multi-extent files/directories, Joliet/Rock Ridge extensions, 2352-byte raw sectors and broad retail-layout validation.
+- Explicitly unsupported: multi-volume sets, multi-extent files/directories, interleaved files/directories, Joliet/Rock Ridge extensions, 2352-byte raw sectors and broad retail-layout validation.
 - The inspector is read-only and does not extract, boot, emulate or recompile a game.
 
 A status may only be promoted for a real game after its serial/region, executable hash, RPTP version, tested behaviors, log and known issues are recorded. Per-game records under `docs/games/` may contain title/region/serial, sizes, hashes and boot metadata; they must not contain ISO images, extracted game files or proprietary assets.

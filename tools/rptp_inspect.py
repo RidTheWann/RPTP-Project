@@ -142,6 +142,13 @@ class IsoReader:
                 "UNSUPPORTED_VOLUME_SEQUENCE",
                 f"Directory record volume sequence {volume_sequence} is not supported; only single-volume sets are accepted.",
             )
+        file_unit_size = rec[26]
+        interleave_gap = rec[27]
+        if file_unit_size != 0 or interleave_gap != 0:
+            raise InspectError(
+                "INTERLEAVED_UNSUPPORTED",
+                f"Interleaved directory record is unsupported: {_name(rec[33:name_end])}.",
+            )
         entry = {
             "name": _name(rec[33:name_end]),
             "id": rec[33:name_end],
@@ -244,6 +251,8 @@ class IsoReader:
                 raise InspectError("DIRECTORY_RECORD_CROSSES_BLOCK", f"Directory record crosses a logical block at offset {position}.")
             rec = self.read_at(start + position, rec_len)
             child = self.parse_record(rec)
+            if child["multi_extent"] and child["directory"]:
+                raise InspectError("MULTI_EXTENT_UNSUPPORTED", f"Multi-extent directory is unsupported: {child['name']}.")
             if child["id"] not in (b"\x00", b"\x01"):
                 items.append(child)
                 if len(items) > MAX_DIRECTORY_ENTRIES:
