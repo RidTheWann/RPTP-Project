@@ -88,7 +88,7 @@ def _iso(config: bytes | None = DEFAULT_CONFIG,
          system_flags: int = 0, boot_flags: int = 0, subdir_flags: int | None = None,
          system_interleave: tuple[int, int] = (0, 0),
          boot_interleave: tuple[int, int] = (0, 0),
-         subdir_interleave: tuple[int, int] = (0, 0)) -> bytearray:
+         subdir_interleave: tuple[int, int] = (0, 0), tree: bool = False) -> bytearray:
     image = bytearray(VOLUME_BLOCKS * BLOCK)
     pvd = bytearray(BLOCK)
     pvd[0], pvd[1:6], pvd[6] = 1, b"CD001", 1
@@ -107,6 +107,8 @@ def _iso(config: bytes | None = DEFAULT_CONFIG,
     records = [_record(19, BLOCK, b"\x00", 0x02), _record(19, BLOCK, b"\x01", 0x02)]
     if subdir_flags is not None:
         records.append(_record(19, BLOCK, b"SUBDIR;1", subdir_flags | 0x02, *subdir_interleave))
+    if tree:
+        records.append(_record(22, BLOCK, b"SUBDIR;1", 0x02))
     if config is not None:
         records.append(_record(20, len(config), b"SYSTEM.CNF;1", system_flags, *system_interleave))
     exe = executable if executable is not None else _elf()
@@ -122,6 +124,29 @@ def _iso(config: bytes | None = DEFAULT_CONFIG,
     if boot_lba < VOLUME_BLOCKS:
         end = min(len(image), boot_lba * BLOCK + len(exe))
         image[boot_lba * BLOCK:end] = exe[:end - boot_lba * BLOCK]
+    if tree:
+        subdir = bytearray(BLOCK)
+        offset = 0
+        for record in (
+            _record(22, BLOCK, b"\x00", 0x02),
+            _record(19, BLOCK, b"\x01", 0x02),
+            _record(24, BLOCK, b"NESTED;1", 0x02),
+        ):
+            subdir[offset:offset + len(record)] = record
+            offset += len(record)
+        image[22 * BLOCK:23 * BLOCK] = subdir
+        nested = bytearray(BLOCK)
+        offset = 0
+        for record in (
+            _record(24, BLOCK, b"\x00", 0x02),
+            _record(22, BLOCK, b"\x01", 0x02),
+            _record(25, 32, b"DEEP.BIN;1"),
+        ):
+            nested[offset:offset + len(record)] = record
+            offset += len(record)
+        image[24 * BLOCK:25 * BLOCK] = nested
+        deep = b"SYNTHETIC DEEP FILE".ljust(32, b"\x00")
+        image[25 * BLOCK:25 * BLOCK + len(deep)] = deep
     return image
 
 
@@ -310,6 +335,51 @@ class IsoInspectorTests(unittest.TestCase):
         with self.assertRaises(inspector.InspectError) as ctx:
             inspector.inspect_bytes(bytes(_iso(config=path)))
         self.assertEqual(ctx.exception.code, "BOOT_PATH_DEPTH_LIMIT")
+
+    def test_survey_counts_directories_files_and_depth(self):
+        data = bytes(_iso(tree=True))
+        report = inspector.IsoReader(BytesIO(data), len(data), "tree.iso").survey()
+        self.assertEqual(report["status"], "SURVEYED")
+        self.assertEqual(report["directory_count"], 3)
+        self.assertEqual(report["directory_record_count"], 2)
+        self.assertEqual(report["file_count"], 3)
+        self.assertEqual(report["record_count"], 5)
+        self.assertEqual(report["max_depth"], 2)
+        self.assertEqual(report["multi_extent_records"], 0)
+        self.assertEqual(report["interleaved_records"], 0)
+        self.assertEqual(report["skipped_unsupported_directories"], 0)
+        self.assertEqual(report["highest_file_extent_end_bytes"], 25 * BLOCK + 32)
+        self.assertEqual(report["largest_file_size_bytes"], len(_elf()))
+
+    def test_survey_counts_interleaved_records_without_rejecting(self):
+        data = bytes(_iso(tree=True, system_interleave=(1, 1)))
+        report = inspector.IsoReader(BytesIO(data), len(data), "tree.iso").survey()
+        self.assertEqual(report["status"], "SURVEYED")
+        self.assertEqual(report["interleaved_records"], 1)
+
+    def test_survey_skips_multi_extent_directory(self):
+        data = bytes(_iso(subdir_flags=0x80))
+        report = inspector.IsoReader(BytesIO(data), len(data), "multi.iso").survey()
+        self.assertEqual(report["status"], "SURVEYED")
+        self.assertEqual(report["directory_count"], 1)
+        self.assertEqual(report["multi_extent_records"], 1)
+        self.assertEqual(report["skipped_unsupported_directories"], 1)
+
+    def test_cli_survey_json(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "tree.iso"
+            path.write_bytes(bytes(_iso(tree=True)))
+            result = subprocess.run(
+                [sys.executable, str(ROOT / "tools/rptp_inspect.py"), str(path), "--survey", "--json"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["status"], "SURVEYED")
+            self.assertEqual(payload["directory_count"], 3)
+            self.assertNotIn("input_name", payload)
 
     def test_error_is_deterministic(self):
         data = bytes(_iso(boot_lba=1000))

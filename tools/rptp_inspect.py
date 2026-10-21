@@ -21,6 +21,9 @@ MAX_BOOT_COMPONENTS = 32
 MAX_PROGRAM_HEADERS = 4096
 CHUNK_SIZE = 1024 * 1024
 MAX_READ_BYTES = 4 * 1024 * 1024
+MAX_SURVEY_DEPTH = 64
+MAX_SURVEY_DIRECTORIES = 100_000
+MAX_SURVEY_RECORDS = 1_000_000
 ELF_HEADER_SIZE = 52
 ELF_PROGRAM_HEADER_SIZE = 32
 PT_LOAD = 1
@@ -125,7 +128,7 @@ class IsoReader:
             raise InspectError("EXTENT_OUT_OF_BOUNDS", f"Extent is outside the image or declared volume: {entry['name']}.")
         return start, length
 
-    def parse_record(self, rec: bytes) -> dict[str, object]:
+    def parse_record(self, rec: bytes, *, allow_unsupported: bool = False) -> dict[str, object]:
         if len(rec) < 34 or rec[0] < 34 or rec[0] > len(rec):
             raise InspectError("DIRECTORY_RECORD_LENGTH_INVALID", "Invalid or truncated ISO 9660 directory record.")
         rec = rec[:rec[0]]
@@ -144,7 +147,7 @@ class IsoReader:
             )
         file_unit_size = rec[26]
         interleave_gap = rec[27]
-        if file_unit_size != 0 or interleave_gap != 0:
+        if not allow_unsupported and (file_unit_size != 0 or interleave_gap != 0):
             raise InspectError(
                 "INTERLEAVED_UNSUPPORTED",
                 f"Interleaved directory record is unsupported: {_name(rec[33:name_end])}.",
@@ -259,6 +262,102 @@ class IsoReader:
                     raise InspectError("DIRECTORY_ENTRY_LIMIT", "Directory entry limit exceeded.")
             position += rec_len
         return items
+
+    def survey(self) -> dict[str, object]:
+        if self.size < (PVD_LBA + 1) * BLOCK:
+            raise InspectError("IMAGE_TOO_SMALL", "Image is too small to contain an ISO 9660 volume descriptor.")
+        if self.size % BLOCK:
+            raise InspectError("IMAGE_ALIGNMENT_INVALID", f"Image size is not a multiple of {BLOCK} bytes.")
+        self.parse_pvd(self.scan_pvd())
+        assert self.root is not None
+        directory_count = 0
+        directory_record_count = 0
+        file_count = 0
+        record_count = 0
+        max_depth = 0
+        multi_extent_records = 0
+        interleaved_records = 0
+        skipped_unsupported_directories = 0
+        highest_file_extent_end = 0
+        largest_file_size = 0
+        seen: set[tuple[int, int]] = set()
+        stack: list[tuple[dict[str, object], int]] = [(self.root, 0)]
+        while stack:
+            directory, depth = stack.pop()
+            start, size = self.extent(directory)
+            key = (start, size)
+            if key in seen:
+                continue
+            seen.add(key)
+            if depth > MAX_SURVEY_DEPTH:
+                raise InspectError("SURVEY_DEPTH_LIMIT", f"Directory depth exceeds {MAX_SURVEY_DEPTH}.")
+            if len(seen) > MAX_SURVEY_DIRECTORIES:
+                raise InspectError("SURVEY_DIRECTORY_LIMIT", f"Directory count exceeds {MAX_SURVEY_DIRECTORIES}.")
+            directory_count += 1
+            max_depth = max(max_depth, depth)
+            position = 0
+            while position < size:
+                block_left = BLOCK - (position % BLOCK)
+                segment = min(block_left, size - position)
+                rec_len = self.read_at(start + position, 1)[0]
+                if rec_len == 0:
+                    position += segment
+                    continue
+                if rec_len < 34:
+                    raise InspectError("DIRECTORY_RECORD_LENGTH_INVALID", f"Invalid record length {rec_len} at directory offset {position}.")
+                if rec_len > segment:
+                    raise InspectError("DIRECTORY_RECORD_CROSSES_BLOCK", f"Directory record crosses a logical block at offset {position}.")
+                rec = self.read_at(start + position, rec_len)
+                child = self.parse_record(rec, allow_unsupported=True)
+                position += rec_len
+                if child["id"] in (b"\x00", b"\x01"):
+                    continue
+                record_count += 1
+                if record_count > MAX_SURVEY_RECORDS:
+                    raise InspectError("SURVEY_RECORD_LIMIT", f"Record count exceeds {MAX_SURVEY_RECORDS}.")
+                if rec[26] != 0 or rec[27] != 0:
+                    interleaved_records += 1
+                if child["multi_extent"]:
+                    multi_extent_records += 1
+                if child["directory"]:
+                    directory_record_count += 1
+                    if child["multi_extent"] or rec[26] != 0 or rec[27] != 0:
+                        skipped_unsupported_directories += 1
+                        continue
+                    stack.append((child, depth + 1))
+                else:
+                    file_count += 1
+                    file_start, file_size = self.extent(child)
+                    highest_file_extent_end = max(highest_file_extent_end, file_start + file_size)
+                    largest_file_size = max(largest_file_size, file_size)
+        sector_count = self.size // BLOCK
+        volume_bytes = self.volume_blocks * BLOCK
+        if self.volume_blocks == sector_count:
+            volume_relation = "equal"
+        elif self.volume_blocks < sector_count:
+            volume_relation = "smaller"
+        else:
+            volume_relation = "larger"
+        return {
+            "status": "SURVEYED",
+            "image_size_bytes": self.size,
+            "sector_count": sector_count,
+            "logical_block_size": BLOCK,
+            "volume_space_blocks": self.volume_blocks,
+            "volume_space_bytes": volume_bytes,
+            "volume_space_relation": volume_relation,
+            "volume_space_delta_bytes": volume_bytes - self.size,
+            "directory_count": directory_count,
+            "directory_record_count": directory_record_count,
+            "file_count": file_count,
+            "record_count": record_count,
+            "max_depth": max_depth,
+            "multi_extent_records": multi_extent_records,
+            "interleaved_records": interleaved_records,
+            "skipped_unsupported_directories": skipped_unsupported_directories,
+            "highest_file_extent_end_bytes": highest_file_extent_end,
+            "largest_file_size_bytes": largest_file_size,
+        }
 
     def find_child(self, parent: dict[str, object], component: str) -> dict[str, object]:
         wanted = _key(component)
@@ -543,15 +642,64 @@ def inspect_path(
         raise InspectError("INPUT_UNREADABLE", f"Cannot read {path}: {exc}") from exc
 
 
+def survey_path(
+    path: Path,
+    *,
+    max_read_bytes: int = MAX_READ_BYTES,
+    chunk_size: int = CHUNK_SIZE,
+) -> dict[str, object]:
+    try:
+        if not path.exists():
+            raise InspectError("INPUT_NOT_FOUND", f"Input file does not exist: {path}")
+        if not path.is_file():
+            raise InspectError("INPUT_NOT_FILE", f"Input path is not a regular file: {path}")
+        with path.open("rb") as stream:
+            return IsoReader(
+                stream,
+                path.stat().st_size,
+                str(path),
+                max_read_bytes=max_read_bytes,
+                chunk_size=chunk_size,
+            ).survey()
+    except InspectError:
+        raise
+    except OSError as exc:
+        raise InspectError("INPUT_UNREADABLE", f"Cannot read {path}: {exc}") from exc
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("image", type=Path, help="User-owned 2048-byte-sector ISO image, opened read-only")
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
+    parser.add_argument("--survey", action="store_true", help="Emit a read-only directory survey instead of boot inspection")
     args = parser.parse_args()
     try:
-        report = inspect_path(args.image)
+        if args.survey:
+            report = survey_path(args.image)
+        else:
+            report = inspect_path(args.image)
         if args.json:
             print(json.dumps(report, indent=2, sort_keys=True))
+        elif args.survey:
+            print(f"RPTP ISO directory survey: {report['status']}")
+            print(f"Image size: {report['image_size_bytes']} bytes; sectors: {report['sector_count']}")
+            print(
+                f"Volume space: {report['volume_space_blocks']} blocks; "
+                f"{report['volume_space_relation']} than the file by {report['volume_space_delta_bytes']} bytes"
+            )
+            print(
+                f"Directories: {report['directory_count']}; files: {report['file_count']}; "
+                f"max depth: {report['max_depth']}"
+            )
+            print(
+                f"Multi-extent records: {report['multi_extent_records']}; "
+                f"interleaved records: {report['interleaved_records']}"
+            )
+            print(
+                f"Highest file extent end: {report['highest_file_extent_end_bytes']} bytes; "
+                f"largest file: {report['largest_file_size_bytes']} bytes"
+            )
+            print("No file data was extracted or executed.")
         else:
             iso, cfg, boot = report["iso9660"], report["system_cnf"], report["boot_executable"]
             print(f"RPTP ISO inspection: {report['status']}")

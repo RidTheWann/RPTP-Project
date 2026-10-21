@@ -11,6 +11,7 @@ From the repository root:
 ```powershell
 python tools/rptp_inspect.py "D:\Games\your-owned-game.iso"
 python tools/rptp_inspect.py "D:\Games\your-owned-game.iso" --json
+python tools/rptp_inspect.py "D:\Games\your-owned-game.iso" --survey --json
 ```
 
 Exit code is `0` for an inspected image and `2` for an expected inspection error. In JSON mode, expected failures return a machine-readable object with `status: "ERROR"`, a stable `error_code`, and a human-readable `message`.
@@ -25,6 +26,16 @@ Exit code is `0` for an inspected image and `2` for an expected inspection error
 - `limitations`: a short reminder of the intentionally narrow scope.
 
 JSON output is sorted by key and the report is deterministic for the same input bytes. Expected failures are deterministic too: the same input produces the same error code and message.
+
+## Directory survey
+
+`--survey` performs a metadata-only directory walk and reports image/sector counts, PVD volume-space relation, directory and file counts, maximum depth, multi-extent and interleaved record counts, the highest file-extent end and the largest file size. It reads directory records, not regular-file data: it does not extract, hash or parse file contents and does not require `SYSTEM.CNF` or an ELF.
+
+- `.` and `..` entries are excluded from counts.
+- Directory counts include the root and count unique extents; depth 0 is the root.
+- Multi-extent and interleaved records are counted but their directories are not traversed. The main inspection still rejects those layouts.
+- `highest_file_extent_end_bytes` uses the first reported extent for multi-extent files.
+- Survey limits are 64 levels, 100,000 directories and 1,000,000 records.
 
 ## Checks performed
 
@@ -81,6 +92,9 @@ Expected failures use these stable codes.
 - `NOT_A_DIRECTORY`: a directory operation was requested on a file.
 - `MULTI_EXTENT_UNSUPPORTED`: a multi-extent directory, `SYSTEM.CNF`, or boot executable was encountered.
 - `INTERLEAVED_UNSUPPORTED`: a directory record declares a non-zero file-unit or interleave-gap value; interleaved layouts are not supported.
+- `SURVEY_DEPTH_LIMIT`: the directory survey exceeded its depth limit.
+- `SURVEY_DIRECTORY_LIMIT`: the directory survey exceeded its directory limit.
+- `SURVEY_RECORD_LIMIT`: the directory survey exceeded its record limit.
 
 ### SYSTEM.CNF and BOOT path
 
