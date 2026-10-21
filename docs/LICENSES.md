@@ -8,6 +8,16 @@ GPL allows commercial use. When conveying a covered work, comply with its applic
 
 The license does not grant rights to distribute PlayStation 2 BIOS files, commercial game ISOs, proprietary game executables/assets or game-derived generated code. It also does not, by itself, confer trademark rights in the project name or logo or guarantee public recognition beyond applicable license and copyright-notice requirements.
 
+## SPDX headers
+
+The owner confirmed `GPL-3.0-or-later` for original RPTP material on 2026-10-21. Project-owned source, build and automation files carry this identifier as their first comment line, after any shebang:
+
+    # SPDX-License-Identifier: GPL-3.0-or-later
+
+The policy covers tracked `.py`, `.ps1`, `CMakeLists.txt`, and `.github/workflows/*.yml` files. `tests/test_license_headers.py` checks the header position for git-tracked files; files that are not tracked by git are skipped.
+
+Binary fixtures and data files are not annotated with SPDX comments because a comment would change or corrupt their content. Their origin and license status are recorded in `tests/fixtures/MANIFEST` or the relevant documentation instead. JSON, Markdown, the root `LICENSE`, and third-party files are outside this header policy; third-party material retains its own notices and must not be relabeled as RPTP-owned code.
+
 ## Third-party dependencies
 
 Each third-party dependency retains its applicable upstream license and notices. Before adding or vendoring a dependency, record at least its name, version or commit, source URL, SPDX license identifier (where established), license text/notice location, redistribution constraints, and the reason it is needed. Verify compatibility and comply with all required notices; do not assume a dependency is GPL-3.0-or-later merely because it is used by RPTP.
