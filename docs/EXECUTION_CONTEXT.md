@@ -23,7 +23,7 @@ Snapshot date: 2026-10-22.
 
 ## Current work
 
-The repository baseline includes CMake presets, an environment doctor, unit tests for diagnostic behavior, and CI for Windows/MSVC plus Linux/host compiler. PR #1 merged as `5bf62b2`; the current published tip is `d334139`, and CI run `39664774001` passed on both jobs. Local `main` is 3 commits ahead at `800b90a`; those commits are not pushed or CI-verified. This infrastructure must be authored independently and must not use previously viewed PS2 Web Recomp build files as templates. The ISO inspector has been exercised against five owner-authorized retail ISOs read-only (Black, Downhill Domination, God of War II, Need for Speed - Most Wanted and Resident Evil 4); the results are metadata records, not boots or ports.
+The repository baseline includes CMake presets, an environment doctor, unit tests for diagnostic behavior, and CI for Windows/MSVC plus Linux/host compiler. PR #1 merged as `5bf62b2`; the current published tip is `d334139`, and CI run `39664774001` passed on both jobs. Local commits after `d334139` are not pushed or CI-verified; see `git log origin/main..main`. This infrastructure must be authored independently and must not use previously viewed PS2 Web Recomp build files as templates. The ISO inspector has been exercised against five owner-authorized retail ISOs read-only (Black, Downhill Domination, God of War II, Need for Speed - Most Wanted and Resident Evil 4); the results are metadata records, not boots or ports.
 
 ## Open owner review
 

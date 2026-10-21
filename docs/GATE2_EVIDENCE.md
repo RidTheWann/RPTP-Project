@@ -2,7 +2,7 @@
 
 - **Status: NOT PASSED — evidence only.** Only the human owner records a Gate disposition.
 - **Base commit:** `d334139d11526e2abc4fad7d4ad09eced3b7da4a`; CI run `39664774001` passed Windows x64/MSVC and Linux/GCC.
-- **Local follow-up:** `6ae4a3a`, `33d8392` and `800b90a`; local-only and not CI-verified.
+- **Local follow-up:** commits after `d334139`, including `6ae4a3a`, `33d8392` and `800b90a`; local-only and not CI-verified. See `docs/STATE.md` for the current history.
 - **Scope:** read-only ISO inspection and synthetic test evidence. No boot, extraction, recompilation or compatibility claim.
 
 ## Owner prerequisites
@@ -26,7 +26,7 @@
 | Safe extraction boundaries | No implementation or design record yet. | **Open.** |
 | Multi-extent and ISO-variant support | Multi-extent layouts are rejected, not supported; Joliet, Rock Ridge and raw-sector variants are unsupported. | **Open by design; fail-closed.** |
 | Interleave field provenance | ECMA-119 5th edition (December 2024), Table 8 (p. 37) and §§10.1.8–10.1.9 (p. 40); independent field tests. | Evidenced. Interleaved file data remains unsupported. |
-| CI on the current evidence | `d334139` is green; `6ae4a3a`, `33d8392` and `800b90a` are local-only. | **Open for the new commits.** |
+| CI on the current evidence | `d334139` is green; commits after it, including `6ae4a3a`, `33d8392` and `800b90a`, are local-only. | **Open for the new commits.** |
 
 ## Retail sample limits
 
