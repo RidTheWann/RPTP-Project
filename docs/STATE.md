@@ -38,7 +38,7 @@ Command:
     powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-msvc.ps1
 
 - Report status: PASS_LOCAL_DIFFERENTIAL_SPIKE.
-- Compiler: MSVC x64, version 19.44.35227 (cl 14.44.35207 toolset). The earlier 19.51.36260.0 value in this document did not match the current verified environment and has been corrected.
+- Compiler: MSVC x64, version 19.44.35227 (cl 14.44.35207 toolset).
 - Flags: /std:c++20 /EHsc /W4 /WX /permissive- /utf-8.
 - Artifact guard: passed.
 - windows_msvc_verified: true.
@@ -48,6 +48,16 @@ Command:
 - Fixture SHA-256: b21f1f7793236d1ccba7308cc82f42d9f89915c87c0b037c46d8170f28349ca9.
 - Generated C++ SHA-256: 5316e0f51ba8b1fa1252e409f38cb9ac7db7606fee17b28ef0dcf1be162ae795.
 - The local report is preserved as sanitized evidence at `evidence/windows-msvc/report.json`; the ignored build copy remains at `build/gate0-msvc/report.json`.
+
+## MSVC compiler version history
+
+Each run is recorded separately; older notes are not rewritten as if they were current evidence.
+
+- **Earlier recorded note, commit `e3d5ff8` (2026-10-21 05:43 +0700):** MSVC x64 version `19.51.36260.0` was reported for `scripts/run-msvc.ps1`. The note does not record the run date or environment, and no matching report exists in repository history. Status: **reported, not verified (dilaporkan, belum terverifikasi)**.
+- **Reconciliation session C1, 2026-10-21, local checkout:** Windows 11 x64, Developer PowerShell for Visual Studio 2022 Build Tools 17.14.32 x64, `cl` 19.44.35227 for x64, toolset `14.44.35207`; CMake identified `19.44.35227.0`. Status: **Terverifikasi** by `evidence/windows-msvc/report.json` and `commands.txt`.
+- **Reconciliation session C2, 2026-10-21, clean clone:** pending the clean-checkout run below.
+
+The earlier `19.51.36260.0` value and the verified `19.44.35227` value are therefore separate runs, not a replacement of one historical note by another. The sanitized report contains the compiler executable path for toolset `14.44.35207`; its `cl` banner version is `19.44.35227`, as recorded in `commands.txt`.
 
 ## Linux host toolchain evidence
 

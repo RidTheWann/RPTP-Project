@@ -24,5 +24,7 @@ Results:
   native_matches_oracle: true
 
 Notes:
-  The checked-in report.json is the run-msvc report with the absolute repository path normalized to <repo>.
+  The checked-in report.json is sanitized: the run-msvc report was copied with the absolute repository path normalized to <repo>.
   No username or personal path was present in the report; the compiler path is the system Visual Studio Build Tools path.
+  The report compiler field is C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\bin\HostX64\x64\cl.EXE.
+  The matching cl banner version from that environment is 19.44.35227 for x64; no other version is recorded for this sanitized report.
