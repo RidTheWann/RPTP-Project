@@ -49,7 +49,19 @@ The detailed plan and pass criteria live in [docs/ROADMAP.md](docs/ROADMAP.md). 
 
 ## Build and test the Gate 0 spike
 
-Requirements: Python 3.10+ and a C++20 compiler. On Windows, use Developer PowerShell for Visual Studio or an x64 Native Tools command prompt.
+Requirements: Python 3.10+, CMake 3.25+, Ninja, and a C++20 compiler. On Windows, use Developer PowerShell for Visual Studio or an x64 Native Tools command prompt.
+
+The CMake presets provide the repeatable project checks:
+
+    cmake --preset windows-msvc
+    cmake --build --preset windows-msvc
+
+On Linux with GCC or Clang:
+
+    cmake --preset host
+    cmake --build --preset host
+
+The build preset runs the environment doctor, artifact guard, unit tests and Gate 0 differential test. See docs/BUILDING_WINDOWS.md for details.
 
 ### Windows / MSVC
 

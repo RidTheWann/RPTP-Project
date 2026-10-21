@@ -5,7 +5,7 @@
       "path": "tests/fixtures/gate0-r5900-subset.elf",
       "sha256": "b21f1f7793236d1ccba7308cc82f42d9f89915c87c0b037c46d8170f28349ca9",
       "origin": "Generated deterministically by tools/rptp_gate0_spike.py from original synthetic instruction words; contains no commercial game data.",
-      "license_status": "Original synthetic fixture; no third-party code or game data; RPTP project license ADR is pending."
+      "license_status": "Original synthetic fixture with no third-party code or game data; covered by the RPTP project license GPL-3.0-or-later."
     }
   ]
 }

@@ -10,3 +10,12 @@ __pycache__/
 *.lib
 *.o
 *.a
+.vs/
+CMakeUserPresets.json
+CMakeCache.txt
+CMakeFiles/
+Testing/
+cmake_install.cmake
+build.ninja
+*.ilk
+*.pch

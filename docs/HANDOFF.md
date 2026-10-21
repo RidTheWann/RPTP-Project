@@ -1,20 +1,36 @@
-# Handoff — after B1a local spike
+# Handoff — RPTP after Gate 0 publication
 
 ## Current position
 
-- Local Gate 0 package exists and is reproducible on Linux/GCC.
-- The synthetic ELF fixture is registered in `tests/fixtures/MANIFEST`.
-- 12 unit tests pass, the artifact guard passes, and the generated host executable's state and trace match the reference interpreter.
-- The Windows/MSVC technical spike has passed. Formal Gate 0 acceptance remains pending human review.
-- No RPTP code has been pushed. Do not push to the public GitHub repository while the license ADR is still pending.
-- No `LICENSE` file exists, intentionally.
+- Public repository: RidTheWann/RPTP-Project, branch main.
+- The README cover is published at docs/assets/rptp-cover.png; README should contain one cover reference.
+- The isolated Gate 0 spike is published. The owner ran scripts/run-msvc.ps1 on Windows x64 and recorded PASS_LOCAL_DIFFERENTIAL_SPIKE, native_matches_oracle true and windows_msvc_verified true.
+- The 12 original Gate 0 tests and artifact guard passed in the recorded Windows run. Linux/GCC and Linux/Clang spike evidence is also recorded.
+- The project license is GPL-3.0-or-later for original RPTP material. Third-party licensing remains a per-dependency audit.
+- Formal Gate 0 acceptance is pending human review.
+- Historical source exposure involving PS2Recomp and PS2 Web Recomp remains documented; this must not be described as erased or resolved by the license decision.
 
-## Next action
+## Current phase
 
-Run `scripts/run-msvc.ps1` under Visual Studio Developer PowerShell on Windows. Preserve the full command output and the resulting `build/gate0-msvc/report.json`. Update `docs/STATE.md` only from that evidence. If MSVC fails, reproduce, isolate root cause, and update this handoff without claiming Gate 0 passed.
+B1b repository/toolchain baseline: CMake presets, rptp doctor, CTest wrappers, and Windows/MSVC + Linux CI. This phase adds tooling and verification only; do not expand R5900 instruction semantics or PS2 runtime implementation until the owner has reviewed the source-exposure record.
 
-## Human review required
+## Expected local commands
 
-Review the exact prior-source exposure in `docs/DECISIONS/ADR-0001-foundation-and-clean-room.md`. In particular, the prior conversation displayed some PS2 Web Recomp build/configuration files and PS2Recomp release/issue/PR text; this is broader than README-only exposure. Decide whether that scope is acceptable under the clean-room policy before additional implementation work.
+Windows, from Visual Studio Developer PowerShell or x64 Native Tools prompt:
 
-The project's from-scratch and Apache-2.0 direction remains subject to the human's recorded decisions. Formal license ADR approval is required before Gate 1/B1b and before creating `LICENSE`.
+    cmake --preset windows-msvc
+    cmake --build --preset windows-msvc
+
+Host toolchain:
+
+    cmake --preset host
+    cmake --build --preset host
+
+If a CI job fails, record the exact runner, command and error before updating project state.
+
+## Next review points
+
+1. Confirm both GitHub Actions jobs pass.
+2. Human owner reviews historical source exposure and records the disposition.
+3. Human owner completes formal Gate 0 review.
+4. After these decisions, continue with the next approved phase and keep every capability claim tied to reproducible evidence.

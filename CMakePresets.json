@@ -1,0 +1,48 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "windows-msvc",
+      "displayName": "Windows x64 - MSVC",
+      "description": "Configure from an x64 Visual Studio Developer Command Prompt or Developer PowerShell.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/cmake-msvc",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "RPTP_GATE0_COMPILER": "cl"
+      }
+    },
+    {
+      "name": "host",
+      "displayName": "Host compiler - GCC or Clang",
+      "description": "Configure using an installed host C++20 compiler, CMake and Ninja.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/cmake-host",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "RPTP_GATE0_COMPILER": "auto"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "windows-msvc",
+      "configurePreset": "windows-msvc",
+      "targets": [
+        "rptp-ci"
+      ]
+    },
+    {
+      "name": "host",
+      "configurePreset": "host",
+      "targets": [
+        "rptp-ci"
+      ]
+    }
+  ]
+}
