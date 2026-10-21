@@ -1,0 +1,437 @@
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="RPTP checklist progress. Scope status only; not game compatibility.">
+  <title>RPTP progress</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0d1117;
+      --panel: #161b22;
+      --panel-strong: #21262d;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --link: #58a6ff;
+      --green: #3fb950;
+      --green-bg: #238636;
+      --green-border: #2ea043;
+      --amber: #d29922;
+      --amber-bg: #9e6a03;
+      --amber-border: #bb8009;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", Arial, sans-serif;
+      line-height: 1.55;
+    }
+
+    main {
+      width: min(1100px, 100%);
+      margin: 0 auto;
+      padding: 32px 20px 56px;
+    }
+
+    a {
+      color: var(--link);
+    }
+
+    header {
+      margin-bottom: 28px;
+    }
+
+    .eyebrow {
+      margin: 0 0 4px;
+      color: var(--green);
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2rem, 5vw, 3rem);
+      line-height: 1.15;
+    }
+
+    .lede {
+      max-width: 760px;
+      margin: 12px 0 0;
+      color: var(--muted);
+    }
+
+    .updated {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin: 0 0 32px;
+    }
+
+    .card,
+    .section {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--panel);
+    }
+
+    .card {
+      padding: 18px;
+    }
+
+    .card-head,
+    .section-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .card h2,
+    .section h2 {
+      margin: 0;
+      font-size: 1.05rem;
+    }
+
+    .value {
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    .value.green {
+      color: var(--green);
+    }
+
+    .value.amber {
+      color: var(--amber);
+    }
+
+    .bar {
+      height: 16px;
+      margin: 14px 0 10px;
+      overflow: hidden;
+      border-radius: 4px;
+      background: var(--panel-strong);
+    }
+
+    .bar > span {
+      display: block;
+      height: 100%;
+      border-radius: 4px;
+    }
+
+    .bar > .green {
+      background: var(--green-bg);
+    }
+
+    .bar > .amber {
+      background: var(--amber-bg);
+    }
+
+    .counts,
+    .section-head p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .details {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .section {
+      padding: 18px;
+      min-width: 0;
+    }
+
+    .section-head {
+      display: block;
+      margin-bottom: 14px;
+    }
+
+    .section-head p {
+      margin-top: 3px;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+    }
+
+    th,
+    td {
+      padding: 8px 6px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--muted);
+      font-size: 0.78rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    th:last-child,
+    td:last-child {
+      text-align: right;
+    }
+
+    tbody tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 1px 8px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      font-size: 0.78rem;
+      white-space: nowrap;
+    }
+
+    .pill.verified {
+      border-color: var(--green-border);
+      background: rgba(35, 134, 54, 0.22);
+      color: #7ee787;
+    }
+
+    .pill.partial {
+      border-color: var(--amber-border);
+      background: rgba(158, 106, 3, 0.22);
+      color: #e3b341;
+    }
+
+    .pill.open {
+      background: var(--panel-strong);
+      color: var(--muted);
+    }
+
+    .notes {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .notes .section {
+      padding: 18px;
+    }
+
+    .notes h2 {
+      margin: 0 0 10px;
+      font-size: 1.05rem;
+    }
+
+    .notes p,
+    .notes ul {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .notes ul {
+      padding-left: 20px;
+    }
+
+    .notes li + li {
+      margin-top: 6px;
+    }
+
+    .notes strong {
+      color: var(--text);
+    }
+
+    footer {
+      padding-top: 18px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    footer p {
+      margin: 0;
+    }
+
+    @media (max-width: 760px) {
+      main {
+        padding-top: 24px;
+      }
+
+      .summary,
+      .details,
+      .notes {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <p class="eyebrow">RPTP project</p>
+      <h1>Progress</h1>
+      <p class="lede">Early research. These checklists measure implemented and verified scope, not game compatibility or overall completion.</p>
+      <p class="updated">Last updated 2026-10-21</p>
+    </header>
+
+    <section class="summary" aria-label="Checklist summary">
+      <article class="card">
+        <div class="card-head">
+          <h2>Foundation checklist</h2>
+          <strong class="value green">75.0%</strong>
+        </div>
+        <div class="bar" role="progressbar" aria-label="Foundation checklist" aria-valuemin="0" aria-valuemax="20" aria-valuenow="15" aria-valuetext="15 of 20 items verified">
+          <span class="green" style="width: 75%"></span>
+        </div>
+        <p class="counts">15 verified &middot; 2 review/partial &middot; 3 open</p>
+      </article>
+
+      <article class="card">
+        <div class="card-head">
+          <h2>Runtime checklist</h2>
+          <strong class="value amber">0.0%</strong>
+        </div>
+        <div class="bar" role="progressbar" aria-label="Runtime checklist" aria-valuemin="0" aria-valuemax="20" aria-valuenow="0" aria-valuetext="0 of 20 items verified">
+          <span class="amber" style="width: 0%"></span>
+        </div>
+        <p class="counts">0 verified &middot; 2 review/partial &middot; 18 open</p>
+      </article>
+    </section>
+
+    <div class="details">
+      <section class="section" aria-labelledby="foundation-heading">
+        <div class="section-head">
+          <h2 id="foundation-heading">Foundation &amp; inspection</h2>
+          <p>20 checklist items: build, policy, inspector and evidence.</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Checklist item</th>
+                <th scope="col">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>License</td><td><span class="pill verified">Verified</span></td></tr>
+              <tr><td>Branch policy</td><td><span class="pill verified">Verified</span></td></tr>
+              <tr><td>CMake presets</td><td><span class="pill verified">Verified</span></td></tr>
+              <tr><td>Doctor</td><td><span class="pill verified">Verified</span></td></tr>
+              <tr><td>Artifact guard</td><td><span class="pill verified">Verified</span></td></tr>
+              <tr><td>CI</td><td><span class="pill verified">Verified</span></td></tr>
+              <tr><td>ADR-0003</td><td><span class="pill verified">Verified</span></td></tr>
+              <tr><td>ISO 9660 PVD</td><td><span class="pill verified">Verified</span></td></tr>
+              <tr><td>SYSTEM.CNF</td><td><span class="pill verified">Verified</span></td></tr>
+              <tr><td>BOOT path</td><td><span class="pill verified">Verified</span></td></tr>
+              <tr><td>ELF32 / PT_LOAD</td><td><span class="pill verified">Verified</span></td></tr>
+              <tr><td>SHA-256</td><td><span class="pill verified">Verified</span></td></tr>
+              <tr><td>Synthetic tests</td><td><span class="pill verified">Verified</span></td></tr>
+              <tr><td>Real ISO sample</td><td><span class="pill verified">Verified</span></td></tr>
+              <tr><td>Game work records</td><td><span class="pill verified">Verified</span></td></tr>
+              <tr><td>Gate 0 formal</td><td><span class="pill partial">Partial / review open</span></td></tr>
+              <tr><td>Clean-room review</td><td><span class="pill partial">Partial / review open</span></td></tr>
+              <tr><td>ISO variants</td><td><span class="pill open">Open</span></td></tr>
+              <tr><td>Safe extraction</td><td><span class="pill open">Open</span></td></tr>
+              <tr><td>Multi-extent</td><td><span class="pill open">Open</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="runtime-heading">
+        <div class="section-head">
+          <h2 id="runtime-heading">Runtime &amp; compatibility</h2>
+          <p>20 checklist items: decoder, recompiler and PS2 services.</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Checklist item</th>
+                <th scope="col">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>R5900 decoder</td><td><span class="pill partial">Partial / review open</span></td></tr>
+              <tr><td>Synthetic recompiler</td><td><span class="pill partial">Partial / review open</span></td></tr>
+              <tr><td>IR</td><td><span class="pill open">Open</span></td></tr>
+              <tr><td>Function discovery</td><td><span class="pill open">Open</span></td></tr>
+              <tr><td>EE kernel</td><td><span class="pill open">Open</span></td></tr>
+              <tr><td>Syscalls</td><td><span class="pill open">Open</span></td></tr>
+              <tr><td>DMA</td><td><span class="pill open">Open</span></td></tr>
+              <tr><td>IOP</td><td><span class="pill open">Open</span></td></tr>
+              <tr><td>CDVD</td><td><span class="pill open">Open</span></td></tr>
+              <tr><td>VU</td><td><span class="pill open">Open</span></td></tr>
+              <tr><td>GS</td><td><span class="pill open">Open</span></td></tr>
+              <tr><td>SPU2</td><td><span class="pill open">Open</span></td></tr>
+              <tr><td>PAD</td><td><span class="pill open">Open</span></td></tr>
+              <tr><td>MECARD</td><td><span class="pill open">Open</span></td></tr>
+              <tr><td>Timing</td><td><span class="pill open">Open</span></td></tr>
+              <tr><td>Native boot</td><td><span class="pill open">Open</span></td></tr>
+              <tr><td>First frame</td><td><span class="pill open">Open</span></td></tr>
+              <tr><td>Audio/input</td><td><span class="pill open">Open</span></td></tr>
+              <tr><td>Save/load</td><td><span class="pill open">Open</span></td></tr>
+              <tr><td>Gameplay</td><td><span class="pill open">Open</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <div class="notes">
+      <section class="section">
+        <h2>What these numbers mean</h2>
+        <ul>
+          <li><strong>Verified:</strong> the item has recorded evidence in <a href="https://github.com/RidTheWann/RPTP-Project/blob/main/docs/STATE.md">docs/STATE.md</a>.</li>
+          <li><strong>Partial / review open:</strong> technical work exists, but a required review or follow-up is pending.</li>
+          <li><strong>Open:</strong> no implementation or evidence yet.</li>
+        </ul>
+        <p>Percentages count only the 20 labeled items in each checklist. They are not overall completion, boot support or game compatibility.</p>
+      </section>
+
+      <section class="section">
+        <h2>Evidence snapshot</h2>
+        <ul>
+          <li>53 Python tests and CTest 3/3 pass in the recorded local run.</li>
+          <li>One authorized retail ISO, <a href="https://github.com/RidTheWann/RPTP-Project/blob/main/docs/games/downhill-domination/STATUS.md">Downhill Domination (USA)</a>, has been inspected read-only. No boot, recompilation or gameplay exists.</li>
+          <li>Formal Gate 0 disposition and the clean-room review of the build/CI/doctor layer remain pending.</li>
+        </ul>
+        <p>Next bounded work: broader retail ISO validation and safe extraction boundaries. Runtime and recompiler expansion remain gated by formal Gate 0.</p>
+      </section>
+    </div>
+
+    <footer>
+      <p>
+        <a href="https://github.com/RidTheWann/RPTP-Project#readme">Project README</a>
+        &middot; <a href="https://github.com/RidTheWann/RPTP-Project/blob/main/docs/STATE.md">State</a>
+        &middot; <a href="https://github.com/RidTheWann/RPTP-Project/blob/main/docs/ROADMAP.md">Roadmap</a>
+      </p>
+    </footer>
+  </main>
+</body>
+</html>
