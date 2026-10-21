@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Small, self-contained RPTP Gate 0 recompilation spike.
 
 This is a synthetic ELF32/EM_MIPS fixture and an intentionally limited MIPS

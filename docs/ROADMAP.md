@@ -13,7 +13,7 @@
 - [x] Write a renderer comparison plan; renderer selection remains open.
 - [x] Run the generated program under MSVC on Windows x64 and record actual output.
 - [ ] Human owner reviews all Gate 0 criteria and records the formal disposition.
-- [ ] Human owner reviews historical source exposure and determines clean-room handling before expanding affected implementation areas.
+- [x] Human owner adopted the ADR-0003 sealed-source clean-room policy on 2026-10-21; prior exposure remains documented and affected work must be independently derived.
 
 ### Gate 0 evidence and limits
 
@@ -26,32 +26,62 @@ This verifies only the synthetic ELF32/EM_MIPS instruction subset. It does not p
 - [x] Select from-scratch static recompilation as the project direction.
 - [x] Select GPL-3.0-or-later for original project material and publish the license text.
 - [x] Record architecture, fixture, artifact and third-party-license boundaries.
-- [ ] Complete owner review of historical source exposure and decide whether any affected work must be quarantined, restarted or otherwise handled.
+- [x] Owner confirmed GPL-3.0-or-later on 2026-10-21.
+- [x] Owner selected the ADR-0003 sealed-source policy: do not access sealed projects; preserve provenance and quarantine any work that cannot demonstrate independent derivation. Component status is tracked in `docs/CLEAN_ROOM_AUDIT.md`.
 
 ## B1b — Repository/toolchain baseline
 
-**Infrastructure scaffold added; automated CI result pending. This work does not expand the PS2 instruction/runtime implementation.**
+**Status: not passed. Infrastructure and CI exist, and CI is green on the previously published main commit. The clean-checkout local Windows run passed, but the development branch CI result is pending under the two-branch policy in `docs/BRANCH_POLICY.md`. The build/CI/doctor layer is `Review required` in `docs/CLEAN_ROOM_AUDIT.md` and must not be described as clean-room certified. This work does not expand the PS2 instruction/runtime implementation.**
 
 - [x] Add a CMake project baseline and repeatable windows-msvc / host presets.
 - [x] Add rptp doctor environment and artifact-guard diagnostics.
 - [x] Add unit tests for doctor checks and error-path reporting.
 - [x] Add GitHub Actions jobs for Windows x64/MSVC and Linux/GCC.
 - [x] Ignore CMake/Visual Studio outputs and keep build files local.
-- [ ] Confirm both GitHub Actions jobs pass on the published commit.
-- [ ] Confirm dependency/license inventory remains complete before introducing any dependency.
-- [ ] Re-run the full Windows CMake preset from a clean checkout.
+- [x] Adopt the strict two-branch policy: `main` for releases and `development` for work; pull requests are `development -> main` only.
+- [x] Confirm both GitHub Actions jobs passed on the previously published main commit (`371cec8`, run `39561754883`); this does not verify the current branch.
+- [x] Confirm dependency/license inventory remains complete before introducing any dependency; no third-party code is currently vendored or linked.
+- [x] Re-run the full Windows CMake preset from a clean checkout (local run at pre-push commit `83459c1` (now `b4d6fa7`; content unchanged); not a substitute for branch CI).
 
 ### B1b pass criteria
 
 A clean checkout can configure/build/test using documented commands; CI is green on supported jobs; dependency and artifact checks pass; no unapproved dependency or proprietary game data is introduced; build results are reproducible enough to compare and diagnose.
 
-## Gate 2 — ISO Inspector
+## B1c — Read-only ISO inspection prototype
 
-- Implement read-only ISO9660 parsing and SYSTEM.CNF inspection.
+**Prototype expanded with metadata, explicit validation and deterministic malformed-input tests. 33 ISO inspector tests and 53 total tests pass locally; main-branch CI is green; the development branch CI result is pending. One owner-authorized retail ISO (Downhill Domination USA) has been inspected read-only; broad compatibility remains unverified.**
+
+- [x] Parse ISO 9660 primary volume descriptor and validate dual-endian fields.
+- [x] Enforce single-volume PVD and directory volume sequences.
+- [x] Locate root `SYSTEM.CNF` and resolve `BOOT2` / legacy `BOOT` path safely.
+- [x] Require `SYSTEM.CNF` to be a regular single-extent file; reject multi-extent boot executables.
+- [x] Validate ELF32 little-endian header and program-header table bounds.
+- [x] Validate PT_LOAD file bounds, `p_filesz <= p_memsz` and alignment; report load segments and warnings.
+- [x] Report PVD/root, `SYSTEM.CNF` and boot executable metadata with SHA-256 without extracting or modifying files.
+- [x] Define an explicit, stable inspection error taxonomy.
+- [x] Add synthetic-only tests for valid input, malformed-image paths and deterministic mutation smoke.
+- [x] Add CLI JSON success/error tests.
+- [x] Confirm main-branch CI passes on Windows/MSVC and Linux/GCC; branch CI remains pending.
+- [x] Record an initial owner-authorized real-ISO inspection (Downhill Domination USA) in `docs/games/downhill-domination/STATUS.md`.
+- [ ] Validate against a broader owner-authorized set of real ISO layouts; record exact hashes and test outcomes without committing game images.
+- [ ] Review ISO 9660 variants and multi-extent handling before claiming broad disc compatibility.
+
+This phase is an inspector only. It does not launch a game, implement the PS2 runtime, or establish clean-room/legal disposition.
+
+## Gate 2 — ISO Inspector expansion
+
+**Status: synthetic hardening and an initial real-disc inspection are implemented and locally verified; broader real-disc validation, ISO variants and safe extraction boundaries remain open. Gate 2 is not passed.**
+
+- Expand the B1c prototype into read-only ISO9660 parsing and SYSTEM.CNF inspection across the documented formats.
 - Identify boot executable metadata and calculate hashes.
 - Design safe extraction boundaries, path validation and an explicit error taxonomy.
 - Add synthetic ISO/ELF fixtures only, plus malformed-input and fuzz-oriented tests.
 - Do not require or commit user game images to CI.
+- Keep the inspector read-only and fail explicitly on unsupported layouts; do not infer game compatibility.
+
+**Verified locally:** single-volume PVD validation, root `SYSTEM.CNF` inspection, BOOT path resolution, PVD/root/boot metadata, SHA-256, ELF PT_LOAD checks, explicit error codes, deterministic JSON, CLI JSON success/error, 33 ISO inspector tests and 53 total tests. CTest is 3/3 on Windows/MSVC.
+
+**Still open:** broader owner-authorized real-disc validation, multi-extent and ISO-variant review, safe extraction boundaries, Linux branch CI and the owner's formal Gate 0 disposition. Clean-room handling is recorded in ADR-0003.
 
 **Pass criteria:** deterministic inspection results on synthetic fixtures, robust rejection of malformed inputs, no writes outside the requested output directory, and clear reporting when an image is unsupported.
 
@@ -91,18 +121,3 @@ Windows clean-machine testing, reproducible build checks, dependency/license aud
 ## Planning note
 
 The effort ranges in RISKS.md are low-confidence planning data, not delivery promises. The agent may recommend changes; the human project owner approves architecture, licensing and clean-room decisions.
-
-## B1c — Read-only ISO inspection
-
-**Prototype implemented and CI-verified on Windows x64/MSVC and Linux/GCC.**
-
-- [x] Parse ISO 9660 primary volume descriptor and validate dual-endian fields.
-- [x] Locate root `SYSTEM.CNF` and resolve `BOOT2` / legacy `BOOT` path safely.
-- [x] Validate basic ELF32 little-endian header and program-header table bounds.
-- [x] Report boot executable size, metadata and SHA-256 without extracting or modifying files.
-- [x] Add synthetic-only tests for valid input and malformed-image paths.
-- [x] Confirm CI passes on Windows/MSVC and Linux/GCC with the new inspector tests.
-- [ ] Validate against a small, owner-authorized set of real ISO layouts; record exact hashes and test outcomes without committing game images.
-- [ ] Review ISO 9660 variants and multi-extent handling before claiming broad disc compatibility.
-
-This phase is an inspector only. It does not launch a game, implement the PS2 runtime, or establish clean-room/legal disposition.

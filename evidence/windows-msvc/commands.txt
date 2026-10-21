@@ -1,0 +1,30 @@
+RPTP Windows x64/MSVC evidence
+Date: 2026-10-21
+Shell: Developer PowerShell for Visual Studio 2022 v17.14.32, x64
+Host: Windows 11 x64
+Compiler: Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35227 for x64
+Toolset path: C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207
+CMake: 4.1.0
+Ninja: 1.12.1
+Python: 3.11.9
+
+Commands executed:
+  python tools/rptp_doctor.py
+  cmake --preset windows-msvc
+  cmake --build --preset windows-msvc
+  powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-msvc.ps1
+  python -m unittest discover -s tests -v
+
+Results:
+  RPTP doctor: PASS
+  CMake configure/build: PASS; 3/3 CTest targets passed
+  Python unit tests: 34 passed
+  run-msvc report: PASS_LOCAL_DIFFERENTIAL_SPIKE
+  windows_msvc_verified: true
+  native_matches_oracle: true
+
+Notes:
+  The checked-in report.json is sanitized: the run-msvc report was copied with the absolute repository path normalized to <repo>.
+  No username or personal path was present in the report; the compiler path is the system Visual Studio Build Tools path.
+  The report compiler field is C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\bin\HostX64\x64\cl.EXE.
+  The matching cl banner version from that environment is 19.44.35227 for x64; no other version is recorded for this sanitized report.

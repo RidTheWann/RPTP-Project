@@ -43,4 +43,4 @@ Score each candidate using the same Windows machine and workload:
 
 ## Gate
 
-Do not merge a renderer dependency into the project until the spike artifacts, test source, environment and measurements are recorded; the license is verified; and the human owner approves the ADR. Do not use prior PS2 Web Recomp implementation files as the implementation template for this spike.
+Do not merge a renderer dependency into the project until the spike artifacts, test source, environment and measurements are recorded; the license is verified; and the human owner approves the ADR. Do not use prior PS2 Web Recomp implementation files as the implementation template for this spike; that project is sealed by ADR-0003.

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Diagnose the local RPTP development environment; no dependencies required."""
 from __future__ import annotations
 

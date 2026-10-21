@@ -6,7 +6,7 @@
 
 RPTP is an open-source research project exploring how to transform a user-owned PlayStation 2 game image into a native Windows x64 build by statically recompiling supported Emotion Engine (EE) code to C++, alongside a from-scratch runtime for the PS2 services a game needs.
 
-> **Development status: early research.** The published Gate 0 spike is a narrow, passing synthetic differential test. It is not a PS2 ISO loader, a complete R5900 recompiler, or evidence that any commercial game boots or runs.
+> **Development status: early research.** The published Gate 0 spike is a narrow, passing synthetic differential test, and main-branch CI is green on both supported CI jobs. This is not a PS2 game loader, a complete R5900 recompiler, or evidence that any commercial game boots or runs.
 
 ## Project goals
 
@@ -33,25 +33,31 @@ The published spike currently demonstrates:
 
 The Windows run used MSVC x64 with C++20 and strict warnings. Both `windows_msvc_verified` and `native_matches_oracle` were true in the run report. The tested native trace contains 22 steps.
 
-**Not implemented or proven:** retail ISO inspection/boot, full R5900 semantics, function discovery for real games, EE kernel/syscalls, VU, GS graphics, IOP, CDVD, audio, controller, memory card, timing, or commercial-game compatibility.
+**Not implemented or proven:** retail ISO compatibility/boot, full R5900 semantics, function discovery for real games, EE kernel/syscalls, VU, GS graphics, IOP, CDVD, audio, controller, memory card, timing, or commercial-game compatibility. The ISO inspector prototype below is not a game loader and does not establish disc compatibility.
 
 ## ISO Inspector prototype
 
-RPTP now includes a read-only command-line ISO 9660 inspector for an image you are authorized to use. It reads the primary volume descriptor, locates root `SYSTEM.CNF`, resolves its `BOOT2` (or legacy `BOOT`) path, checks the boot file's ELF32 header/program-header table bounds, and reports a SHA-256 digest. It does not extract files, modify the ISO, execute the ELF, or recompile a game.
+RPTP now includes a read-only command-line ISO 9660 inspector for an image you are authorized to use. It reads the primary volume descriptor, locates root `SYSTEM.CNF`, resolves its `BOOT2` (or legacy `BOOT`) path, checks the boot file's ELF32 header, program-header table and PT_LOAD file bounds, and reports SHA-256 digests for `SYSTEM.CNF` and the boot file. It does not extract files, modify the ISO, execute the ELF, or recompile a game.
 
 ```powershell
 python tools/rptp_inspect.py "D:\Games\your-owned-game.iso"
 python tools/rptp_inspect.py "D:\Games\your-owned-game.iso" --json
 ```
 
-The inspector currently supports 2048-byte logical blocks and non-multi-extent entries. It is a first ISO-inspection milestone, not proof of compatibility with all PS2 disc layouts. Synthetic-only tests cover valid metadata and malformed-input paths; no commercial ISO is included in the repository.
+The inspector currently supports single-volume ISO 9660 images with 2048-byte logical blocks and rejects multi-extent entries explicitly. It is a first ISO-inspection milestone, not proof of compatibility with all PS2 disc layouts. Synthetic tests cover valid metadata, malformed-input paths, deterministic mutation smoke and CLI JSON behavior; one owner-authorized retail ISO has been inspected read-only, but no boot or native port has been validated. No commercial ISO is included in the repository.
+
+Every game RPTP works on gets a durable record under [docs/games](docs/games/README.md). The record tracks inspection, boot-analysis, runtime and playability status; game images and extracted assets are never committed.
+
+## Branches and releases
+
+RPTP has exactly two long-lived branches. `development` is the integration and work branch; `main` is release-only and receives changes only through a reviewed `development -> main` pull request. Direct commits, force-pushes and release tags on `development` are prohibited, and no other branches are permitted. See [docs/BRANCH_POLICY.md](docs/BRANCH_POLICY.md).
 
 ## Development phases
 
-1. **Gate 0 — Foundation and spike:** technical differential test completed; formal review remains open.
-2. **B1a — Project foundation:** license and architecture decision recorded; clean-room/source-exposure review remains an explicit concern.
-3. **B1b — Repository/toolchain baseline:** CLI, CMake, diagnostics, CI, dependency/license checks and reproducible builds.
-4. **ISO Inspector:** read-only ISO9660 and `SYSTEM.CNF` inspection, executable metadata, hashing, safe extraction and malformed-input tests.
+1. **Gate 0 — Foundation and spike:** technical differential test completed and CI verified; formal review remains open.
+2. **B1a — Project foundation:** license and architecture decision recorded; the owner confirmed GPL-3.0-or-later on 2026-10-21. Clean-room handling is governed by the owner-approved sealed-source policy in ADR-0003; prior exposure remains documented.
+3. **B1b — Repository/toolchain baseline:** CMake, diagnostics, tests and CI are implemented; main CI is green and the clean-checkout local Windows run passed. Development CI remains open.
+4. **B1c — ISO Inspector prototype:** read-only ISO9660 and `SYSTEM.CNF` inspection, boot metadata, an explicit error taxonomy, ELF PT_LOAD checks, hashing and synthetic malformed-input tests are implemented. An initial real-disc inspection is recorded for Downhill Domination (USA); broader validation and the Gate 2 work (including safe extraction boundaries) remain open.
 5. **Recompiler MVP:** verified instruction catalog, decoder, IR, function discovery, deterministic code generation and differential tests.
 6. **First-game vertical slice:** boot, minimum runtime services, graphics, audio/input/save and repeatable gameplay.
 7. **Compatibility and release:** expand subsystem coverage using measured blockers, then validate clean-machine builds and release artifacts.
@@ -103,7 +109,7 @@ Build outputs are local and should not be committed. Only synthetic binary fixtu
 - **Approach:** from-scratch static ahead-of-time recompilation; native Windows x64 target.
 - **Generated output:** C++ compiled by the target host toolchain.
 - **Verification:** deterministic output, reference-oracle differential tests, fixture hashes and explicit unsupported-instruction errors.
-- **Clean room:** do not copy implementation source from emulators or recompilers. Prior technical-source exposure is documented in [docs/REFERENCES.md](docs/REFERENCES.md) and [ADR-0001](docs/DECISIONS/ADR-0001-foundation-and-clean-room.md); it must not be ignored or represented as erased.
+- **Clean room:** do not copy implementation source from emulators or recompilers. Prior technical-source exposure is documented in [docs/REFERENCES.md](docs/REFERENCES.md) and [ADR-0001](docs/DECISIONS/ADR-0001-foundation-and-clean-room.md); it must not be ignored or represented as erased. The owner-approved [ADR-0003](docs/DECISIONS/ADR-0003-sealed-source-clean-room-policy.md) seals those projects: no further access, and new work must be independently derived from neutral specifications and tests. Component-level status is in [docs/CLEAN_ROOM_AUDIT.md](docs/CLEAN_ROOM_AUDIT.md). This is a process policy, not a legal guarantee.
 
 ## License
 

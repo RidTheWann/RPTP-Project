@@ -1,7 +1,7 @@
 # ADR-0001 — Foundation, from-scratch decision, and clean-room boundaries
 
 - **Date:** 2026-10-21
-- **Status:** Accepted — from-scratch direction and GPL-3.0-or-later license selection approved; formal Gate 0 disposition and clean-room exposure review remain pending
+- **Status:** Accepted — from-scratch direction, GPL-3.0-or-later and the sealed-source policy in ADR-0003 approved; formal Gate 0 disposition remains pending
 - **Decision owner:** Human project owner
 - **Related:** Gate 0 / B1a; `docs/REFERENCES.md`; `docs/RISKS.md`
 
@@ -30,7 +30,7 @@ Prior-session tool outputs establish that technical material from both candidate
 - **PS2 Web Recomp:** technical README, repository tree, top-level `CMakeLists.txt`, `scripts/port.sh`, `scripts/windows.py`, and top-level MIT license were viewed. This is more than README exposure; the build configuration and two source scripts were also displayed. No `runtime/src/*.cpp` implementation was fetched in the recorded tool outputs.
 - The content above is an exposure record only. The current Gate 0 code was authored independently from the public generic MIPS/ELF references listed in `docs/REFERENCES.md`; these prior project artifacts must not be consulted as implementation templates. The GPL choice is a project-level licensing decision, not permission to copy or adapt source from PS2Recomp or any other implementation.
 
-A historical exposure cannot be erased. If the project owner determines that an item conflicts with the clean-room interpretation, the owner must decide whether to quarantine, restart, or otherwise adjust the process before the affected area expands.
+A historical exposure cannot be erased. On 2026-10-21 the owner resolved the handling question by adopting ADR-0003: the projects are sealed, no further access is permitted, and affected work must be independently derived from neutral specifications and tests. This does not erase the exposure record or create a legal guarantee.
 
 ## Gate 0 evidence
 
@@ -58,7 +58,7 @@ This evidence does not establish complete R5900 accuracy, retail ISO compatibili
 - Every supported instruction family needs independent semantic tests and explicit verification status.
 - Game-specific compatibility is earned per title; generated executable presence does not count as playable.
 - Original covered RPTP software distributed in source or binary form must comply with GPL-3.0-or-later's applicable conditions. For covered object-code distributions, provide or offer the corresponding source as required by the license. Preserve license and copyright notices. GPL permits commercial use and does not guarantee public recognition, protect a project name as a trademark, or prevent compliant forks.
-- Third-party components do not become GPL-3.0-or-later merely by inclusion; retain their own licenses and required notices. Before implementation files are published to the public repository, the owner must review and explicitly resolve the documented historical source-exposure concern.
+- Third-party components do not become GPL-3.0-or-later merely by inclusion; retain their own licenses and required notices. Before expanding recompiler/runtime implementation and before any further publication, apply ADR-0003 and complete the formal Gate 0 disposition. The historical exposure record remains part of the project record.
 
 ## Re-evaluation criteria
 

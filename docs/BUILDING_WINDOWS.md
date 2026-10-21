@@ -32,6 +32,6 @@ It checks the artifact guard, compiles and executes the generated C++ with MSVC,
 
 ## Evidence and limitations
 
-Check for PASS_LOCAL_DIFFERENTIAL_SPIKE, native_matches_oracle: true, and windows_msvc_verified: true in the local report. The report is a local build artifact and must not be committed. The checked-in evidence/ directory contains the previously recorded GCC/Clang evidence, not the machine's local MSVC output.
+Check for PASS_LOCAL_DIFFERENTIAL_SPIKE, native_matches_oracle: true, and windows_msvc_verified: true in the local report. The ignored build copy is a local artifact. A sanitized copy of an earlier work-laptop Windows/MSVC report and its command record is checked in under `evidence/windows-msvc/`; it predates the toolchain alignment and does not replace the home-PC software reference record at commit `371cec8`. The current work laptop uses VS 2026 Build Tools/MSVC 19.51.36260.0 and Python 3.13.16. `evidence/host-gcc/` holds the previously recorded GCC/Clang evidence.
 
-This spike uses one original synthetic ELF32/EM_MIPS fixture and a deliberately limited instruction subset. It does not prove full R5900 behavior, retail ISO support, PS2 runtime services, or compatibility with any commercial game. Formal Gate 0 acceptance remains subject to human review, including the recorded clean-room exposure question.
+This spike uses one original synthetic ELF32/EM_MIPS fixture and a deliberately limited instruction subset. It does not prove full R5900 behavior, retail ISO support, PS2 runtime services, or compatibility with any commercial game. Formal Gate 0 acceptance remains subject to human review. Clean-room handling is governed by the owner-approved sealed-source policy in ADR-0003.
