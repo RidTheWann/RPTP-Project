@@ -2,51 +2,91 @@
 
 ## Gate 0 — Foundation research and native spike
 
-**State: partially evidenced; not passed.**
+**Technical spike: passed. Formal Gate 0 disposition: pending human review.**
 
 - [x] Write an original synthetic ELF32/EM_MIPS fixture generator.
 - [x] Parse ELF header and executable load segment with basic bounds checks.
 - [x] Decode an explicit common-MIPS subset and fail on unsupported encodings.
-- [x] Run an interpreter oracle and compare full register state, memory, stop PC, and executed-PC trace against generated native C++.
-- [x] Check generated source determinism and fixture SHA allowlisting.
+- [x] Run an interpreter oracle and compare full register state, memory, stop PC and executed-PC trace against generated native C++.
+- [x] Check generated-source determinism and fixture SHA allowlisting.
 - [x] Record permitted public references and historical source exposure.
 - [x] Write a renderer comparison plan; renderer selection remains open.
-- [ ] Run the generated program under MSVC on Windows x64 and record actual output.
-- [ ] Human review and Gate 0 decision.
+- [x] Run the generated program under MSVC on Windows x64 and record actual output.
+- [ ] Human owner reviews all Gate 0 criteria and records the formal disposition.
+- [ ] Human owner reviews the documented historical source exposure and determines the clean-room handling before expanding affected implementation areas.
 
-### Gate 0 pass condition
+### Gate 0 evidence and limits
 
-The same reproducible synthetic ELF must produce generated C++ that compiles and runs on Windows with MSVC and whose complete state/trace matches the oracle. A Linux GCC result is supplemental only. Gate 0 remains not passed until the Windows evidence exists.
+The Windows MSVC wrapper reported `PASS_LOCAL_DIFFERENTIAL_SPIKE`, `windows_msvc_verified: true` and `native_matches_oracle: true`; all 12 unit tests passed. The same fixture and generated-source SHA-256 values were reproduced across separate spike runs. See [STATE.md](STATE.md).
 
-## Gate 1 — Repository/toolchain baseline (B1b)
+This verifies only the synthetic ELF32/EM_MIPS instruction subset. It does not prove full R5900 correctness, retail ISO support, a working PS2 runtime, or commercial-game compatibility. Technical success does not automatically close the formal gate or resolve clean-room concerns.
 
-**Blocked until license ADR approval.** Build repository structure, CMake presets, CLI `rptp doctor`, structured logging, CI for MSVC Debug/Release, dependency/license audit, artifact guard, and the live project-state documents. No implementation code should be pushed to the public repository before the license gate is cleared.
+## B1a — Project foundation
+
+- [x] Select from-scratch static recompilation as the project direction.
+- [x] Select GPL-3.0-or-later for original project material and publish the license text.
+- [x] Record architecture, fixture, artifact and third-party-license boundaries.
+- [ ] Complete owner review of historical source exposure and decide whether any affected work must be quarantined or restarted.
+
+## B1b — Repository/toolchain baseline
+
+**Next implementation phase; proceed only within the accepted clean-room boundary.**
+
+- [ ] Establish a CMake-based project layout and reproducible MSVC Debug/Release builds.
+- [ ] Add a small `rptp doctor` CLI for toolchain/environment diagnostics.
+- [ ] Define structured English diagnostics, stable error categories and exit codes.
+- [ ] Add CI for Windows MSVC and Linux host tests.
+- [ ] Add dependency/license inventory and policy checks before introducing dependencies.
+- [ ] Preserve artifact guard rules and ensure build output/cache never enter commits.
+- [ ] Add contributor and build instructions with accurate feature-status labels.
+
+### B1b pass criteria
+
+A clean checkout can configure/build/test using documented commands; CI is green on supported jobs; dependency and artifact checks pass; no unapproved dependency or proprietary game data is introduced; build results are reproducible enough to compare and diagnose.
 
 ## Gate 2 — ISO Inspector
 
-Implement ISO9660 read-only parsing, `SYSTEM.CNF`, executable identification, hashing, safe extraction, error taxonomy, fixture manifest enforcement and parser fuzzing.
+- Implement read-only ISO9660 parsing and `SYSTEM.CNF` inspection.
+- Identify boot executable metadata and calculate hashes.
+- Design safe extraction boundaries, path validation and an explicit error taxonomy.
+- Add synthetic ISO/ELF fixtures only, plus malformed-input and fuzz-oriented tests.
+- Do not require or commit user game images to CI.
+
+**Pass criteria:** deterministic inspection results on synthetic fixtures, robust rejection of malformed inputs, no writes outside the requested output directory, and clear reporting when an image is unsupported.
 
 ## Gate 3 — Recompiler MVP
 
-Implement an instruction catalog with explicit verification status, oracle interpreter, decoder, IR, deterministic C++ generation, static function discovery, unsupported-instruction diagnostics and differential tests. Follow the broad 20–60 person-week initial estimate in `RISKS.md` only as low-confidence planning data.
+- Maintain an instruction catalog with explicit verification status and permitted references.
+- Expand the oracle interpreter before adding corresponding native lowering.
+- Introduce a documented intermediate representation (IR), decoder, basic-block/function discovery and deterministic C++ generation.
+- Add differential tests for each supported instruction family and edge cases.
+- Fail explicitly on unsupported instructions rather than silently producing incorrect output.
 
-## Gate 4 — First game vertical slice
+**Pass criteria:** per-instruction differential coverage, deterministic generated source, useful diagnostics and measured correctness on synthetic programs. A larger opcode count alone is not acceptance.
+
+## Gate 4 — First-game vertical slice
+
+Choose the first title only after the Inspector can report measured metadata and subsystem indicators; do not select solely by popularity.
 
 - **4a Boot:** startup path, minimum kernel/syscalls, CDVD, IOP and logging.
-- **4b Graphics:** first correct reference frame from the native GS path.
+- **4b Graphics:** first correct reference frame from an independently implemented native GS path.
 - **4c Audio/input/save:** essential sound, controller and memory-card paths.
 - **4d Gameplay:** repeatable boot to menu to gameplay; cold boot and save/load checks.
 
-Select the first title after the Inspector can produce measured metadata and feature indicators. Do not select solely by popularity.
+Each milestone needs repeatable evidence, documented limitations and a regression fixture that does not contain proprietary game data.
 
 ## Gate 5 — Runtime and compatibility expansion
 
-Expand services based on real blockers; add a second title with different subsystem demands and preserve passing regression cases.
+Expand services based on measured blockers. Add a second title with different subsystem demands only after the first vertical slice has repeatable evidence. Preserve passing regressions.
 
 ## Gate 6 — GUI
 
-Only after the CLI build/run workflow is stable: ISO selection, output path, progress, logs, local game management, controller configuration and native run button.
+Only after CLI build/run workflows are stable: ISO selection, output path, progress, logs, local game management, controller configuration and native run button.
 
 ## Gate 7 — Stable release
 
-Windows clean-machine test, reproducible build checks, dependency/license audit, versioning, user documentation, compatibility reports and release workflow.
+Windows clean-machine testing, reproducible build checks, dependency/license audit, versioning, user documentation, compatibility reports and release workflow.
+
+## Planning note
+
+The effort ranges in [RISKS.md](RISKS.md) are low-confidence planning data, not delivery promises. The agent may recommend changes; the human project owner approves architecture, licensing and clean-room decisions.
