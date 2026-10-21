@@ -31,5 +31,6 @@ ISO inspector evidence:
 - ECMA-119 5th edition Table 8 and §§10.1.8–10.1.9 confirm that zero-based record bytes 26 and 27 are the file-unit and interleave-gap fields. Targeted tests reject either field independently; interleaved layouts remain unsupported.
 - Explicitly unsupported: multi-volume sets, multi-extent files/directories, interleaved files/directories, Joliet/Rock Ridge extensions, 2352-byte raw sectors and broad retail-layout validation.
 - The inspector is read-only and does not extract, boot, emulate or recompile a game.
+- Gate 2 is a read-only milestone under [ADR-0004](DECISIONS/ADR-0004-gate2-read-only-scope.md); extraction is not implemented and requires a separate future decision and threat model.
 
 A status may only be promoted for a real game after its serial/region, executable hash, RPTP version, tested behaviors, log and known issues are recorded. Per-game records under `docs/games/` may contain title/region/serial, sizes, hashes and boot metadata; they must not contain ISO images, extracted game files or proprietary assets.

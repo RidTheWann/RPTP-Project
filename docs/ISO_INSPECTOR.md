@@ -144,6 +144,7 @@ A warning does not mean the image is safe to boot or compatible with RPTP.
 - Multi-extent and interleaved entries are rejected explicitly rather than merged or decoded.
 - ELF validation is intentionally limited to the header, program-header table and PT_LOAD file bounds; it does not validate every loader convention or PS2-specific memory layout.
 - The inspector does not prove that the executable is a valid PS2 game, does not emulate or recompile it, and does not prove compatibility.
+- Gate 2 is a read-only milestone under [ADR-0004](DECISIONS/ADR-0004-gate2-read-only-scope.md); extraction, output-directory writes and materialization are not implemented and require a separate future decision and threat model.
 - Tests use synthetic images generated in memory and in temporary directories. Do not upload commercial ISO images or extracted copyrighted game files to the repository.
 - The current owner-authorized retail sample has been inspected read-only; broader retail layouts and compatibility remain unverified.
 

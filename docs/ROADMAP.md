@@ -73,20 +73,20 @@ This phase is an inspector only. It does not launch a game, implement the PS2 ru
 
 ## Gate 2 — ISO Inspector expansion
 
-**Status: synthetic hardening and a read-only retail sample validation are implemented and locally verified; multi-extent/ISO-variant review, safe extraction boundaries and formal Gate 0 disposition remain open. Gate 2 is not passed.** The criterion-to-evidence map is maintained in [GATE2_EVIDENCE.md](GATE2_EVIDENCE.md); it is evidence, not a disposition.
+**Status: synthetic hardening and a read-only retail sample validation are implemented and locally verified; multi-extent/ISO-variant review and formal Gate 0 disposition remain open. Gate 2 is a read-only milestone under [ADR-0004](DECISIONS/ADR-0004-gate2-read-only-scope.md); extraction is deferred future work. Gate 2 is not passed.** The criterion-to-evidence map is maintained in [GATE2_EVIDENCE.md](GATE2_EVIDENCE.md); it is evidence, not a disposition.
 
 - Expand the B1c prototype into read-only ISO9660 parsing and SYSTEM.CNF inspection across the documented formats.
 - Identify boot executable metadata and calculate hashes.
-- Design safe extraction boundaries, path validation and an explicit error taxonomy.
+- Record the read-only Gate 2 scope; defer extraction, its threat model and any output-directory design to a separate future decision.
 - Add synthetic ISO/ELF fixtures only, plus malformed-input and fuzz-oriented tests.
 - Do not require or commit user game images to CI.
 - Keep the inspector read-only and fail explicitly on unsupported layouts; do not infer game compatibility.
 
 **Verified locally:** single-volume PVD validation, root `SYSTEM.CNF` inspection, BOOT path resolution, PVD/root/boot metadata, SHA-256, ELF PT_LOAD checks, metadata-only directory survey, explicit error codes, deterministic JSON, CLI JSON success/error, the ISO inspector suite and the full Python suite. CTest results and the retail sample are recorded in `docs/VERIFICATION_LOG.md`.
 
-**Still open:** retail layouts beyond the current sample, interleaved-file support, multi-extent and ISO-variant review, safe extraction boundaries and the owner's formal Gate 0 disposition. Clean-room handling is recorded in ADR-0003.
+**Still open:** retail layouts beyond the current sample, interleaved-file support, multi-extent and ISO-variant review, and the owner's formal Gate 0 disposition. Extraction is outside Gate 2 and requires a separate ADR and threat model. Clean-room handling is recorded in ADR-0003.
 
-**Pass criteria:** deterministic inspection results on synthetic fixtures, robust rejection of malformed inputs, no writes outside the requested output directory, and clear reporting when an image is unsupported.
+**Pass criteria:** deterministic inspection results on synthetic fixtures, robust rejection of malformed inputs, no write path to the input or host, and clear reporting when an image is unsupported.
 
 ## Gate 3 — Recompiler MVP
 
