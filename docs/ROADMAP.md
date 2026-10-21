@@ -30,7 +30,7 @@ This verifies only the synthetic ELF32/EM_MIPS instruction subset. It does not p
 
 ## B1b — Repository/toolchain baseline
 
-**Status: not passed. Infrastructure and CI exist, and CI is green on the previously published main commit. This branch has not run CI, and the clean-checkout re-run remains open. This work does not expand the PS2 instruction/runtime implementation.**
+**Status: not passed. Infrastructure and CI exist, and CI is green on the previously published main commit. The clean-checkout local Windows run passed, but this branch has not run CI. This work does not expand the PS2 instruction/runtime implementation.**
 
 - [x] Add a CMake project baseline and repeatable windows-msvc / host presets.
 - [x] Add rptp doctor environment and artifact-guard diagnostics.
@@ -39,7 +39,7 @@ This verifies only the synthetic ELF32/EM_MIPS instruction subset. It does not p
 - [x] Ignore CMake/Visual Studio outputs and keep build files local.
 - [x] Confirm both GitHub Actions jobs passed on the previously published main commit (`371cec8`, run `39561754883`); this does not verify the current branch.
 - [x] Confirm dependency/license inventory remains complete before introducing any dependency; no third-party code is currently vendored or linked.
-- [ ] Re-run the full Windows CMake preset from a clean checkout.
+- [x] Re-run the full Windows CMake preset from a clean checkout (local run at commit `83459c1`; not a substitute for branch CI).
 
 ### B1b pass criteria
 

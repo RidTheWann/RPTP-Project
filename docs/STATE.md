@@ -11,7 +11,7 @@
 ## Single current status
 
 - **Gate 0 technical spike:** passed on Windows x64/MSVC and on the recorded Linux host toolchains. Formal Gate 0 disposition remains pending owner review.
-- **B1b repository/toolchain baseline:** CMake presets, the RPTP doctor, CTest targets and Windows/Linux CI are present. CI is green on current main, and the Windows preset passed locally in this session. A clean-checkout re-run remains open.
+- **B1b repository/toolchain baseline:** CMake presets, the RPTP doctor, CTest targets and Windows/Linux CI are present. CI is green on current main only. The Windows preset passed locally in this checkout and in a clean clone at commit `83459c1`; the branch itself has not run CI, so B1b is not passed.
 - **B1c ISO inspector prototype:** implemented and covered by synthetic valid/malformed-input tests. It is not validated against real retail ISO layouts and does not establish broad disc compatibility.
 - **Owner decisions still open:** formal Gate 0 review, clean-room/source-exposure handling, and explicit license confirmation for this session.
 
@@ -30,6 +30,21 @@ The commands below were run from Developer PowerShell for Visual Studio 2022, x6
 - CMake build/CTest: PASS; 3 of 3 tests passed (`artifact_guard`, `python_unit_tests`, `gate0_differential_spike`).
 - Python unit tests: PASS; 34 tests in total (12 original Gate 0, 16 ISO inspector, 6 doctor).
 - GitHub Actions run `39561754883` on main commit `371cec8`: Windows x64/MSVC and Linux/GCC jobs both completed successfully.
+
+### Clean-checkout local run (C2)
+
+On 2026-10-21 the branch was cloned into `<temp>\rptp-clean` from the local repository at commit `83459c1`, outside the working tree. From Developer PowerShell for Visual Studio 2022 (x64), in that clean clone:
+
+    python tools/rptp_doctor.py
+    cmake --preset windows-msvc
+    cmake --build --preset windows-msvc
+    python -m unittest discover -s tests -v
+
+- RPTP doctor: PASS.
+- CMake configure: PASS; MSVC `19.44.35227.0`, toolset `14.44.35207`.
+- CMake build/CTest: PASS; 3 of 3 tests passed.
+- Python unit tests: PASS; 34 tests.
+- This is a **clean-checkout local run**, not a substitute for CI on this branch. The branch was not pushed, so no branch CI result exists.
 
 ## Windows x64/MSVC evidence
 
@@ -55,7 +70,7 @@ Each run is recorded separately; older notes are not rewritten as if they were c
 
 - **Earlier recorded note, commit `e3d5ff8` (2026-10-21 05:43 +0700):** MSVC x64 version `19.51.36260.0` was reported for `scripts/run-msvc.ps1`. The note does not record the run date or environment, and no matching report exists in repository history. Status: **reported, not verified (dilaporkan, belum terverifikasi)**.
 - **Reconciliation session C1, 2026-10-21, local checkout:** Windows 11 x64, Developer PowerShell for Visual Studio 2022 Build Tools 17.14.32 x64, `cl` 19.44.35227 for x64, toolset `14.44.35207`; CMake identified `19.44.35227.0`. Status: **Terverifikasi** by `evidence/windows-msvc/report.json` and `commands.txt`.
-- **Reconciliation session C2, 2026-10-21, clean clone:** pending the clean-checkout run below.
+- **Reconciliation session C2, 2026-10-21, clean clone at `83459c1`:** Windows 11 x64, Developer PowerShell for Visual Studio 2022 Build Tools 17.14.32 x64, `cl` 19.44.35227 for x64, toolset `14.44.35207`; CMake identified `19.44.35227.0`; doctor PASS, 3/3 CTest targets passed, 34 Python tests passed. Status: **Terverifikasi** as a local clean-checkout run, not as branch CI.
 
 The earlier `19.51.36260.0` value and the verified `19.44.35227` value are therefore separate runs, not a replacement of one historical note by another. The sanitized report contains the compiler executable path for toolset `14.44.35207`; its `cl` banner version is `19.44.35227`, as recorded in `commands.txt`.
 
@@ -78,6 +93,6 @@ The spike covers a synthetic ELF32/EM_MIPS fixture and only ADDIU, ADDU, LW, SW,
 ## Next steps
 
 1. Owner confirms the license decision and records formal Gate 0 and clean-room dispositions.
-2. Re-run the Windows preset from a clean checkout to close the remaining B1b criterion.
+2. Push the branch and require green CI before treating B1b as passed; the clean-checkout local run is not branch CI.
 3. Validate the ISO inspector only against owner-authorized discs, recording hashes and outcomes without committing game images.
 4. Continue only with the next owner-approved phase; do not infer game compatibility from the synthetic spike.

@@ -12,7 +12,7 @@
 
 ## Current phase
 
-B1b repository/toolchain baseline and B1c ISO inspector prototype: CMake presets, rptp doctor, CTest wrappers, the synthetic-only ISO inspector, and Windows/MSVC + Linux CI are present. Main commit `371cec8` has green CI (run `39561754883`). The reconciliation branch `chore/post-gate0-reconcile` has not been pushed, so it has no CI result. The clean-checkout local Windows run is pending. Do not expand R5900 instruction semantics or PS2 runtime implementation until the owner has reviewed the source-exposure record.
+B1b repository/toolchain baseline and B1c ISO inspector prototype: CMake presets, rptp doctor, CTest wrappers, the synthetic-only ISO inspector, and Windows/MSVC + Linux CI are present. Main commit `371cec8` has green CI (run `39561754883`). The reconciliation branch `chore/post-gate0-reconcile` has not been pushed, so it has no CI result. A clean-checkout local Windows run at commit `83459c1` passed; it is recorded in STATE.md and is not a substitute for branch CI. Do not expand R5900 instruction semantics or PS2 runtime implementation until the owner has reviewed the source-exposure record.
 
 ## Expected local commands
 
