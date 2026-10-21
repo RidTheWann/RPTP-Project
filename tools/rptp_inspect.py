@@ -318,27 +318,6 @@ class IsoReader:
             ],
         }
 
-    def scan_pvd(self) -> bytes:
-        pvd = None
-        terminated = False
-        end = min(self.size // BLOCK, PVD_LBA + MAX_DESCRIPTORS)
-        for lba in range(PVD_LBA, end):
-            desc = self.read_at(lba * BLOCK, BLOCK)
-            if desc[1:6] != b"CD001":
-                raise InspectError("VOLUME_DESCRIPTOR_SIGNATURE", f"Descriptor at block {lba} has no CD001 signature.")
-            if desc[6] != 1:
-                raise InspectError("VOLUME_DESCRIPTOR_VERSION", f"Descriptor at block {lba} has unsupported version {desc[6]}.")
-            if desc[0] == 1 and pvd is None:
-                pvd = desc
-            if desc[0] == 255:
-                terminated = True
-                break
-        if not terminated:
-            raise InspectError("VOLUME_DESCRIPTOR_TERMINATOR_MISSING", "No volume descriptor terminator was found within the scan limit.")
-        if pvd is None:
-            raise InspectError("PRIMARY_VOLUME_DESCRIPTOR_MISSING", "No primary volume descriptor was found.")
-        return pvd
-
 
 def inspect_stream(stream: BinaryIO, size: int, name: str = "<stream>") -> dict[str, object]:
     return IsoReader(stream, size, name).inspect()
