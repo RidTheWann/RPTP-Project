@@ -2,7 +2,6 @@
 
 ![RPTP project cover](docs/assets/rptp-cover.png)
 
-
 **From PlayStation 2 ISO to native Windows x64 — through static recompilation.**
 
 RPTP is an open-source research project exploring how to transform a user-owned PlayStation 2 game image into a native Windows x64 build by statically recompiling supported Emotion Engine (EE) code to C++, alongside a from-scratch runtime for the PS2 services a game needs.
