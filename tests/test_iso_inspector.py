@@ -381,6 +381,20 @@ class IsoInspectorTests(unittest.TestCase):
             self.assertEqual(payload["directory_count"], 3)
             self.assertNotIn("input_name", payload)
 
+    def test_cli_survey_text_reports_unsigned_volume_delta(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "tree.iso"
+            path.write_bytes(bytes(_iso(tree=True)) + bytes(BLOCK * 4))
+            result = subprocess.run(
+                [sys.executable, str(ROOT / "tools/rptp_inspect.py"), str(path), "--survey"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("smaller than the file by 8192 bytes", result.stdout)
+            self.assertNotIn("-8192", result.stdout)
+
     def test_error_is_deterministic(self):
         data = bytes(_iso(boot_lba=1000))
         errors: list[tuple[str, str]] = []

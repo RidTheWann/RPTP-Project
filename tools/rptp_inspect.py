@@ -683,10 +683,14 @@ def main() -> int:
         elif args.survey:
             print(f"RPTP ISO directory survey: {report['status']}")
             print(f"Image size: {report['image_size_bytes']} bytes; sectors: {report['sector_count']}")
-            print(
-                f"Volume space: {report['volume_space_blocks']} blocks; "
-                f"{report['volume_space_relation']} than the file by {report['volume_space_delta_bytes']} bytes"
-            )
+            if report["volume_space_relation"] == "equal":
+                print(f"Volume space: {report['volume_space_blocks']} blocks; equal to the file size")
+            else:
+                print(
+                    f"Volume space: {report['volume_space_blocks']} blocks; "
+                    f"{report['volume_space_relation']} than the file by "
+                    f"{abs(report['volume_space_delta_bytes'])} bytes"
+                )
             print(
                 f"Directories: {report['directory_count']}; files: {report['file_count']}; "
                 f"max depth: {report['max_depth']}"
