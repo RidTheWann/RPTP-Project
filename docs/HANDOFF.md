@@ -7,7 +7,7 @@
 - The isolated Gate 0 spike is published. The owner ran scripts/run-msvc.ps1 on Windows x64 and recorded PASS_LOCAL_DIFFERENTIAL_SPIKE, native_matches_oracle true and windows_msvc_verified true.
 - The 12 original Gate 0 tests and artifact guard passed in the recorded Windows run. Linux/GCC and Linux/Clang spike evidence is also recorded.
 - The work laptop is aligned to Visual Studio 2026 Build Tools 18.11.1 / MSVC 19.51.36260.0 and Python 3.13.16. Doctor, CMake configure, CTest and the Gate 0 spike pass locally.
-- The ISO inspector was expanded with single-volume checks, `SYSTEM.CNF`/BOOT validation, PVD/root/boot metadata, SHA-256, ELF PT_LOAD checks, warnings, an explicit error taxonomy and deterministic mutation smoke tests. 33 ISO inspector tests and 53 total tests pass; CTest is 3/3.
+- The ISO inspector was expanded with single-volume checks, `SYSTEM.CNF`/BOOT validation, PVD/root/boot metadata, SHA-256, ELF PT_LOAD checks, warnings, an explicit error taxonomy and deterministic mutation smoke tests. 33 ISO inspector tests and 54 total tests pass; CTest is 3/3.
 - Downhill Domination (USA) was inspected read-only and recorded in `docs/games/downhill-domination/STATUS.md`. No boot or native port exists. Every game worked on must get a `docs/games/<slug>/STATUS.md` record.
 - The project license is GPL-3.0-or-later for original RPTP material. Third-party licensing remains a per-dependency audit.
 - Formal Gate 0 acceptance is pending human review.
@@ -16,7 +16,7 @@
 
 ## Current phase
 
-B1b repository/toolchain baseline and B1c ISO inspector prototype: CMake presets, rptp doctor, CTest wrappers, the synthetic-only ISO inspector, and Windows/MSVC + Linux CI are present. PR #1 merged as `5bf62b2`; CI runs `39594267744`, `39594147110` and `39594304857` passed. A clean-checkout local Windows run at pre-push commit `83459c1` (now `b4d6fa7`; content unchanged) passed; it is recorded in STATE.md. Gate 2 synthetic hardening and one real ISO inspection are locally verified, but broader real ISO layouts, multi-extent support and safe extraction boundaries remain open. Do not access sealed projects; apply ADR-0003 to all new work. Do not expand R5900 instruction semantics or PS2 runtime implementation until the owner completes the formal Gate 0 review.
+B1b repository/toolchain baseline and B1c ISO inspector prototype: CMake presets, rptp doctor, CTest wrappers, the synthetic-only ISO inspector, and Windows/MSVC + Linux CI are present. PR #1 merged as `5bf62b2`; CI runs `39594267744`, `39594147110` and `39594304857` passed. A clean-checkout local Windows run at pre-push commit `83459c1` (now `b4d6fa7`; content unchanged) passed; it is recorded in `docs/VERIFICATION_LOG.md`. Gate 2 synthetic hardening and one real ISO inspection are locally verified, but broader real ISO layouts, multi-extent support and safe extraction boundaries remain open. Do not access sealed projects; apply ADR-0003 to all new work. Do not expand R5900 instruction semantics or PS2 runtime implementation until the owner completes the formal Gate 0 review.
 
 ## Expected local commands
 
