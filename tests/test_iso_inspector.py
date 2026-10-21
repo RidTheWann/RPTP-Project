@@ -296,6 +296,15 @@ class IsoInspectorTests(unittest.TestCase):
             inspector.inspect_bytes(bytes(_iso(config=path)))
         self.assertEqual(ctx.exception.code, "BOOT_PATH_DEPTH_LIMIT")
 
+    def test_error_is_deterministic(self):
+        data = bytes(_iso(boot_lba=1000))
+        errors: list[tuple[str, str]] = []
+        for _ in range(2):
+            with self.assertRaises(inspector.InspectError) as ctx:
+                inspector.inspect_bytes(data, "error.iso")
+            errors.append((ctx.exception.code, str(ctx.exception)))
+        self.assertEqual(errors[0], errors[1])
+
     def test_report_is_deterministic(self):
         data = bytes(_iso())
         first = json.dumps(inspector.inspect_bytes(data), sort_keys=True)

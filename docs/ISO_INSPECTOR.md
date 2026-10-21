@@ -24,7 +24,7 @@ Exit code is `0` for an inspected image and `2` for an expected inspection error
 - `warnings`: non-fatal observations such as a missing `cdrom0:` device prefix, a non-MIPS machine, a non-ET_EXEC type, no PT_LOAD segment, or an entry point outside all PT_LOAD segments.
 - `limitations`: a short reminder of the intentionally narrow scope.
 
-JSON output is sorted by key and the report is deterministic for the same input bytes.
+JSON output is sorted by key and the report is deterministic for the same input bytes. Expected failures are deterministic too: the same input produces the same error code and message.
 
 ## Checks performed
 
