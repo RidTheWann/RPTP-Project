@@ -13,7 +13,7 @@
 - [x] Write a renderer comparison plan; renderer selection remains open.
 - [x] Run the generated program under MSVC on Windows x64 and record actual output.
 - [ ] Human owner reviews all Gate 0 criteria and records the formal disposition.
-- [ ] Human owner reviews historical source exposure and determines clean-room handling before expanding affected implementation areas.
+- [x] Human owner adopted the ADR-0003 sealed-source clean-room policy on 2026-10-21; prior exposure remains documented and affected work must be independently derived.
 
 ### Gate 0 evidence and limits
 
@@ -27,11 +27,11 @@ This verifies only the synthetic ELF32/EM_MIPS instruction subset. It does not p
 - [x] Select GPL-3.0-or-later for original project material and publish the license text.
 - [x] Record architecture, fixture, artifact and third-party-license boundaries.
 - [x] Owner confirmed GPL-3.0-or-later on 2026-10-21.
-- [ ] Complete owner review of historical source exposure and decide whether any affected work must be quarantined, restarted or otherwise handled.
+- [x] Owner selected the ADR-0003 sealed-source policy: do not access sealed projects; preserve provenance and quarantine any work that cannot demonstrate independent derivation. Component status is tracked in `docs/CLEAN_ROOM_AUDIT.md`.
 
 ## B1b — Repository/toolchain baseline
 
-**Status: not passed. Infrastructure and CI exist, and CI is green on the previously published main commit. The clean-checkout local Windows run passed, but this branch has not run CI. This work does not expand the PS2 instruction/runtime implementation.**
+**Status: not passed. Infrastructure and CI exist, and CI is green on the previously published main commit. The clean-checkout local Windows run passed, but this branch has not run CI. The build/CI/doctor layer is `Review required` in `docs/CLEAN_ROOM_AUDIT.md` and must not be described as clean-room certified. This work does not expand the PS2 instruction/runtime implementation.**
 
 - [x] Add a CMake project baseline and repeatable windows-msvc / host presets.
 - [x] Add rptp doctor environment and artifact-guard diagnostics.
@@ -79,7 +79,7 @@ This phase is an inspector only. It does not launch a game, implement the PS2 ru
 
 **Verified locally:** single-volume PVD validation, root `SYSTEM.CNF` inspection, BOOT path resolution, PVD/root/boot metadata, SHA-256, ELF PT_LOAD checks, explicit error codes, deterministic JSON, CLI JSON success/error, 33 ISO inspector tests and 52 total tests. CTest is 3/3 on Windows/MSVC.
 
-**Still open:** owner-authorized real-disc validation, multi-extent and ISO-variant review, safe extraction boundaries, Linux branch CI and the owner's Gate/clean-room dispositions.
+**Still open:** owner-authorized real-disc validation, multi-extent and ISO-variant review, safe extraction boundaries, Linux branch CI and the owner's formal Gate 0 disposition. Clean-room handling is recorded in ADR-0003.
 
 **Pass criteria:** deterministic inspection results on synthetic fixtures, robust rejection of malformed inputs, no writes outside the requested output directory, and clear reporting when an image is unsupported.
 

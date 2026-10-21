@@ -22,7 +22,7 @@ Binary fixtures and data files are not annotated with SPDX comments because a co
 
 Each third-party dependency retains its applicable upstream license and notices. Before adding or vendoring a dependency, record at least its name, version or commit, source URL, SPDX license identifier (where established), license text/notice location, redistribution constraints, and the reason it is needed. Verify compatibility and comply with all required notices; do not assume a dependency is GPL-3.0-or-later merely because it is used by RPTP.
 
-Do not vendor a dependency whose license or provenance has not been verified. Keep source-exposure restrictions in ADR-0001 in force independently of license compatibility.
+Do not vendor a dependency whose license or provenance has not been verified. Keep the source-exposure restrictions in ADR-0001 and the sealed-source policy in ADR-0003 in force independently of license compatibility.
 
 ## Game and console materials
 

@@ -12,9 +12,10 @@
 ## Single current status
 
 - **Gate 0 technical spike:** passed on Windows x64/MSVC and on the recorded Linux host toolchains. Formal Gate 0 disposition remains pending owner review.
-- **B1b repository/toolchain baseline:** CMake presets, the RPTP doctor, CTest targets and Windows/Linux CI are present. CI is green on current main only. The Windows preset passed locally on the work laptop and in a clean clone at commit `83459c1`; the branch itself has not run CI, so B1b is not passed.
+- **B1b repository/toolchain baseline:** CMake presets, the RPTP doctor, CTest targets and Windows/Linux CI are present. CI is green on current main only. The Windows preset passed locally on the work laptop and in a clean clone at commit `83459c1`; the branch itself has not run CI, so B1b is not passed. The build/CI/doctor layer is `Review required` in `docs/CLEAN_ROOM_AUDIT.md` and is not clean-room certified.
 - **B1c ISO inspector prototype / Gate 2 synthetic hardening:** single-volume PVD parsing, root `SYSTEM.CNF` regular single-extent validation, BOOT path resolution, PVD/root/boot metadata, SHA-256, ELF PT_LOAD checks, warnings and an explicit error taxonomy are implemented. 33 ISO inspector tests and 52 total tests pass. Real retail ISO layouts, multi-extent support, safe extraction boundaries and broad disc compatibility remain unverified.
-- **Owner decisions still open:** formal Gate 0 review and clean-room/source-exposure handling.
+- **Clean-room/source-exposure:** on 2026-10-21 the owner selected the sealed-source policy in ADR-0003. PS2Recomp, PS2 Web Recomp, PCSX2, Play! and comparable implementations are sealed; do not access them again. Prior exposure remains documented and cannot be erased. Component-level provenance is tracked in `docs/CLEAN_ROOM_AUDIT.md`; no existing file is certified clean-room, and the build/CI/doctor layer is `Review required`.
+- **Owner decisions still open:** formal Gate 0 review.
 
 ## Verification performed on 2026-10-21
 
@@ -119,7 +120,7 @@ The work laptop now uses MSVC 19.51.36260.0 and Python 3.13.16. Its runs remain 
 The spike covers a synthetic ELF32/EM_MIPS fixture and only ADDIU, ADDU, LW, SW, BEQ, BNE, J, JAL, JR and NOP, including tested delay-slot behavior. It does **not** establish complete R5900 semantics, retail ISO compatibility, booting a commercial game, or implementation of PS2 kernel services, VU, GS, IOP, CDVD, audio, controller, memory card, timing or save-state behavior.
 
 1. **Formal Gate 0 review:** the human owner must review the gate's criteria and record the formal disposition.
-2. **Clean-room/source exposure:** prior technical exposure is documented in REFERENCES.md and ADR-0001. A historical exposure cannot be erased. The owner must decide whether affected areas require quarantine, restart or other explicit handling before expanding recompiler/runtime implementation.
+2. **Clean-room/source exposure (policy resolved):** prior technical exposure is documented in REFERENCES.md and ADR-0001. The owner selected the ADR-0003 sealed-source policy on 2026-10-21: sealed projects must not be accessed, and affected work must be independently derived with provenance and tests. The historical exposure cannot be erased; this policy reduces future contamination but is not a legal guarantee.
 3. **License confirmation (resolved):** the owner confirmed GPL-3.0-or-later on 2026-10-21; SPDX headers were added to covered project source, build and workflow files.
 4. **Renderer:** no renderer has been selected or tested; ADR-0002 remains a plan.
 5. **Dependencies:** no new runtime dependency was introduced by the repository/toolchain baseline. Continue to record license, version and required notices before adding or vendoring dependencies.
@@ -127,7 +128,8 @@ The spike covers a synthetic ELF32/EM_MIPS fixture and only ADDIU, ADDU, LW, SW,
 
 ## Next steps
 
-1. Owner records formal Gate 0 and clean-room dispositions.
-2. Push the branch and require green CI before treating B1b as passed; the clean-checkout local run is not branch CI.
-3. Validate the ISO inspector only against owner-authorized discs, recording hashes and outcomes without committing game images.
-4. Continue only with the next owner-approved phase; do not infer game compatibility from the synthetic spike.
+1. Owner records the formal Gate 0 disposition and applies ADR-0003 before further implementation.
+2. Arrange an independent review or re-derivation of the build/CI/doctor layer marked `Review required` in `docs/CLEAN_ROOM_AUDIT.md`; do not claim clean-room certification before it is recorded.
+3. Push the branch and require green CI before treating B1b as passed; the clean-checkout local run is not branch CI.
+4. Validate the ISO inspector only against owner-authorized discs, recording hashes and outcomes without committing game images.
+5. Continue only with the next owner-approved phase; do not infer game compatibility from the synthetic spike.

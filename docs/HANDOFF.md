@@ -11,10 +11,11 @@
 - The project license is GPL-3.0-or-later for original RPTP material. Third-party licensing remains a per-dependency audit.
 - Formal Gate 0 acceptance is pending human review.
 - Historical source exposure involving PS2Recomp and PS2 Web Recomp remains documented; this must not be described as erased or resolved by the license decision.
+- On 2026-10-21 the owner adopted ADR-0003: those projects and other emulator/recompiler implementations are sealed. Do not access them again; new work must be independently derived from neutral specifications and tests. `docs/CLEAN_ROOM_AUDIT.md` tracks component status; no file is certified clean-room, and the build/CI/doctor layer is `Review required`.
 
 ## Current phase
 
-B1b repository/toolchain baseline and B1c ISO inspector prototype: CMake presets, rptp doctor, CTest wrappers, the synthetic-only ISO inspector, and Windows/MSVC + Linux CI are present. Main commit `371cec8` has green CI (run `39561754883`). The reconciliation branch `chore/post-gate0-reconcile` has not been pushed, so it has no CI result. A clean-checkout local Windows run at commit `83459c1` passed; it is recorded in STATE.md and is not a substitute for branch CI. Gate 2 synthetic hardening is locally verified, but real ISO layouts, multi-extent support and safe extraction boundaries remain open. Do not expand R5900 instruction semantics or PS2 runtime implementation until the owner has reviewed the source-exposure record.
+B1b repository/toolchain baseline and B1c ISO inspector prototype: CMake presets, rptp doctor, CTest wrappers, the synthetic-only ISO inspector, and Windows/MSVC + Linux CI are present. Main commit `371cec8` has green CI (run `39561754883`). The reconciliation branch `chore/post-gate0-reconcile` has not been pushed, so it has no CI result. A clean-checkout local Windows run at commit `83459c1` passed; it is recorded in STATE.md and is not a substitute for branch CI. Gate 2 synthetic hardening is locally verified, but real ISO layouts, multi-extent support and safe extraction boundaries remain open. Do not access sealed projects; apply ADR-0003 to all new work. Do not expand R5900 instruction semantics or PS2 runtime implementation until the owner completes the formal Gate 0 review.
 
 ## Expected local commands
 
@@ -32,8 +33,9 @@ If a CI job fails, record the exact runner, command and error before updating pr
 
 ## Next review points
 
-1. Human owner reviews historical source exposure and records the disposition.
-2. Human owner completes formal Gate 0 review.
-3. After these decisions, push the branch and require green CI before treating B1b as passed; keep every capability claim tied to reproducible evidence.
-4. Validate the ISO inspector only against owner-authorized discs; record hashes and outcomes without committing game images, and do not promote compatibility from synthetic tests.
-5. Review multi-extent, ISO 9660 variants and safe extraction boundaries before treating Gate 2 as passed.
+1. Human owner completes formal Gate 0 review.
+2. Enforce ADR-0003: keep sealed projects off-limits, preserve provenance, and quarantine any work that cannot demonstrate independent derivation.
+3. Arrange an independent review or re-derivation of the build/CI/doctor layer marked `Review required` in `docs/CLEAN_ROOM_AUDIT.md`; do not claim clean-room certification before it is recorded.
+4. After the Gate 0 disposition, push the branch and require green CI before treating B1b as passed; keep every capability claim tied to reproducible evidence.
+5. Validate the ISO inspector only against owner-authorized discs; record hashes and outcomes without committing game images, and do not promote compatibility from synthetic tests.
+6. Review multi-extent, ISO 9660 variants and safe extraction boundaries before treating Gate 2 as passed.

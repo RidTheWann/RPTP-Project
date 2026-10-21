@@ -49,7 +49,7 @@ The inspector currently supports single-volume ISO 9660 images with 2048-byte lo
 ## Development phases
 
 1. **Gate 0 — Foundation and spike:** technical differential test completed and CI verified; formal review remains open.
-2. **B1a — Project foundation:** license and architecture decision recorded; the owner confirmed GPL-3.0-or-later on 2026-10-21. Clean-room/source-exposure review remains an explicit concern.
+2. **B1a — Project foundation:** license and architecture decision recorded; the owner confirmed GPL-3.0-or-later on 2026-10-21. Clean-room handling is governed by the owner-approved sealed-source policy in ADR-0003; prior exposure remains documented.
 3. **B1b — Repository/toolchain baseline:** CMake, diagnostics, tests and CI are implemented; main CI is green and the clean-checkout local Windows run passed. Branch CI remains open.
 4. **B1c — ISO Inspector prototype:** read-only ISO9660 and `SYSTEM.CNF` inspection, boot metadata, an explicit error taxonomy, ELF PT_LOAD checks, hashing and synthetic malformed-input tests are implemented. Real-disc validation and the broader Gate 2 work (including safe extraction boundaries) remain open.
 5. **Recompiler MVP:** verified instruction catalog, decoder, IR, function discovery, deterministic code generation and differential tests.
@@ -103,7 +103,7 @@ Build outputs are local and should not be committed. Only synthetic binary fixtu
 - **Approach:** from-scratch static ahead-of-time recompilation; native Windows x64 target.
 - **Generated output:** C++ compiled by the target host toolchain.
 - **Verification:** deterministic output, reference-oracle differential tests, fixture hashes and explicit unsupported-instruction errors.
-- **Clean room:** do not copy implementation source from emulators or recompilers. Prior technical-source exposure is documented in [docs/REFERENCES.md](docs/REFERENCES.md) and [ADR-0001](docs/DECISIONS/ADR-0001-foundation-and-clean-room.md); it must not be ignored or represented as erased.
+- **Clean room:** do not copy implementation source from emulators or recompilers. Prior technical-source exposure is documented in [docs/REFERENCES.md](docs/REFERENCES.md) and [ADR-0001](docs/DECISIONS/ADR-0001-foundation-and-clean-room.md); it must not be ignored or represented as erased. The owner-approved [ADR-0003](docs/DECISIONS/ADR-0003-sealed-source-clean-room-policy.md) seals those projects: no further access, and new work must be independently derived from neutral specifications and tests. Component-level status is in [docs/CLEAN_ROOM_AUDIT.md](docs/CLEAN_ROOM_AUDIT.md). This is a process policy, not a legal guarantee.
 
 ## License
 
