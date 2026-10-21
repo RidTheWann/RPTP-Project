@@ -48,11 +48,15 @@ The inspector currently supports single-volume ISO 9660 images with 2048-byte lo
 
 Every game RPTP works on gets a durable record under [docs/games](docs/games/README.md). The record tracks inspection, boot-analysis, runtime and playability status; game images and extracted assets are never committed.
 
+## Branches and releases
+
+RPTP has exactly two long-lived branches. `development` is the integration and work branch; `main` is release-only and receives changes only through a reviewed `development -> main` pull request. Direct commits, force-pushes and release tags on `development` are prohibited, and no other branches are permitted. See [docs/BRANCH_POLICY.md](docs/BRANCH_POLICY.md).
+
 ## Development phases
 
 1. **Gate 0 — Foundation and spike:** technical differential test completed and CI verified; formal review remains open.
 2. **B1a — Project foundation:** license and architecture decision recorded; the owner confirmed GPL-3.0-or-later on 2026-10-21. Clean-room handling is governed by the owner-approved sealed-source policy in ADR-0003; prior exposure remains documented.
-3. **B1b — Repository/toolchain baseline:** CMake, diagnostics, tests and CI are implemented; main CI is green and the clean-checkout local Windows run passed. Branch CI remains open.
+3. **B1b — Repository/toolchain baseline:** CMake, diagnostics, tests and CI are implemented; main CI is green and the clean-checkout local Windows run passed. Development CI remains open.
 4. **B1c — ISO Inspector prototype:** read-only ISO9660 and `SYSTEM.CNF` inspection, boot metadata, an explicit error taxonomy, ELF PT_LOAD checks, hashing and synthetic malformed-input tests are implemented. An initial real-disc inspection is recorded for Downhill Domination (USA); broader validation and the Gate 2 work (including safe extraction boundaries) remain open.
 5. **Recompiler MVP:** verified instruction catalog, decoder, IR, function discovery, deterministic code generation and differential tests.
 6. **First-game vertical slice:** boot, minimum runtime services, graphics, audio/input/save and repeatable gameplay.
