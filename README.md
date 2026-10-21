@@ -1,5 +1,7 @@
 # Recompile Ps2 To PC (RPTP)
 
+![RPTP project cover](docs/assets/rptp-cover.png)
+
 ![RPTP — From PlayStation 2 ISO to native Windows x64](docs/assets/rptp-cover.jpg)
 
 **From PlayStation 2 ISO to native Windows x64 — through static recompilation.**
