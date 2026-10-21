@@ -1,0 +1,400 @@
+#!/usr/bin/env python3
+"""Read-only ISO 9660 inspector for RPTP. No external dependencies."""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import re
+import sys
+from io import BytesIO
+from pathlib import Path
+from typing import BinaryIO
+
+BLOCK = 2048
+PVD_LBA = 16
+MAX_DESCRIPTORS = 256
+MAX_SYSTEM_CNF = 1024 * 1024
+MAX_DIRECTORY_ENTRIES = 100_000
+MAX_BOOT_COMPONENTS = 32
+MAX_PROGRAM_HEADERS = 4096
+CHUNK_SIZE = 1024 * 1024
+
+
+class InspectError(Exception):
+    def __init__(self, code: str, message: str):
+        super().__init__(message)
+        self.code = code
+        self.message = message
+
+
+def _u733(data: bytes, off: int, name: str) -> int:
+    if off < 0 or off + 8 > len(data):
+        raise InspectError("TRUNCATED_FIELD", f"{name} is truncated.")
+    le = int.from_bytes(data[off:off + 4], "little")
+    be = int.from_bytes(data[off + 4:off + 8], "big")
+    if le != be:
+        raise InspectError("BOTH_ENDIAN_MISMATCH", f"{name} has conflicting little- and big-endian values.")
+    return le
+
+
+def _u723(data: bytes, off: int, name: str) -> int:
+    if off < 0 or off + 4 > len(data):
+        raise InspectError("TRUNCATED_FIELD", f"{name} is truncated.")
+    le = int.from_bytes(data[off:off + 2], "little")
+    be = int.from_bytes(data[off + 2:off + 4], "big")
+    if le != be:
+        raise InspectError("BOTH_ENDIAN_MISMATCH", f"{name} has conflicting little- and big-endian values.")
+    return le
+
+
+def _name(raw: bytes) -> str:
+    if raw == b"\x00":
+        return "."
+    if raw == b"\x01":
+        return ".."
+    return raw.decode("ascii", errors="replace").rstrip("\x00")
+
+
+def _key(raw: bytes | str) -> str:
+    value = _name(raw) if isinstance(raw, bytes) else raw
+    return value.split(";", 1)[0].rstrip(".").casefold()
+
+
+class IsoReader:
+    def __init__(self, stream: BinaryIO, size: int, name: str):
+        self.stream = stream
+        self.size = size
+        self.name = name
+        self.volume_blocks = 0
+        self.root: dict[str, object] | None = None
+
+    def read_at(self, offset: int, size: int) -> bytes:
+        if offset < 0 or size < 0 or offset + size > self.size:
+            raise InspectError("IMAGE_BOUNDS", f"Byte range [{offset}, {offset + size}) is outside the image.")
+        self.stream.seek(offset)
+        data = self.stream.read(size)
+        if len(data) != size:
+            raise InspectError("IMAGE_TRUNCATED", f"Could not read {size} bytes at offset {offset}.")
+        return data
+
+    def extent(self, entry: dict[str, object]) -> tuple[int, int]:
+        first_lba = int(entry["lba"]) + int(entry["xa_len"])
+        length = int(entry["size"])
+        start = first_lba * BLOCK
+        limit = self.volume_blocks * BLOCK
+        if first_lba > self.volume_blocks or start + length > limit or start + length > self.size:
+            raise InspectError("EXTENT_OUT_OF_BOUNDS", f"Extent is outside the image or declared volume: {entry['name']}.")
+        return start, length
+
+    def parse_record(self, rec: bytes) -> dict[str, object]:
+        if len(rec) < 34 or rec[0] < 34 or rec[0] > len(rec):
+            raise InspectError("DIRECTORY_RECORD_LENGTH_INVALID", "Invalid or truncated ISO 9660 directory record.")
+        rec = rec[:rec[0]]
+        name_len = rec[32]
+        name_end = 33 + name_len
+        pad = 1 if name_len % 2 == 0 else 0
+        if name_end + pad > len(rec):
+            raise InspectError("DIRECTORY_IDENTIFIER_TRUNCATED", "Directory identifier extends beyond its record.")
+        entry = {
+            "name": _name(rec[33:name_end]),
+            "id": rec[33:name_end],
+            "xa_len": rec[1],
+            "lba": _u733(rec, 2, "extent location"),
+            "size": _u733(rec, 10, "data length"),
+            "flags": rec[25],
+            "directory": bool(rec[25] & 0x02),
+            "multi_extent": bool(rec[25] & 0x80),
+            "record_length": rec[0],
+            "volume_sequence": _u723(rec, 28, "volume sequence number"),
+        }
+        self.extent(entry)
+        return entry
+
+    def scan_pvd(self) -> bytes:
+        pvd = None
+        terminated = False
+        end = min(self.size // BLOCK, PVD_LBA + MAX_DESCRIPTORS)
+        for lba in range(PVD_LBA, end):
+            desc = self.read_at(lba * BLOCK, BLOCK)
+            if desc[1:6] != b"CD001":
+                raise InspectError("VOLUME_DESCRIPTOR_SIGNATURE", f"Descriptor at block {lba} has no CD001 signature.")
+            if desc[6] != 1:
+                raise InspectError("VOLUME_DESCRIPTOR_VERSION", f"Descriptor at block {lba} has unsupported version {desc[6]}.")
+            if desc[0] == 1 and pvd is None:
+                pvd = desc
+            if desc[0] == 255:
+                terminated = True
+                break
+        if not terminated:
+            raise InspectError("VOLUME_DESCRIPTOR_TERMINATOR_MISSING", "No volume descriptor terminator was found within the scan limit.")
+        if pvd is None:
+            raise InspectError("PRIMARY_VOLUME_DESCRIPTOR_MISSING", "No primary volume descriptor was found.")
+        return pvd
+
+    def parse_pvd(self, pvd: bytes) -> dict[str, object]:
+        self.volume_blocks = _u733(pvd, 80, "volume space size")
+        block_size = _u723(pvd, 128, "logical block size")
+        if block_size != BLOCK:
+            raise InspectError("UNSUPPORTED_LOGICAL_BLOCK_SIZE", f"Only {BLOCK}-byte logical blocks are supported; found {block_size}.")
+        if self.volume_blocks <= PVD_LBA:
+            raise InspectError("INVALID_VOLUME_SIZE", "Declared volume is too small.")
+        if self.volume_blocks * BLOCK > self.size:
+            raise InspectError("IMAGE_TRUNCATED", "Image is smaller than the volume space size in the PVD.")
+        root_len = pvd[156]
+        if root_len < 34 or 156 + root_len > BLOCK:
+            raise InspectError("ROOT_RECORD_INVALID", "Root directory record is invalid.")
+        root = self.parse_record(pvd[156:156 + root_len])
+        if not root["directory"] or root["id"] != b"\x00" or root["size"] == 0:
+            raise InspectError("ROOT_RECORD_INVALID", "PVD root record is not a valid non-empty root directory.")
+        self.root = root
+        return {
+            "volume_id": pvd[40:72].decode("ascii", errors="replace").replace("\x00", "").strip(),
+            "volume_space_blocks": self.volume_blocks,
+            "logical_block_size": block_size,
+            "primary_volume_descriptor_lba": PVD_LBA,
+        }
+
+    def list_dir(self, entry: dict[str, object]) -> list[dict[str, object]]:
+        if not entry["directory"]:
+            raise InspectError("NOT_A_DIRECTORY", f"{entry['name']} is not a directory.")
+        if entry["multi_extent"]:
+            raise InspectError("MULTI_EXTENT_UNSUPPORTED", f"Multi-extent directory is unsupported: {entry['name']}.")
+        start, size = self.extent(entry)
+        position = 0
+        items: list[dict[str, object]] = []
+        while position < size:
+            block_left = BLOCK - (position % BLOCK)
+            segment = min(block_left, size - position)
+            rec_len = self.read_at(start + position, 1)[0]
+            if rec_len == 0:
+                position += segment
+                continue
+            if rec_len < 34:
+                raise InspectError("DIRECTORY_RECORD_LENGTH_INVALID", f"Invalid record length {rec_len} at directory offset {position}.")
+            if rec_len > segment:
+                raise InspectError("DIRECTORY_RECORD_CROSSES_BLOCK", f"Directory record crosses a logical block at offset {position}.")
+            rec = self.read_at(start + position, rec_len)
+            child = self.parse_record(rec)
+            if child["id"] not in (b"\x00", b"\x01"):
+                items.append(child)
+                if len(items) > MAX_DIRECTORY_ENTRIES:
+                    raise InspectError("DIRECTORY_ENTRY_LIMIT", "Directory entry limit exceeded.")
+            position += rec_len
+        return items
+
+    def find_child(self, parent: dict[str, object], component: str) -> dict[str, object]:
+        wanted = _key(component)
+        matches = [entry for entry in self.list_dir(parent) if _key(entry["id"]) == wanted]
+        if not matches:
+            raise InspectError("BOOT_EXECUTABLE_NOT_FOUND", f"BOOT path component was not found: {component}.")
+        if len(matches) > 1:
+            raise InspectError("AMBIGUOUS_PATH", f"Multiple entries match BOOT path component: {component}.")
+        return matches[0]
+
+    def resolve_boot(self, value: str) -> tuple[dict[str, object], str | None]:
+        value = value.strip().strip('"').strip("'")
+        device = None
+        if ":" in value:
+            device, value = value.split(":", 1)
+            device = device.strip().casefold()
+        components = [part for part in re.split(r"[\\/]+", value) if part]
+        if not components:
+            raise InspectError("BOOT_PATH_EMPTY", "BOOT path is empty.")
+        if len(components) > MAX_DIRECTORY_DEPTH:
+            raise InspectError("BOOT_PATH_DEPTH_LIMIT", f"BOOT path exceeds {MAX_DIRECTORY_DEPTH} components.")
+        if any(part in (".", "..") for part in components):
+            raise InspectError("UNSAFE_BOOT_PATH", "BOOT path contains a dot or parent-directory component.")
+        assert self.root is not None
+        entry = self.root
+        for index, component in enumerate(components):
+            entry = self.find_child(entry, component)
+            if index < len(components) - 1 and not entry["directory"]:
+                raise InspectError("BOOT_PATH_NOT_DIRECTORY", f"Intermediate BOOT path component is not a directory: {component}.")
+        if entry["directory"]:
+            raise InspectError("BOOT_TARGET_IS_DIRECTORY", "BOOT path identifies a directory.")
+        if entry["multi_extent"]:
+            raise InspectError("MULTI_EXTENT_UNSUPPORTED", "Multi-extent BOOT executable is not supported.")
+        return entry, device
+
+    def read_entry(self, entry: dict[str, object], max_size: int) -> bytes:
+        start, size = self.extent(entry)
+        if size > max_size:
+            raise InspectError("FILE_SIZE_LIMIT", f"{entry['name']} exceeds the {max_size}-byte safety limit.")
+        return self.read_at(start, size)
+
+    def hash_entry(self, entry: dict[str, object]) -> str:
+        start, size = self.extent(entry)
+        digest = hashlib.sha256()
+        offset = 0
+        while offset < size:
+            count = min(CHUNK_SIZE, size - offset)
+            digest.update(self.read_at(start + offset, count))
+            offset += count
+        return digest.hexdigest()
+
+    def parse_elf(self, entry: dict[str, object]) -> dict[str, object]:
+        start, size = self.extent(entry)
+        if size < 52:
+            raise InspectError("BOOT_ELF_HEADER_TRUNCATED", "BOOT executable is smaller than an ELF32 header.")
+        h = self.read_at(start, min(size, 64))
+        if h[:4] != b"\x7fELF":
+            raise InspectError("BOOT_EXECUTABLE_NOT_ELF", "BOOT executable does not start with ELF magic.")
+        if h[4] != 1:
+            raise InspectError("UNSUPPORTED_ELF_CLASS", f"Expected ELF32, got class {h[4]}.")
+        if h[5] != 1:
+            raise InspectError("UNSUPPORTED_ELF_ENDIANNESS", f"Expected little-endian ELF, got data encoding {h[5]}.")
+        if h[6] != 1 or int.from_bytes(h[20:24], "little") != 1:
+            raise InspectError("ELF_VERSION_INVALID", "Unsupported ELF version.")
+        elf_type = int.from_bytes(h[16:18], "little")
+        machine = int.from_bytes(h[18:20], "little")
+        entry_point = int.from_bytes(h[24:28], "little")
+        phoff = int.from_bytes(h[28:32], "little")
+        ehsize = int.from_bytes(h[40:42], "little")
+        phentsize = int.from_bytes(h[42:44], "little")
+        phnum = int.from_bytes(h[44:46], "little")
+        if ehsize < 52 or ehsize > size:
+            raise InspectError("ELF_HEADER_SIZE_INVALID", "ELF32 header size is invalid.")
+        if phnum > MAX_PROGRAM_HEADERS:
+            raise InspectError("ELF_PROGRAM_HEADER_LIMIT", f"Program header count exceeds {MAX_PROGRAM_HEADERS}.")
+        if phnum:
+            if phentsize < 32 or phoff < ehsize or phoff + phentsize * phnum > size:
+                raise InspectError("ELF_PROGRAM_HEADERS_OUT_OF_BOUNDS", "ELF program header table is invalid or out of bounds.")
+        return {
+            "class": "ELF32",
+            "endianness": "little",
+            "type": elf_type,
+            "machine_id": machine,
+            "machine": "MIPS" if machine == 8 else "other",
+            "entry_point": entry_point,
+            "program_header_offset": phoff,
+            "program_header_entry_size": phentsize,
+            "program_header_count": phnum,
+        }
+
+    def inspect(self) -> dict[str, object]:
+        if self.size < (PVD_LBA + 1) * BLOCK:
+            raise InspectError("IMAGE_TOO_SMALL", "Image is too small to contain an ISO 9660 volume descriptor.")
+        if self.size % BLOCK:
+            raise InspectError("IMAGE_ALIGNMENT_INVALID", f"Image size is not a multiple of {BLOCK} bytes.")
+        iso = self.parse_pvd(self.scan_pvd())
+        assert self.root is not None
+        system_matches = [e for e in self.list_dir(self.root) if _key(e["id"]) == "system.cnf"]
+        if not system_matches:
+            raise InspectError("SYSTEM_CNF_NOT_FOUND", "SYSTEM.CNF was not found in the ISO root directory.")
+        if len(system_matches) != 1:
+            raise InspectError("SYSTEM_CNF_AMBIGUOUS", "Multiple root entries match SYSTEM.CNF.")
+        system = system_matches[0]
+        raw_config = self.read_entry(system, MAX_SYSTEM_CNF).decode("ascii", errors="replace").replace("\x00", "")
+        config: dict[str, str] = {}
+        for line in raw_config.splitlines():
+            if "=" in line:
+                key, value = line.split("=", 1)
+                if key.strip():
+                    config[key.strip().upper()] = value.strip()
+        boot_key = "BOOT2" if config.get("BOOT2") else ("BOOT" if config.get("BOOT") else None)
+        if boot_key is None:
+            raise InspectError("BOOT_CONFIG_MISSING", "SYSTEM.CNF has no non-empty BOOT2 or BOOT entry.")
+        executable, device = self.resolve_boot(config[boot_key])
+        elf = self.parse_elf(executable)
+        warnings: list[str] = []
+        if device and device != "cdrom0":
+            warnings.append(f"BOOT device is {device!r}; cdrom0 is expected for a typical PS2 disc.")
+        if elf["machine_id"] != 8:
+            warnings.append(f"BOOT ELF machine id is {elf['machine_id']}; EM_MIPS (8) is expected for PS2.")
+        return {
+            "status": "INSPECTED_WITH_WARNINGS" if warnings else "INSPECTED",
+            "input_name": self.name,
+            "image_size_bytes": self.size,
+            "iso9660": iso,
+            "system_cnf": {"path": system["name"], "boot_key": boot_key, "boot_value": config[boot_key], "fields": config},
+            "boot_executable": {"path": executable["name"], "size_bytes": executable["size"], "sha256": self.hash_entry(executable), "elf": elf},
+            "warnings": warnings,
+            "limitations": [
+                "Read-only ISO 9660 primary-volume-descriptor prototype; files are not extracted or modified.",
+                "Supports 2048-byte logical blocks and non-multi-extent path components only.",
+                "ELF inspection checks header and program-header table bounds; it does not recompile or launch the game.",
+                "No retail/commercial ISO is included in tests; broader PS2 disc compatibility is unverified.",
+            ],
+        }
+
+    def scan_pvd(self) -> bytes:
+        pvd = None
+        terminated = False
+        end = min(self.size // BLOCK, PVD_LBA + MAX_DESCRIPTORS)
+        for lba in range(PVD_LBA, end):
+            desc = self.read_at(lba * BLOCK, BLOCK)
+            if desc[1:6] != b"CD001":
+                raise InspectError("VOLUME_DESCRIPTOR_SIGNATURE", f"Descriptor at block {lba} has no CD001 signature.")
+            if desc[6] != 1:
+                raise InspectError("VOLUME_DESCRIPTOR_VERSION", f"Descriptor at block {lba} has unsupported version {desc[6]}.")
+            if desc[0] == 1 and pvd is None:
+                pvd = desc
+            if desc[0] == 255:
+                terminated = True
+                break
+        if not terminated:
+            raise InspectError("VOLUME_DESCRIPTOR_TERMINATOR_MISSING", "No volume descriptor terminator was found within the scan limit.")
+        if pvd is None:
+            raise InspectError("PRIMARY_VOLUME_DESCRIPTOR_MISSING", "No primary volume descriptor was found.")
+        return pvd
+
+
+def inspect_stream(stream: BinaryIO, size: int, name: str = "<stream>") -> dict[str, object]:
+    return IsoReader(stream, size, name).inspect()
+
+
+def inspect_bytes(data: bytes, name: str = "<memory>") -> dict[str, object]:
+    return inspect_stream(BytesIO(data), len(data), name)
+
+
+def inspect_path(path: Path) -> dict[str, object]:
+    try:
+        if not path.exists():
+            raise InspectError("INPUT_NOT_FOUND", f"Input file does not exist: {path}")
+        if not path.is_file():
+            raise InspectError("INPUT_NOT_FILE", f"Input path is not a regular file: {path}")
+        with path.open("rb") as stream:
+            return inspect_stream(stream, path.stat().st_size, str(path))
+    except InspectError:
+        raise
+    except OSError as exc:
+        raise InspectError("INPUT_UNREADABLE", f"Cannot read {path}: {exc}") from exc
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("image", type=Path, help="User-owned 2048-byte-sector ISO image, opened read-only")
+    parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
+    args = parser.parse_args()
+    try:
+        report = inspect_path(args.image)
+        if args.json:
+            print(json.dumps(report, indent=2, sort_keys=True))
+        else:
+            iso, cfg, boot = report["iso9660"], report["system_cnf"], report["boot_executable"]
+            print(f"RPTP ISO inspection: {report['status']}")
+            print(f"Input: {report['input_name']}")
+            print(f"Volume: {iso['volume_id'] or '(no volume identifier)'}")
+            print(f"Block size: {iso['logical_block_size']}; volume blocks: {iso['volume_space_blocks']}")
+            print(f"SYSTEM.CNF: {cfg['path']}")
+            print(f"{cfg['boot_key']}: {cfg['boot_value']}")
+            print(f"BOOT executable: {boot['path']} ({boot['size_bytes']} bytes)")
+            print(f"SHA-256: {boot['sha256']}")
+            elf = boot["elf"]
+            print(f"ELF: {elf['class']} {elf['endianness']}-endian, machine={elf['machine_id']}, entry=0x{elf['entry_point']:08X}")
+            for warning in report["warnings"]:
+                print(f"WARNING: {warning}")
+            print("No files were extracted or modified.")
+        return 0
+    except InspectError as exc:
+        output = {"status": "ERROR", "error_code": exc.code, "message": exc.message}
+        if args.json:
+            print(json.dumps(output, indent=2, sort_keys=True))
+        else:
+            print(f"RPTP inspect failed [{exc.code}]: {exc.message}", file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

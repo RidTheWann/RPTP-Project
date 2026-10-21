@@ -62,3 +62,11 @@ The spike covers a synthetic ELF32/EM_MIPS fixture and only ADDIU, ADDU, LW, SW,
 2. Owner reviews the historical source-exposure record and records the clean-room decision.
 3. Owner performs formal Gate 0 review.
 4. After those reviews, continue with the next approved phase; do not infer game compatibility from the synthetic spike.
+
+## B1c ISO inspector prototype
+
+- Added `tools/rptp_inspect.py`, a read-only standard-library ISO 9660 inspector.
+- Added `tests/test_iso_inspector.py` with synthetic-only valid and malformed-input cases.
+- Added `docs/ISO_INSPECTOR.md` for usage, scope and known limitations.
+- The inspector is not yet CI-verified at this snapshot; wait for the Windows/MSVC and Linux/GCC workflow result.
+- No commercial ISO, extracted game content, or copyrighted executable is added to the repository.

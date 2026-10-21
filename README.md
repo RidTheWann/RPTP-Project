@@ -35,6 +35,17 @@ The Windows run used MSVC x64 with C++20 and strict warnings. Both `windows_msvc
 
 **Not implemented or proven:** retail ISO inspection/boot, full R5900 semantics, function discovery for real games, EE kernel/syscalls, VU, GS graphics, IOP, CDVD, audio, controller, memory card, timing, or commercial-game compatibility.
 
+## ISO Inspector prototype
+
+RPTP now includes a read-only command-line ISO 9660 inspector for an image you are authorized to use. It reads the primary volume descriptor, locates root `SYSTEM.CNF`, resolves its `BOOT2` (or legacy `BOOT`) path, checks the boot file's ELF32 header/program-header table bounds, and reports a SHA-256 digest. It does not extract files, modify the ISO, execute the ELF, or recompile a game.
+
+```powershell
+python tools/rptp_inspect.py "D:\Games\your-owned-game.iso"
+python tools/rptp_inspect.py "D:\Games\your-owned-game.iso" --json
+```
+
+The inspector currently supports 2048-byte logical blocks and non-multi-extent entries. It is a first ISO-inspection milestone, not proof of compatibility with all PS2 disc layouts. Synthetic-only tests cover valid metadata and malformed-input paths; no commercial ISO is included in the repository.
+
 ## Development phases
 
 1. **Gate 0 — Foundation and spike:** technical differential test completed; formal review remains open.

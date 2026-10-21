@@ -24,8 +24,11 @@ REQUIRED_PATHS = (
     "docs/DECISIONS/ADR-0001-foundation-and-clean-room.md",
     "tests/fixtures/MANIFEST",
     "tests/test_gate0_spike.py",
+    "tests/test_iso_inspector.py",
     "tools/rptp_gate0_spike.py",
+    "tools/rptp_inspect.py",
     "tools/check_forbidden_artifacts.py",
+    "docs/ISO_INSPECTOR.md",
 )
 
 

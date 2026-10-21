@@ -91,3 +91,18 @@ Windows clean-machine testing, reproducible build checks, dependency/license aud
 ## Planning note
 
 The effort ranges in RISKS.md are low-confidence planning data, not delivery promises. The agent may recommend changes; the human project owner approves architecture, licensing and clean-room decisions.
+
+## B1c — Read-only ISO inspection
+
+**Prototype implemented in source; automated CI result pending.**
+
+- [x] Parse ISO 9660 primary volume descriptor and validate dual-endian fields.
+- [x] Locate root `SYSTEM.CNF` and resolve `BOOT2` / legacy `BOOT` path safely.
+- [x] Validate basic ELF32 little-endian header and program-header table bounds.
+- [x] Report boot executable size, metadata and SHA-256 without extracting or modifying files.
+- [x] Add synthetic-only tests for valid input and malformed-image paths.
+- [ ] Confirm CI passes on Windows/MSVC and Linux/GCC with the new inspector tests.
+- [ ] Validate against a small, owner-authorized set of real ISO layouts; record exact hashes and test outcomes without committing game images.
+- [ ] Review ISO 9660 variants and multi-extent handling before claiming broad disc compatibility.
+
+This phase is an inspector only. It does not launch a game, implement the PS2 runtime, or establish clean-room/legal disposition.
