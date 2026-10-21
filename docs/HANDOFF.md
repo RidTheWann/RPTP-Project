@@ -30,7 +30,6 @@ If a CI job fails, record the exact runner, command and error before updating pr
 
 ## Next review points
 
-1. Human owner confirms the license decision for the current session.
-2. Human owner reviews historical source exposure and records the disposition.
-3. Human owner completes formal Gate 0 review.
-4. After these decisions, push the branch and require green CI before treating B1b as passed; keep every capability claim tied to reproducible evidence.
+1. Human owner reviews historical source exposure and records the disposition.
+2. Human owner completes formal Gate 0 review.
+3. After these decisions, push the branch and require green CI before treating B1b as passed; keep every capability claim tied to reproducible evidence.

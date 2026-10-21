@@ -49,8 +49,8 @@ The inspector currently supports 2048-byte logical blocks and non-multi-extent e
 ## Development phases
 
 1. **Gate 0 — Foundation and spike:** technical differential test completed and CI verified; formal review remains open.
-2. **B1a — Project foundation:** license and architecture decision recorded; clean-room/source-exposure review remains an explicit concern, and the owner must confirm the license for this session.
-3. **B1b — Repository/toolchain baseline:** CMake, diagnostics, tests and CI are implemented and green; a clean-checkout Windows re-run remains open.
+2. **B1a — Project foundation:** license and architecture decision recorded; the owner confirmed GPL-3.0-or-later on 2026-10-21. Clean-room/source-exposure review remains an explicit concern.
+3. **B1b — Repository/toolchain baseline:** CMake, diagnostics, tests and CI are implemented; main CI is green and the clean-checkout local Windows run passed. Branch CI remains open.
 4. **B1c — ISO Inspector prototype:** read-only ISO9660 and `SYSTEM.CNF` inspection, executable metadata, hashing and synthetic malformed-input tests are implemented. Real-disc validation and the broader Gate 2 work (including safe extraction boundaries) remain open.
 5. **Recompiler MVP:** verified instruction catalog, decoder, IR, function discovery, deterministic code generation and differential tests.
 6. **First-game vertical slice:** boot, minimum runtime services, graphics, audio/input/save and repeatable gameplay.

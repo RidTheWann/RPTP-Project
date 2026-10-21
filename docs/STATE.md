@@ -4,7 +4,7 @@
 - **Remote repository:** RidTheWann/RPTP-Project, public, default branch main.
 - **Current main:** `371cec896095738ff16b9a81460b8b183063eae3`; the latest RPTP CI run on this commit is green.
 - **Architecture:** from-scratch static ahead-of-time recompilation of supported Emotion Engine code to C++, plus a native Windows x64 runtime planned.
-- **License:** GPL-3.0-or-later is recorded as the owner's selected project license in ADR-0001. No new owner confirmation was supplied for this reconciliation session, and no license decision was changed here.
+- **License:** GPL-3.0-or-later was confirmed by the owner on 2026-10-21. The decision remains recorded in ADR-0001; no license decision was changed here.
 - **CLI/log/error language:** English.
 - **Build outputs:** local only; do not commit build directories, Python caches or generated binaries.
 
@@ -13,7 +13,7 @@
 - **Gate 0 technical spike:** passed on Windows x64/MSVC and on the recorded Linux host toolchains. Formal Gate 0 disposition remains pending owner review.
 - **B1b repository/toolchain baseline:** CMake presets, the RPTP doctor, CTest targets and Windows/Linux CI are present. CI is green on current main only. The Windows preset passed locally in this checkout and in a clean clone at commit `83459c1`; the branch itself has not run CI, so B1b is not passed.
 - **B1c ISO inspector prototype:** implemented and covered by synthetic valid/malformed-input tests. It is not validated against real retail ISO layouts and does not establish broad disc compatibility.
-- **Owner decisions still open:** formal Gate 0 review, clean-room/source-exposure handling, and explicit license confirmation for this session.
+- **Owner decisions still open:** formal Gate 0 review and clean-room/source-exposure handling.
 
 ## Verification performed on 2026-10-21
 
@@ -86,14 +86,14 @@ The spike covers a synthetic ELF32/EM_MIPS fixture and only ADDIU, ADDU, LW, SW,
 
 1. **Formal Gate 0 review:** the human owner must review the gate's criteria and record the formal disposition.
 2. **Clean-room/source exposure:** prior technical exposure is documented in REFERENCES.md and ADR-0001. A historical exposure cannot be erased. The owner must decide whether affected areas require quarantine, restart or other explicit handling before expanding recompiler/runtime implementation.
-3. **License confirmation:** ADR-0001 records the owner's GPL-3.0-or-later selection, but this session did not receive a fresh confirmation. The owner must confirm before any license-related file changes, including SPDX headers.
+3. **License confirmation (resolved):** the owner confirmed GPL-3.0-or-later on 2026-10-21; SPDX headers were added to covered project source, build and workflow files.
 4. **Renderer:** no renderer has been selected or tested; ADR-0002 remains a plan.
 5. **Dependencies:** no new runtime dependency was introduced by the repository/toolchain baseline. Continue to record license, version and required notices before adding or vendoring dependencies.
 6. **Master prompt:** the exact full text of revised master prompt v1.2 was not available to the earlier runtime; known amendments are summarized rather than represented as a verbatim copy.
 
 ## Next steps
 
-1. Owner confirms the license decision and records formal Gate 0 and clean-room dispositions.
+1. Owner records formal Gate 0 and clean-room dispositions.
 2. Push the branch and require green CI before treating B1b as passed; the clean-checkout local run is not branch CI.
 3. Validate the ISO inspector only against owner-authorized discs, recording hashes and outcomes without committing game images.
 4. Continue only with the next owner-approved phase; do not infer game compatibility from the synthetic spike.

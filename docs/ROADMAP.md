@@ -26,6 +26,7 @@ This verifies only the synthetic ELF32/EM_MIPS instruction subset. It does not p
 - [x] Select from-scratch static recompilation as the project direction.
 - [x] Select GPL-3.0-or-later for original project material and publish the license text.
 - [x] Record architecture, fixture, artifact and third-party-license boundaries.
+- [x] Owner confirmed GPL-3.0-or-later on 2026-10-21.
 - [ ] Complete owner review of historical source exposure and decide whether any affected work must be quarantined, restarted or otherwise handled.
 
 ## B1b — Repository/toolchain baseline
