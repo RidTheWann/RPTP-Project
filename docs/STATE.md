@@ -47,6 +47,16 @@ On 2026-10-21 the branch was cloned into `<temp>\rptp-clean` from the local repo
 - Generated Gate 0 report: `PASS_LOCAL_DIFFERENTIAL_SPIKE`, `windows_msvc_verified: true`, `native_matches_oracle: true`, 22 trace steps; fixture and generated-C++ SHA-256 values match the recorded values.
 - This is a **clean-checkout local run**, not a substitute for CI on this branch. The branch was not pushed, so no branch CI result exists.
 
+### License-header verification (C3)
+
+After adding the SPDX headers and `tests/test_license_headers.py`, the same doctor, configure, build/CTest and unittest commands were run in the working checkout:
+
+- RPTP doctor: PASS.
+- CMake configure: PASS.
+- CMake build/CTest: PASS; 3 of 3 tests passed.
+- Python unit tests: PASS; 35 tests (12 Gate 0, 16 ISO inspector, 6 doctor, 1 license-header check).
+- `git grep -n -i -E 'D:\\|C:\\Users' -- docs evidence README.md` matched only the documented generic example paths in README.md and ISO_INSPECTOR.md; no personal path was found.
+
 ## Windows x64/MSVC evidence
 
 Command:
