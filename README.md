@@ -35,7 +35,7 @@ The published spike currently demonstrates:
 - A limited instruction subset: `ADDIU`, `ADDU`, `LW`, `SW`, `BEQ`, `BNE`, `J`, `JAL`, `JR` and `NOP`.
 - A reference interpreter and deterministic C++ generation.
 - Native-vs-oracle comparison of tested register state, memory writes, final PC/halt state and executed-PC trace, including tested delay-slot behavior.
-- An artifact guard and 12 unit tests.
+- An artifact guard and the Gate 0 unit tests.
 
 The Windows run used MSVC x64 with C++20 and strict warnings. Both `windows_msvc_verified` and `native_matches_oracle` were true in the run report. The tested native trace contains 22 steps.
 

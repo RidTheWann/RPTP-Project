@@ -343,7 +343,7 @@ def render_progress_svg() -> str:
     <text x="362" y="464" font-size="12" fill="#c9d1d9">Not started</text>
 
     <text x="40" y="504" font-size="12" fill="#8b949e">Percentages count only the labeled items in each checklist. They are not overall completion, boot support or game compatibility.</text>
-    <text x="40" y="526" font-size="12" fill="#8b949e">Evidence: 54 Python tests · CTest 3/3 · one retail ISO inspected read-only · Gate 0 formal review pending.</text>
+    <text x="40" y="526" font-size="12" fill="#8b949e">Evidence: Python test suite passes · CTest results in the verification log · one retail ISO inspected read-only · Gate 0 formal review pending.</text>
     <text x="40" y="548" font-size="12" fill="#8b949e">Next: broader retail ISO validation and safe extraction boundaries; runtime work remains gated.</text>
   </g>
 </svg>
@@ -452,7 +452,7 @@ def render_html() -> str:
       <section class="section">
         <h2>Evidence snapshot</h2>
         <ul>
-          <li>54 Python tests and CTest 3/3 pass in the recorded local run.</li>
+          <li>The Python test suite passes; CTest and Gate 0 results are recorded in <a href="VERIFICATION_LOG.md">docs/VERIFICATION_LOG.md</a>.</li>
           <li>One authorized retail ISO, <a href="games/downhill-domination/STATUS.md">Downhill Domination (USA)</a>, has been inspected read-only. No boot, recompilation or gameplay exists.</li>
           <li>Formal Gate 0 disposition and the clean-room review of the build/CI/doctor layer remain pending.</li>
         </ul>

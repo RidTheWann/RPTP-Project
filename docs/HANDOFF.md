@@ -5,12 +5,12 @@
 - Public repository: RidTheWann/RPTP-Project.
 - The README cover is published at docs/assets/rptp-cover.png; README should contain one cover reference.
 - The isolated Gate 0 spike is published. The owner ran scripts/run-msvc.ps1 on Windows x64 and recorded PASS_LOCAL_DIFFERENTIAL_SPIKE, native_matches_oracle true and windows_msvc_verified true.
-- The 12 original Gate 0 tests and artifact guard passed in the recorded Windows run. Linux/GCC and Linux/Clang spike evidence is also recorded.
+- The original Gate 0 tests and artifact guard passed in the recorded Windows run. Linux/GCC and Linux/Clang spike evidence is also recorded.
 - The work laptop is aligned to Visual Studio 2026 Build Tools 18.11.1 / MSVC 19.51.36260.0 and Python 3.13.16. Doctor, CMake configure, CTest and the Gate 0 spike pass locally.
-- The ISO inspector was expanded with single-volume checks, `SYSTEM.CNF`/BOOT validation, PVD/root/boot metadata, SHA-256, ELF PT_LOAD checks, warnings, an explicit error taxonomy and deterministic mutation smoke tests. 33 ISO inspector tests and 54 total tests pass; CTest was 3/3 in the recorded MSVC run.
+- The ISO inspector was expanded with single-volume checks, `SYSTEM.CNF`/BOOT validation, PVD/root/boot metadata, SHA-256, ELF PT_LOAD checks, warnings, an explicit error taxonomy and deterministic mutation smoke tests. The ISO inspector suite and the full Python suite pass; CTest results are recorded in `docs/VERIFICATION_LOG.md`.
 - Downhill Domination (USA) was inspected read-only and recorded in `docs/games/downhill-domination/STATUS.md`. No boot or native port exists. Every game worked on must get a `docs/games/<slug>/STATUS.md` record.
 - The project license is GPL-3.0-or-later for original RPTP material. Third-party licensing remains a per-dependency audit.
-- 2026-10-22 integrity pass: README, checklist and badge agree; 54 tests and the artifact guard pass locally. This environment has no MSVC `cl.exe`, so the Windows build, Gate 0 CTest target and `scripts/run-msvc.ps1` remain unverified here.
+- 2026-10-22 integrity pass: README, checklist and badge agree; the full test suite and the artifact guard pass locally. This environment has no MSVC `cl.exe`, so the Windows build, Gate 0 CTest target and `scripts/run-msvc.ps1` remain unverified here.
 - Formal Gate 0 acceptance is pending human review.
 - Historical source exposure involving PS2Recomp and PS2 Web Recomp remains documented; this must not be described as erased or resolved by the license decision.
 - On 2026-10-21 the owner adopted ADR-0003: those projects and other emulator/recompiler implementations are sealed. Do not access them again; new work must be independently derived from neutral specifications and tests. `docs/CLEAN_ROOM_AUDIT.md` tracks component status; no file is certified clean-room, and the build/CI/doctor layer is `Review required`.
