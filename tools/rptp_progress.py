@@ -30,7 +30,6 @@ FOUNDATION = [
     ("Doctor", "verified"),
     ("Artifact guard", "verified"),
     ("CI", "verified"),
-    ("ADR-0003", "verified"),
     ("ISO 9660 PVD", "verified"),
     ("SYSTEM.CNF", "verified"),
     ("BOOT path", "verified"),
@@ -445,6 +444,7 @@ def render_html() -> str:
           <li><strong>Verified:</strong> the item has recorded evidence in <a href="STATE.md">docs/STATE.md</a>.</li>
           <li><strong>Partial / review open:</strong> technical work exists, but a required review or follow-up is pending.</li>
           <li><strong>Open:</strong> no implementation or evidence yet.</li>
+          <li><strong>Policy decisions:</strong> recorded in the ADRs; they are not counted as verified items.</li>
         </ul>
         <p>Percentages count only the labeled items in each checklist. They are not overall completion, boot support or game compatibility.</p>
       </section>
