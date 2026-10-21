@@ -2,7 +2,7 @@
 
 - **Status: NOT PASSED — evidence only.** Only the human owner records a Gate disposition.
 - **Base commit:** `d334139d11526e2abc4fad7d4ad09eced3b7da4a`; CI run `39664774001` passed Windows x64/MSVC and Linux/GCC.
-- **Local follow-up:** commits after `d334139`, including `6ae4a3a`, `33d8392` and `800b90a`; local-only and not CI-verified. See `docs/STATE.md` for the current history.
+- **Local follow-up:** commits after `d334139`; run `git log origin/main..main` for the current list. They are local-only and not CI-verified. See `docs/STATE.md` for status.
 - **Scope:** read-only ISO inspection and synthetic test evidence, per [ADR-0004](DECISIONS/ADR-0004-gate2-read-only-scope.md). No boot, extraction, recompilation or compatibility claim.
 
 ## Owner prerequisites
@@ -25,7 +25,7 @@
 | Extraction boundary | No extraction or output-directory feature exists; ADR-0004 records read-only scope and defers extraction. | Not a Gate 2 criterion. Future extraction needs a separate ADR and threat model. |
 | Multi-extent and ISO-variant support | Multi-extent layouts are rejected, not supported; Joliet, Rock Ridge and raw-sector variants are unsupported. | **Open by design; fail-closed.** |
 | Interleave field provenance | ECMA-119 5th edition (December 2024), Table 8 (p. 37) and §§10.1.8–10.1.9 (p. 40); independent field tests. | Evidenced. Interleaved file data remains unsupported. |
-| CI on the current evidence | `d334139` is green; commits after it, including `6ae4a3a`, `33d8392` and `800b90a`, are local-only. | **Open for the new commits.** |
+| CI on the current evidence | `d334139` is green; later local commits are not CI-verified. | **Open for the new commits.** |
 
 ## Retail sample limits
 
