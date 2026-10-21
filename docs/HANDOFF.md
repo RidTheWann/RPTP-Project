@@ -12,7 +12,7 @@
 
 ## Current phase
 
-B1b repository/toolchain baseline: CMake presets, rptp doctor, CTest wrappers, and Windows/MSVC + Linux CI. This phase adds tooling and verification only; do not expand R5900 instruction semantics or PS2 runtime implementation until the owner has reviewed the source-exposure record.
+B1b repository/toolchain baseline and B1c ISO inspector prototype: CMake presets, rptp doctor, CTest wrappers, the synthetic-only ISO inspector, and Windows/MSVC + Linux CI are present. Main commit `371cec8` has green CI (run `39561754883`). The reconciliation branch `chore/post-gate0-reconcile` has not been pushed, so it has no CI result. The clean-checkout local Windows run is pending. Do not expand R5900 instruction semantics or PS2 runtime implementation until the owner has reviewed the source-exposure record.
 
 ## Expected local commands
 
@@ -30,7 +30,7 @@ If a CI job fails, record the exact runner, command and error before updating pr
 
 ## Next review points
 
-1. Confirm both GitHub Actions jobs pass.
+1. Human owner confirms the license decision for the current session.
 2. Human owner reviews historical source exposure and records the disposition.
 3. Human owner completes formal Gate 0 review.
-4. After these decisions, continue with the next approved phase and keep every capability claim tied to reproducible evidence.
+4. After these decisions, push the branch and require green CI before treating B1b as passed; keep every capability claim tied to reproducible evidence.

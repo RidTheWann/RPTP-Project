@@ -22,7 +22,7 @@ Snapshot date: 2026-10-21.
 
 ## Current work
 
-The current infrastructure milestone adds CMake presets, an environment doctor, unit tests for diagnostic behavior, and CI for Windows/MSVC plus Linux/host compiler. This infrastructure must be authored independently and must not use previously viewed PS2 Web Recomp build files as templates.
+The repository baseline includes CMake presets, an environment doctor, unit tests for diagnostic behavior, and CI for Windows/MSVC plus Linux/host compiler. Main commit `371cec8` has green CI; the reconciliation branch has not been pushed and therefore has no branch CI result. This infrastructure must be authored independently and must not use previously viewed PS2 Web Recomp build files as templates.
 
 ## Open owner review
 
