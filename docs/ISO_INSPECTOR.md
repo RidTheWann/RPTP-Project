@@ -150,12 +150,13 @@ A warning does not mean the image is safe to boot or compatible with RPTP.
 
 ## Retail validation
 
-The current owner-authorized sample was inspected read-only on 2026-10-22 with inspector `25b4ab8`. The runtime folder path is intentionally omitted; per-title metadata and whole-file SHA-256 values are in the [game records](games/README.md).
+The owner-authorized local sample was surveyed read-only on 2026-10-22 with inspector `d51f0e7`. Five earlier records were inspected at `25b4ab8`; the three new records were also inspected read-only and all eight images were re-surveyed at `d51f0e7`. The runtime folder path is intentionally omitted; per-title metadata and whole-file SHA-256 values are in the [game records](games/README.md).
 
 - All sampled images are 2048-byte aligned, expose a 2048-byte logical block size and completed as `INSPECTED` with no warnings.
-- Four images report PVD volume space equal to the file sector count. `God of War II (USA)` reports a smaller PVD volume space; dual-layer media is **Dugaan**, not verified.
+- Seven images report PVD volume space equal to the file sector count. `God of War II (USA)` reports a smaller PVD volume space; dual-layer media is **Dugaan**, not verified.
 - Directory surveys found no multi-extent or interleaved records and no skipped unsupported directories in the sample. The field positions themselves were checked later against ECMA-119, 5th edition (December 2024), Table 8 and §§10.1.8–10.1.9; targeted synthetic tests reject each field independently. Interleaved layouts remain unsupported.
-- Boot executable sizes range from 1,691,684 to 4,918,740 bytes. The `Need for Speed - Most Wanted` boot executable exceeds the 4 MiB default materialization cap; the cap was not changed.
+- Boot executable sizes range from 1,691,684 to 5,684,592 bytes. Four images (`Need for Speed - Most Wanted`, `Bully`, and both San Andreas variants) have boot executables above the 4 MiB default materialization cap; their read-only inspections still completed and the cap was not changed.
+- The two San Andreas images share boot and `SYSTEM.CNF` hashes but have different whole-image hashes and PVD identifiers; the filename variant labels do not establish revision identity.
 - Surveying is metadata-only. The existing inspection pass still hashes `SYSTEM.CNF` and boot data and reads ELF metadata; no game files were extracted, executed or modified.
 - The sample is not evidence of broad retail-layout support, boot support or game compatibility.
 

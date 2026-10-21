@@ -250,3 +250,27 @@ Environment: Windows x64, Python 3.13.16, MSVC toolset 14.51.36231, CMake 4.1.0 
 - `scripts/run-msvc.ps1` invoked from a temporary directory outside the repository through `VsDevCmd.bat` — `PASS_LOCAL_DIFFERENTIAL_SPIKE`, `native_matches_oracle: true`, `windows_msvc_verified: true`, 28 instructions, 22 trace steps; the wrapper also ran the 84-test suite successfully.
 - No retail ISO was inspected in this session. No sealed project material was accessed.
 - These are local results only. The new commits are not pushed and are not CI-verified.
+
+## 2026-10-22 — local retail survey and new game records
+
+Inspector source revision: `d51f0e7` (the evidence/documentation changes in this entry were uncommitted during the runs). Environment: Windows x64, Python 3.13.16, MSVC toolset 14.51.36231, CMake 4.1.0 and Ninja 1.13.2 through the Visual Studio 18 Community developer environment.
+
+- Inventory: eight regular `*.iso` files in the owner's local image folder. Labels and byte sizes only; no absolute input paths are recorded here. Black (USA) 3,919,609,856; Bully (USA) 4,636,835,840; Downhill Domination (USA) 2,530,869,248; God of War II (USA) 8,533,671,936; Grand Theft Auto - San Andreas (Indonesian v6) 3,866,394,624; Grand Theft Auto - San Andreas (USA) (v3.00) 4,517,036,032; Need for Speed - Most Wanted (USA) (v2.00) 3,702,456,320; Resident Evil 4 (USA) 4,435,836,928.
+- Command per image: `python tools/rptp_inspect.py "<image>" --survey --json`. All eight exited `0` with status `SURVEYED`; no multi-extent records, interleaved records or skipped unsupported directories were reported.
+- Survey counts (`directory_count` / `file_count` / `max_depth`): Black 41/585/3; Bully 36/248/2; Downhill Domination 15/2338/1; God of War II 1/15/0; San Andreas Indonesian 29/299/3; San Andreas USA 29/299/3; Need for Speed 5/21/2; Resident Evil 4 2/8/1.
+- PVD volume space relative to the file: seven images `equal`; God of War II `smaller` by 4,265,869,312 bytes. Every input's byte size and last-write time were unchanged after its survey.
+- Commands for the three new images: `python tools/rptp_inspect.py "<image>" --json`. All three exited `0` with status `INSPECTED` and no warnings. Input size and last-write time were unchanged.
+- Bully: whole-image SHA-256 `6c95edf7803aa79fdc816295cf2e03066599a6693f7d543fbcdb78d1d1128d5e`; volume ID `BULLY`; boot `SLUS_212.69;1`, 5,132,120 bytes, SHA-256 `597d7816d922cf371d757e653368488c1983f95dcdea0dd70a733650727f52fc`; `SYSTEM.CNF` SHA-256 `aa69ad2655f3ae3b58df05ac58e5180107184cc4dd544c2347f67ae1326c41f7`; 19 `PT_LOAD` records.
+- San Andreas Indonesian v6: whole-image SHA-256 `4a00e35c7b4e1dd56a6f255cba4eb7e0f5aa7a175c2c3aff9b1e3c4f90e6304f`; volume ID `GTASA_PS2_ID_KHN`; boot `SLUS_209.46;1`, 5,684,592 bytes, SHA-256 `84d4980a1253c5490ebbd039ef17384af875de75636a21f3451951093e8fc789`; `SYSTEM.CNF` SHA-256 `7d48c5d05735d54498a2e7e96c9e687ed2f9c1c00a820a36f4c3f2240d8da0bd`; 10 `PT_LOAD` records.
+- San Andreas USA v3.00: whole-image SHA-256 `c94e9b16ffab9ab04dbf15109e8716a2bf0a853a246bd3d2641bf354a5068e6d`; volume ID `SAN_ANDREAS`; the same boot and `SYSTEM.CNF` hashes as the Indonesian image; 10 `PT_LOAD` records. The filename variant labels are not independently verified; both `SYSTEM.CNF` files report `VER = 3.00`.
+- The four boot executables above the 4 MiB materialization cap were Need for Speed 4,918,740; Bully 5,132,120; and both San Andreas images 5,684,592 bytes. Their read-only inspections completed; the cap was not changed.
+- Records added: `docs/games/bully/STATUS.md`, `docs/games/grand-theft-auto-san-andreas-indonesian-v6/STATUS.md` and `docs/games/grand-theft-auto-san-andreas-usa-v300/STATUS.md`; `docs/games/README.md` and `docs/COMPATIBILITY.md` were updated. Existing five records and their whole-image hashes were not re-derived.
+- No parser defect was reproduced by the eight real images, so no production code or synthetic fixture was changed.
+- `python -m unittest discover -s tests -v` — 84 tests, PASS.
+- `python tools/check_forbidden_artifacts.py --root .` — PASS.
+- `python tools/rptp_doctor.py` directly from the non-developer shell — FAIL only because `cl.exe` was not on `PATH`; the same command through `VsDevCmd.bat` — overall PASS.
+- `cmake --preset windows-msvc` and `cmake --build --preset windows-msvc` through `VsDevCmd.bat` — PASS; CTest 3/3 PASS. A separate `ctest --test-dir build/cmake-msvc --output-on-failure` — 3/3 PASS.
+- `scripts/run-msvc.ps1` invoked from a temporary directory outside the repository through `VsDevCmd.bat` — `PASS_LOCAL_DIFFERENTIAL_SPIKE`, `native_matches_oracle: true`, `windows_msvc_verified: true`, 28 instructions, 22 trace steps.
+- `git diff --check` — PASS.
+- Read-only throughout: no image was extracted, modified, mounted, booted, emulated or executed. Raw local JSON contains absolute input paths and remains under ignored `build/session-iso-validation/`.
+- No sealed project material was accessed. These results are local only; the current evidence changes are not pushed and have no CI run.
