@@ -21,6 +21,8 @@ Access date for the public technical references below: 2026-10-21; ECMA-119 fift
 
 **ECMA-119 spec text (checked 2026-10-22):** Ecma International, *ECMA-119, 5th edition (December 2024)*, Table 8 (p. 37) assigns BP 27 to File unit size and BP 28 to Interleave gap size; §§10.1.8–10.1.9 (p. 40) define both as 8-bit fields that are zero unless the file section is recorded in interleaved mode. Because BP numbering starts at 1, the zero-based record indexes are 26 and 27, matching `rec[26]` and `rec[27]`. The inspector rejects either non-zero value with `INTERLEAVED_UNSUPPORTED`; targeted synthetic tests cover each byte independently and verify that input bytes are unchanged. Interleaved layouts remain unsupported.
 
+**ECMA-119 volume-space text (checked 2026-10-22):** *ECMA-119, 5th edition (December 2024)*, §9.4.9 (p. 26) defines Volume space size (BP 81 to 88) as a 32-bit number of logical blocks in which the volume space of the volume is recorded. The inspector reads this field in both-endian form, rejects an image smaller than the declaration, and bounds directory and file reads to the declared volume. An image larger than the declared volume is accepted; bytes beyond it are not treated as ISO 9660 content. This standard text does not explain layered PS2 media or the meaning of such extra bytes.
+
 ## Verification labels
 
 - **Verified by local test:** the synthetic fixture is reproducible; its parser accepts it and rejects selected malformed inputs; generated C++ matches the reference interpreter for the supported fixture path. The recorded runs include Linux/GCC, Linux/Clang and Windows x64/MSVC.
