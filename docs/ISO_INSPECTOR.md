@@ -130,13 +130,13 @@ A warning does not mean the image is safe to boot or compatible with RPTP.
 - Multi-extent and interleaved entries are rejected explicitly rather than merged or decoded.
 - ELF validation is intentionally limited to the header, program-header table and PT_LOAD file bounds; it does not validate every loader convention or PS2-specific memory layout.
 - The inspector does not prove that the executable is a valid PS2 game, does not emulate or recompile it, and does not prove compatibility.
-- Tests use synthetic images generated in memory. Do not upload commercial ISO images or extracted copyrighted game files to the repository.
+- Tests use synthetic images generated in memory and in temporary directories. Do not upload commercial ISO images or extracted copyrighted game files to the repository.
 - One owner-authorized real ISO (Downhill Domination USA) has been inspected read-only. Broader retail layouts and owner-authorized disc validation remain pending.
 
 ## Verification status
 
 - Verified locally on 2026-10-21 with Visual Studio 2026 Build Tools 18.11.1, MSVC 19.51.36260.0, Python 3.13.16, CMake 4.1.0 and Ninja 1.13.2.
-- The full Python suite passes; the ISO-inspector tests cover valid metadata, malformed inputs, multi-volume/multi-extent rejection, ELF PT_LOAD validation, deterministic mutation smoke, and CLI JSON success/error paths, alongside the existing Gate 0/doctor/license/game-record checks. Results are recorded in [docs/VERIFICATION_LOG.md](VERIFICATION_LOG.md).
+- The full Python suite passes; the ISO-inspector tests cover valid metadata, malformed inputs, multi-volume/multi-extent/interleaved rejection, ELF PT_LOAD validation, deterministic in-memory and file-based mutation checks, and CLI JSON success/error paths, alongside the existing Gate 0/doctor/license/game-record checks. Results are recorded in [docs/VERIFICATION_LOG.md](VERIFICATION_LOG.md).
 - The Windows MSVC CMake preset passes its CTest targets; results are recorded in the verification log.
 - One real sample: Downhill Domination (USA), 2,530,869,248 bytes, is `INSPECTED`; `BOOT2` resolves to `SCUS_971.77`, an ELF32/EM_MIPS executable with one PT_LOAD segment and no warnings. The record is `docs/games/downhill-domination/STATUS.md`.
 - CI runs `39594267744`, `39594147110` and `39594304857` are green for Windows x64/MSVC and Linux/GCC.

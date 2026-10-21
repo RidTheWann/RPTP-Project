@@ -156,6 +156,21 @@ def _padded_config(size: int = 1000) -> bytes:
     return base + b"#" * (size - len(base))
 
 
+def _mutate(base: bytes, rng: random.Random) -> bytes:
+    data = bytearray(base)
+    mode = rng.randrange(3)
+    if mode == 0:
+        for _ in range(rng.randint(1, 4)):
+            data[rng.randrange(len(data))] = rng.randrange(256)
+    elif mode == 1:
+        data = data[:rng.randrange(len(data) + 1)]
+    else:
+        start = rng.randrange(len(data))
+        chunk = data[start:start + rng.randint(1, 64)]
+        data[start:start + len(chunk)] = b"\x00" * len(chunk)
+    return bytes(data)
+
+
 class IsoInspectorTests(unittest.TestCase):
     def test_inspects_synthetic_iso_and_elf(self):
         report = inspector.inspect_bytes(bytes(_iso()), "memory.iso")
@@ -442,22 +457,29 @@ class IsoInspectorTests(unittest.TestCase):
         base = bytes(_iso())
         rng = random.Random(20261021)
         for _ in range(250):
-            data = bytearray(base)
-            mode = rng.randrange(3)
-            if mode == 0:
-                for _ in range(rng.randint(1, 4)):
-                    data[rng.randrange(len(data))] = rng.randrange(256)
-            elif mode == 1:
-                data = data[:rng.randrange(len(data) + 1)]
-            else:
-                start = rng.randrange(len(data))
-                chunk = data[start:start + rng.randint(1, 64)]
-                data[start:start + len(chunk)] = b"\x00" * len(chunk)
+            data = _mutate(base, rng)
             try:
-                report = inspector.inspect_bytes(bytes(data), "mutated.iso")
+                report = inspector.inspect_bytes(data, "mutated.iso")
             except inspector.InspectError:
                 continue
             self.assertIn(report["status"], ("INSPECTED", "INSPECTED_WITH_WARNINGS"))
+
+    def test_file_mutations_preserve_input_bytes(self):
+        base = bytes(_iso())
+        rng = random.Random(20261022)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "mutated.iso"
+            for _ in range(50):
+                data = _mutate(base, rng)
+                path.write_bytes(data)
+                before = hashlib.sha256(data).hexdigest()
+                try:
+                    report = inspector.inspect_path(path)
+                except inspector.InspectError:
+                    pass
+                else:
+                    self.assertIn(report["status"], ("INSPECTED", "INSPECTED_WITH_WARNINGS"))
+                self.assertEqual(before, hashlib.sha256(path.read_bytes()).hexdigest())
 
 
 if __name__ == "__main__":
