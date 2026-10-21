@@ -23,7 +23,7 @@ Snapshot date: 2026-10-22.
 
 ## Current work
 
-The repository baseline includes CMake presets, an environment doctor, unit tests for diagnostic behavior, and CI for Windows/MSVC plus Linux/host compiler. PR #1 merged as `5bf62b2`; CI runs `39594267744`, `39594147110` and `39594304857` passed. This infrastructure must be authored independently and must not use previously viewed PS2 Web Recomp build files as templates. The ISO inspector has been exercised against one owner-authorized retail ISO (Downhill Domination USA); the result is a read-only metadata record, not a boot or port.
+The repository baseline includes CMake presets, an environment doctor, unit tests for diagnostic behavior, and CI for Windows/MSVC plus Linux/host compiler. PR #1 merged as `5bf62b2`; the current published tip is `d334139`, and CI run `39664774001` passed on both jobs. This infrastructure must be authored independently and must not use previously viewed PS2 Web Recomp build files as templates. The ISO inspector has been exercised against five owner-authorized retail ISOs read-only (Black, Downhill Domination, God of War II, Need for Speed - Most Wanted and Resident Evil 4); the results are metadata records, not boots or ports.
 
 ## Open owner review
 

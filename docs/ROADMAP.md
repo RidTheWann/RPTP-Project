@@ -41,6 +41,7 @@ This verifies only the synthetic ELF32/EM_MIPS instruction subset. It does not p
 - [x] Confirm both GitHub Actions jobs passed on the previously published commit (`371cec8`, run `39561754883`).
 - [x] Confirm PR #1 CI (`39594147110`) passed the Windows and Linux jobs, then merge.
 - [x] Confirm CI runs (`39594267744`) and (`39594304857`) passed after the merge.
+- [x] Confirm post-publication CI run (`39664774001`) passed on Windows x64/MSVC and Linux/GCC for `d334139`.
 - [x] Confirm dependency/license inventory remains complete before introducing any dependency; no third-party code is currently vendored or linked.
 - [x] Re-run the full Windows CMake preset from a clean checkout (local run at pre-push commit `83459c1` (now `b4d6fa7`; content unchanged); not a substitute for CI).
 

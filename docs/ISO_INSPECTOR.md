@@ -164,5 +164,5 @@ The current owner-authorized sample was inspected read-only on 2026-10-22 with i
 - The full Python suite passes; the ISO-inspector tests cover valid metadata, malformed inputs, multi-volume/multi-extent/interleaved rejection, ELF PT_LOAD validation, deterministic in-memory and file-based mutation checks, and CLI JSON success/error paths, alongside the existing Gate 0/doctor/license/game-record checks. Results are recorded in [docs/VERIFICATION_LOG.md](VERIFICATION_LOG.md).
 - The Windows MSVC CMake preset passes its CTest targets; results are recorded in the verification log.
 - The current owner-authorized retail sample is `INSPECTED` with no warnings; the records are indexed at `docs/games/README.md`. The directory survey and test-first evidence are recorded in [docs/VERIFICATION_LOG.md](VERIFICATION_LOG.md).
-- CI runs `39594267744`, `39594147110` and `39594304857` are green for Windows x64/MSVC and Linux/GCC.
+- CI runs `39594267744`, `39594147110`, `39594304857` and `39664774001` are green for Windows x64/MSVC and Linux/GCC. The latest run covers the published inspector and retail-record tip `d334139`.
 - Not verified: retail ISO layouts beyond the current sample, interleave field offsets, multi-extent support, other ISO 9660 variants, game boot and broad PS2 disc compatibility.
