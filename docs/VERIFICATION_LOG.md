@@ -120,3 +120,27 @@ Environment: Windows, plain PowerShell without the MSVC developer environment. P
 - `ctest --test-dir build/cmake-msvc -R "artifact_guard|python_unit_tests"`: 2/2 passed. The Gate 0 CTest target was not run because MSVC is unavailable in this environment.
 - `scripts/run-msvc.ps1`: exits 1 with the explicit `cl.exe` error before building.
 - `python tools/check_forbidden_artifacts.py --root .`: PASS.
+
+## 2026-10-22 — ISO inspector hardening local run
+
+Environment: Windows, plain PowerShell without the MSVC developer environment. Python 3.13.16, CMake 4.4.4, Ninja 1.13.2, git 2.56.0; `cl.exe` was not on `PATH`.
+
+Commands:
+
+    python tools/rptp_doctor.py
+    cmake --preset windows-msvc
+    cmake --build --preset windows-msvc
+    python -m unittest discover -s tests -v
+    powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-msvc.ps1
+    python tools/check_forbidden_artifacts.py --root .
+
+- Test-first evidence: the new `max_read_bytes`/`chunk_size` tests failed with `TypeError` before the API existed; the multi-extent directory and three interleaved-layout tests failed with `AssertionError: InspectError not raised` before the checks existed.
+- Full Python suite: PASS; 65 tests.
+- ISO inspector suite: PASS; 44 tests. Coverage includes bounded/chunked reads, short reads, truncated volume space, huge extents, multi-extent child directories, interleaved directory records, deterministic error code/message and file-based mutation hash invariance.
+- `python tools/check_forbidden_artifacts.py --root .`: PASS.
+- RPTP doctor: FAIL; the only failing check is the missing `cl.exe`. Python, project layout, CMake, Ninja, git and the artifact guard pass.
+- CMake configure (`windows-msvc`): PASS.
+- CMake build: FAIL at the `rptp-doctor` target for the same missing `cl.exe`; no C++ compilation was attempted, so the Windows build and Gate 0 CTest target are **Belum diverifikasi** in this environment.
+- `scripts/run-msvc.ps1`: exits 1 with the explicit `cl.exe` error before building.
+- No real ISO was inspected in this session. All new tests use synthetic images in memory or in a temporary directory.
+- These are local results only, not CI evidence. The hardening commits were not pushed.

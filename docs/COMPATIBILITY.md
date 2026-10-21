@@ -5,7 +5,7 @@ No commercial PS2 game has been booted or tested for gameplay. One owner-authori
 | Test item | Type | Current result | What this result means |
 |---|---|---|---|
 | `gate0-r5900-subset.elf` | Original synthetic ELF32/EM_MIPS fixture | `Inspect passed` / `Recompile passed` on Windows x64/MSVC and Linux host compilers | The specific instruction sequence compiles to native C++ and matches its test oracle. It is not a PS2 retail game and is not a compatibility claim. |
-| Synthetic ISO inspector fixtures | Generated ISO/ELF test data | `Inspect passed` | Metadata, malformed-input rejection, deterministic mutation smoke and CLI JSON paths pass in the ISO inspector suite. No real disc is involved. |
+| Synthetic ISO inspector fixtures | Generated ISO/ELF test data | `Inspect passed` | Metadata, malformed-input rejection, chunked-read limits, deterministic in-memory and file-based mutation checks and CLI JSON paths pass in the ISO inspector suite. No real disc is involved. |
 | Downhill Domination (USA) | Retail PS2 ISO | `Inspect passed (read-only)` | The inspector resolved `SYSTEM.CNF` and `BOOT2` and reported ELF32/EM_MIPS metadata. No boot, recompilation or gameplay was tested. See [the game record](games/downhill-domination/STATUS.md). |
 | Other retail PS2 ISOs | Retail game | `Not tested` | One real ISO layout is not evidence of broad compatibility. No boot or game-compatibility claim is made. |
 | Windows/MSVC | Build platform check | `Verified` | Visual Studio 2026 Build Tools, MSVC 19.51.36260.0: doctor, configure, CTest and Gate 0 differential spike pass locally; results are recorded in [docs/VERIFICATION_LOG.md](VERIFICATION_LOG.md). |
@@ -21,7 +21,7 @@ Fixture metadata:
 ISO inspector evidence:
 
 - The ISO inspector suite and the full Python suite pass; local Windows CTest and Gate 0 results are recorded in [docs/VERIFICATION_LOG.md](VERIFICATION_LOG.md).
-- Supported: single-volume ISO 9660 primary volume descriptors, 2048-byte logical blocks, root `SYSTEM.CNF`, `BOOT2`/`BOOT` path resolution, and ELF32 PT_LOAD metadata.
+- Supported: single-volume ISO 9660 primary volume descriptors, 2048-byte logical blocks, root `SYSTEM.CNF`, `BOOT2`/`BOOT` path resolution, ELF32 PT_LOAD metadata, and bounded/chunked file reads with a 4 MiB default cap.
 - Real-world sample: `Downhill Domination (USA)` passed read-only inspection; `BOOT2` resolves to `SCUS_971.77`, an ELF32/EM_MIPS executable with one PT_LOAD segment and no warnings. No boot or port exists.
 - Explicitly unsupported: multi-volume sets, multi-extent files/directories, interleaved files/directories, Joliet/Rock Ridge extensions, 2352-byte raw sectors and broad retail-layout validation.
 - The inspector is read-only and does not extract, boot, emulate or recompile a game.

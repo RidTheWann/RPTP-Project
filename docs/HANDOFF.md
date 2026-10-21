@@ -7,10 +7,11 @@
 - The isolated Gate 0 spike is published. The owner ran scripts/run-msvc.ps1 on Windows x64 and recorded PASS_LOCAL_DIFFERENTIAL_SPIKE, native_matches_oracle true and windows_msvc_verified true.
 - The original Gate 0 tests and artifact guard passed in the recorded Windows run. Linux/GCC and Linux/Clang spike evidence is also recorded.
 - The work laptop is aligned to Visual Studio 2026 Build Tools 18.11.1 / MSVC 19.51.36260.0 and Python 3.13.16. Doctor, CMake configure, CTest and the Gate 0 spike pass locally.
-- The ISO inspector was expanded with single-volume checks, `SYSTEM.CNF`/BOOT validation, PVD/root/boot metadata, SHA-256, ELF PT_LOAD checks, warnings, an explicit error taxonomy and deterministic mutation smoke tests. The ISO inspector suite and the full Python suite pass; CTest results are recorded in `docs/VERIFICATION_LOG.md`.
+- The ISO inspector was expanded with single-volume checks, `SYSTEM.CNF`/BOOT validation, PVD/root/boot metadata, SHA-256, ELF PT_LOAD checks, warnings, an explicit error taxonomy, chunked read limits, explicit interleaved/multi-extent rejection and deterministic in-memory/file-based mutation tests. The ISO inspector suite and the full Python suite pass; CTest results are recorded in `docs/VERIFICATION_LOG.md`.
 - Downhill Domination (USA) was inspected read-only and recorded in `docs/games/downhill-domination/STATUS.md`. No boot or native port exists. Every game worked on must get a `docs/games/<slug>/STATUS.md` record.
 - The project license is GPL-3.0-or-later for original RPTP material. Third-party licensing remains a per-dependency audit.
 - 2026-10-22 integrity pass: README, checklist and badge agree; the full test suite and the artifact guard pass locally. This environment has no MSVC `cl.exe`, so the Windows build, Gate 0 CTest target and `scripts/run-msvc.ps1` remain unverified here.
+- 2026-10-22 ISO inspector hardening: added checked bounds and chunked reads with a 4 MiB default cap, explicit `INTERLEAVED_UNSUPPORTED` rejection for directory records, multi-extent child-directory rejection, deterministic-error coverage and file-based mutation hash-invariance tests. The full Python suite and artifact guard pass locally; MSVC/CTest and CI remain unverified.
 - Formal Gate 0 acceptance is pending human review.
 - Historical source exposure involving PS2Recomp and PS2 Web Recomp remains documented; this must not be described as erased or resolved by the license decision.
 - On 2026-10-21 the owner adopted ADR-0003: those projects and other emulator/recompiler implementations are sealed. Do not access them again; new work must be independently derived from neutral specifications and tests. `docs/CLEAN_ROOM_AUDIT.md` tracks component status; no file is certified clean-room, and the build/CI/doctor layer is `Review required`.
@@ -40,4 +41,4 @@ If a CI job fails, record the exact runner, command and error before updating pr
 3. Arrange an independent review or re-derivation of the build/CI/doctor layer marked `Review required` in `docs/CLEAN_ROOM_AUDIT.md`; do not claim clean-room certification before it is recorded.
 4. Keep every capability claim tied to reproducible evidence. B1b technical checks and CI now pass; the independent clean-room review of the build/CI/doctor layer remains open.
 5. Continue validating the ISO inspector only against owner-authorized discs; keep `docs/games/` records current, record hashes and outcomes without committing game images, and do not promote compatibility from synthetic tests.
-6. Review multi-extent, ISO 9660 variants and safe extraction boundaries before treating Gate 2 as passed.
+6. Review multi-extent, interleaved and other ISO 9660 variants, plus safe extraction boundaries, before treating Gate 2 as passed.

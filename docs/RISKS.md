@@ -15,8 +15,8 @@
 | R-011 | CI workflow/toolchain drift creates false confidence or false failures. | Medium / Medium | Test Windows/MSVC and Linux/host separately; record runner/toolchain versions; do not equate CI green with game compatibility. | CI failure or runner image/toolchain change. |
 | R-012 | Checklist statuses in `tools/rptp_progress.py` remain hand-maintained and can drift from test evidence; only README/badge numeric agreement is guarded. | Medium / Medium | Recheck every checklist status when evidence changes; the progress-consistency test guards the published numbers, not the statuses themselves. | Any checklist status edit or new evidence claim. |
 | R-013 | `docs/COMPATIBILITY.md` and `docs/ISO_INSPECTOR.md` recorded 53 tests after the suite grew to 54; both files were outside the earlier integrity-pass allowed set. | High / Low | Resolved 2026-10-22: both files now state that the suites pass and point to `docs/VERIFICATION_LOG.md`. | Next documentation update. |
+| R-014 | `AGENTS.md` was present in the working tree but untracked; repository clones did not receive the agent rules. | Medium / Medium | Resolved 2026-10-22: tracked and committed as `ce1c57c` with the owner-approved rules. | Closed. |
 | R-015 | `docs/CLEAN_ROOM_AUDIT.md` and `docs/EXECUTION_CONTEXT.md` still hard-code test counts after Part 0 removed them from the allowed prose and progress tool. | High / Low | Update both files in a follow-up documentation change; they were outside the allowed set for this session. | Next documentation update. |
-| R-014 | `AGENTS.md` is present in the working tree but untracked; repository clones do not receive the agent rules. | Medium / Medium | Owner decision on whether to track `AGENTS.md`; this pass did not modify or commit it. | Next repository policy update. |
 
 ## Gate 3 and Gate 4 effort ranges (initial, low confidence)
 
