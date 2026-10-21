@@ -31,7 +31,7 @@ This verifies only the synthetic ELF32/EM_MIPS instruction subset. It does not p
 
 ## B1b — Repository/toolchain baseline
 
-**Status: technical baseline verified. CI is green, and the clean-checkout local Windows run passed. The build/CI/doctor layer is `Review required` in `docs/CLEAN_ROOM_AUDIT.md` and must not be described as clean-room certified. Formal Gate 0 remains pending. This work does not expand the PS2 instruction/runtime implementation.**
+**Status: technical baseline verified. CI is green for the published baseline, and the clean-checkout local Windows run passed. The build/CI/doctor layer is `Review required` in `docs/CLEAN_ROOM_AUDIT.md` and must not be described as clean-room certified. Formal Gate 0 remains pending. This work does not expand the PS2 instruction/runtime implementation.**
 
 - [x] Add a CMake project baseline and repeatable windows-msvc / host presets.
 - [x] Add rptp doctor environment and artifact-guard diagnostics.
