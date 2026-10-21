@@ -41,6 +41,6 @@ If a CI job fails, record the exact runner, command and error before updating pr
 1. Human owner completes formal Gate 0 review using [GATE0_REVIEW.md](GATE0_REVIEW.md) as the evidence package; the package itself does not close the gate.
 2. Enforce ADR-0003: keep sealed projects off-limits, preserve provenance, and quarantine any work that cannot demonstrate independent derivation.
 3. Arrange an independent review or re-derivation of the build/CI/doctor layer marked `Review required` in `docs/CLEAN_ROOM_AUDIT.md`; do not claim clean-room certification before it is recorded.
-4. Keep every capability claim tied to reproducible evidence. B1b technical checks and CI now pass; the independent clean-room review of the build/CI/doctor layer remains open.
+4. Keep every capability claim tied to reproducible evidence. B1b technical checks pass locally and CI is green for published `d334139`; later local commits are not CI-verified. The independent clean-room review of the build/CI/doctor layer remains open.
 5. Continue validating the ISO inspector only against owner-authorized discs; keep `docs/games/` records current, record hashes and outcomes without committing game images, and do not promote compatibility from synthetic tests.
 6. Review multi-extent and other ISO 9660 variants before treating Gate 2 as passed; interleaved layouts remain unsupported despite the spec-checked field mapping. Gate 2 is read-only under ADR-0004; extraction is deferred future work and requires a separate threat model.
