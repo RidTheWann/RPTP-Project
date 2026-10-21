@@ -201,8 +201,8 @@ class IsoReader:
         components = [part for part in re.split(r"[\\/]+", value) if part]
         if not components:
             raise InspectError("BOOT_PATH_EMPTY", "BOOT path is empty.")
-        if len(components) > MAX_DIRECTORY_DEPTH:
-            raise InspectError("BOOT_PATH_DEPTH_LIMIT", f"BOOT path exceeds {MAX_DIRECTORY_DEPTH} components.")
+        if len(components) > MAX_BOOT_COMPONENTS:
+            raise InspectError("BOOT_PATH_DEPTH_LIMIT", f"BOOT path exceeds {MAX_BOOT_COMPONENTS} components.")
         if any(part in (".", "..") for part in components):
             raise InspectError("UNSAFE_BOOT_PATH", "BOOT path contains a dot or parent-directory component.")
         assert self.root is not None
