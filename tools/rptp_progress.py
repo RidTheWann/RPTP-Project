@@ -344,7 +344,7 @@ def render_progress_svg() -> str:
 
     <text x="40" y="504" font-size="12" fill="#8b949e">Percentages count only the labeled items in each checklist. They are not overall completion, boot support or game compatibility.</text>
     <text x="40" y="526" font-size="12" fill="#8b949e">Evidence: Python test suite passes · CTest results in the verification log · authorized retail ISOs inspected read-only · Gate 0 formal review pending.</text>
-    <text x="40" y="548" font-size="12" fill="#8b949e">Next: ISO-variant review, interleave verification and safe extraction boundaries; runtime work remains gated.</text>
+    <text x="40" y="548" font-size="12" fill="#8b949e">Next: ISO-variant review and safe extraction boundaries; interleaved layouts remain unsupported and runtime work remains gated.</text>
   </g>
 </svg>
 '''
@@ -456,7 +456,7 @@ def render_html() -> str:
           <li>The current authorized retail sample has been inspected read-only; records are in the <a href="games/README.md">game work index</a>. No boot, recompilation or gameplay exists.</li>
           <li>Formal Gate 0 disposition and the clean-room review of the build/CI/doctor layer remain pending.</li>
         </ul>
-        <p>Next bounded work: ISO-variant review, interleave-field verification and safe extraction boundaries. Runtime and recompiler expansion remain gated by formal Gate 0.</p>
+        <p>Next bounded work: ISO-variant review and safe extraction boundaries. Interleaved layouts remain unsupported; runtime and recompiler expansion remain gated by formal Gate 0.</p>
       </section>
     </div>
 

@@ -44,7 +44,7 @@ JSON output is sorted by key and the report is deterministic for the same input 
 - The primary volume descriptor is present, and its volume-space, logical-block, volume-set and volume-sequence fields are validated in their ISO 9660 dual-endian forms.
 - Only single-volume sets with 2048-byte logical blocks are accepted.
 - The root directory record is non-empty, is a directory, and lies within the declared volume.
-- Directory records have valid lengths, non-empty identifiers, volume sequence 1, do not cross a logical-block boundary, and stay within fixed entry and directory bounds.
+- Directory records have valid lengths, non-empty identifiers, volume sequence 1, do not cross a logical-block boundary, and stay within fixed entry and directory bounds. Per ECMA-119, zero-based record bytes 26 and 27 are the eight-bit file-unit and interleave-gap fields; either non-zero value is rejected with `INTERLEAVED_UNSUPPORTED`.
 - Root `SYSTEM.CNF` must be a regular, single-extent file within the size limit. `BOOT2` takes precedence over legacy `BOOT`.
 - BOOT path resolution accepts `\` or `/`, rejects `.` and `..` components, bounds path depth, and rejects missing, ambiguous, intermediate-file and directory targets.
 - The boot file must be ELF32, little-endian, version 1, with a valid header and program-header table.
@@ -153,7 +153,7 @@ The current owner-authorized sample was inspected read-only on 2026-10-22 with i
 
 - All sampled images are 2048-byte aligned, expose a 2048-byte logical block size and completed as `INSPECTED` with no warnings.
 - Four images report PVD volume space equal to the file sector count. `God of War II (USA)` reports a smaller PVD volume space; dual-layer media is **Dugaan**, not verified.
-- Directory surveys found no multi-extent or interleaved records and no skipped unsupported directories in the sample. This does not validate the interleave field offsets, which remain **Belum diverifikasi: not checked against the spec text**.
+- Directory surveys found no multi-extent or interleaved records and no skipped unsupported directories in the sample. The field positions themselves were checked later against ECMA-119, 5th edition (December 2024), Table 8 and §§10.1.8–10.1.9; targeted synthetic tests reject each field independently. Interleaved layouts remain unsupported.
 - Boot executable sizes range from 1,691,684 to 4,918,740 bytes. The `Need for Speed - Most Wanted` boot executable exceeds the 4 MiB default materialization cap; the cap was not changed.
 - Surveying is metadata-only. The existing inspection pass still hashes `SYSTEM.CNF` and boot data and reads ELF metadata; no game files were extracted, executed or modified.
 - The sample is not evidence of broad retail-layout support, boot support or game compatibility.
@@ -161,8 +161,8 @@ The current owner-authorized sample was inspected read-only on 2026-10-22 with i
 ## Verification status
 
 - Verified locally on 2026-10-21 with Visual Studio 2026 Build Tools 18.11.1, MSVC 19.51.36260.0, Python 3.13.16, CMake 4.1.0 and Ninja 1.13.2.
-- The full Python suite passes; the ISO-inspector tests cover valid metadata, malformed inputs, multi-volume/multi-extent/interleaved rejection, ELF PT_LOAD validation, deterministic in-memory and file-based mutation checks, and CLI JSON success/error paths, alongside the existing Gate 0/doctor/license/game-record checks. Results are recorded in [docs/VERIFICATION_LOG.md](VERIFICATION_LOG.md).
+- The full Python suite passes; the ISO-inspector tests cover valid metadata, malformed inputs, multi-volume/multi-extent/interleaved rejection (including each interleave byte independently), ELF PT_LOAD validation, deterministic in-memory and file-based mutation checks, and CLI JSON success/error paths, alongside the existing Gate 0/doctor/license/game-record checks. Results are recorded in [docs/VERIFICATION_LOG.md](VERIFICATION_LOG.md).
 - The Windows MSVC CMake preset passes its CTest targets; results are recorded in the verification log.
 - The current owner-authorized retail sample is `INSPECTED` with no warnings; the records are indexed at `docs/games/README.md`. The directory survey and test-first evidence are recorded in [docs/VERIFICATION_LOG.md](VERIFICATION_LOG.md).
 - CI runs `39594267744`, `39594147110`, `39594304857` and `39664774001` are green for Windows x64/MSVC and Linux/GCC. The latest run covers the published inspector and retail-record tip `d334139`.
-- Not verified: retail ISO layouts beyond the current sample, interleave field offsets, multi-extent support, other ISO 9660 variants, game boot and broad PS2 disc compatibility.
+- Not verified: retail ISO layouts beyond the current sample, interleaved-layout support, multi-extent support, other ISO 9660 variants, game boot and broad PS2 disc compatibility. Interleave field positions are spec-checked, but decoding interleaved file data is not implemented.

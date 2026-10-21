@@ -1,6 +1,6 @@
 # References and provenance
 
-Access date for the public technical references below: 2026-10-21.
+Access date for the public technical references below: 2026-10-21; ECMA-119 fifth-edition PDF checked 2026-10-22.
 
 **Policy status:** On 2026-10-21 the owner adopted the sealed-source clean-room policy in [ADR-0003](DECISIONS/ADR-0003-sealed-source-clean-room-policy.md). The exposure records below are historical disclosures, not permitted implementation references. Do not access these projects again.
 
@@ -11,9 +11,9 @@ Access date for the public technical references below: 2026-10-21.
 | RPTP-REF-003 | Linux man-pages project, [elf(5)](https://man7.org/linux/man-pages/man5/elf.5.html) | ELF header/program-header organization and ELF32 program-segment field definitions for the synthetic fixture parser. | Generic ELF format only; this spike does not claim full support for retail PS2 ELF variants. |
 | RPTP-REF-004 | PS2DEV project, [PS2SDK documentation README](https://github.com/ps2dev/ps2sdk) | High-level confirmation that PS2 development distinguishes Emotion Engine and I/O Processor contexts; no PS2SDK source code is copied or linked. | Not used as an implementation template. The Gate 0 spike is a synthetic instruction test and does not implement PS2 system calls. |
 | RPTP-REF-005 | [MIPS architecture overview](https://en.wikipedia.org/wiki/MIPS_architecture), as a secondary cross-check | Background statement that classic MIPS control-flow instructions use a branch delay slot. | Secondary source; not authoritative for R5900-specific or PS2-specific behavior. The spike tests only its own narrow model; R5900 confirmation remains open. |
-| RPTP-REF-006 | Ecma International, [ECMA-119 (ISO 9660)](https://ecma-international.org/publications-and-standards/standards/ecma-119/) | Primary-volume-descriptor, directory-record and volume-sequence structures used by the read-only ISO inspector. | Generic ISO 9660 standard; does not cover Joliet/Rock Ridge, raw 2352-byte sectors or retail PS2 disc variants. |
+| RPTP-REF-006 | Ecma International, [ECMA-119 (ISO 9660)](https://ecma-international.org/publications-and-standards/standards/ecma-119/); [5th edition, December 2024 PDF](https://ecma-international.org/wp-content/uploads/ECMA-119_5th_edition_december_2024.pdf) | Primary-volume-descriptor, directory-record and volume-sequence structures used by the read-only ISO inspector, including the directory-record file-unit and interleave-gap fields. | Generic ISO 9660 standard; does not cover Joliet/Rock Ridge, raw 2352-byte sectors or retail PS2 disc variants. |
 
-**ECMA-119 spec text:** `NONE` was provided in the 2026-10-22 session. Directory-record field offsets, including the interleaving fields, are **Belum diverifikasi: not checked against the spec text**. The parser rejects non-zero interleaving fields defensively; the synthetic tests define the accepted behavior.
+**ECMA-119 spec text (checked 2026-10-22):** Ecma International, *ECMA-119, 5th edition (December 2024)*, Table 8 (p. 37) assigns BP 27 to File unit size and BP 28 to Interleave gap size; §§10.1.8–10.1.9 (p. 40) define both as 8-bit fields that are zero unless the file section is recorded in interleaved mode. Because BP numbering starts at 1, the zero-based record indexes are 26 and 27, matching `rec[26]` and `rec[27]`. The inspector rejects either non-zero value with `INTERLEAVED_UNSUPPORTED`; targeted synthetic tests cover each byte independently and verify that input bytes are unchanged. Interleaved layouts remain unsupported.
 
 ## Verification labels
 

@@ -196,3 +196,20 @@ Results:
 - Interleave-field offsets remain **Belum diverifikasi: not checked against the spec text**. The sample had zero interleaved records and does not validate those offsets.
 - Local MSVC verification via the Visual Studio developer environment: doctor PASS; `windows-msvc` configure/build PASS; CTest 3/3 PASS; `scripts/run-msvc.ps1` report `PASS_LOCAL_DIFFERENTIAL_SPIKE`, `native_matches_oracle: true`, `windows_msvc_verified: true`.
 - These are local results only, not CI evidence. The session-3 commits are not pushed; the session prompt prohibited pushing.
+
+## 2026-10-22 — state reconciliation and ECMA-119 interleave-field verification
+
+Environment: Windows x64, Python 3.13.16, MSVC toolset 14.51.36231, CMake 4.1.0 and Ninja 1.13.2 through the Visual Studio 18 Community developer environment.
+
+- P0 documentation commit: `6ae4a3a docs: reconcile published state with CI evidence`.
+- Published baseline before this work: `d334139d11526e2abc4fad7d4ad09eced3b7da4a`; local `main` matched `origin/main`. CI run `39664774001` passed Windows x64/MSVC and Linux/GCC.
+- Stale claims corrected: `docs/STATE.md` no longer says local `main` is ahead and CI-unverified; `docs/HANDOFF.md` no longer says session-3 commits are local/unpushed; current CI `39664774001` is recorded in `docs/ISO_INSPECTOR.md`, `docs/COMPATIBILITY.md` and `docs/ROADMAP.md`; `docs/EXECUTION_CONTEXT.md` now records five inspected titles instead of one.
+- Source retrieved: official [ECMA-119, 5th edition, December 2024 PDF](https://ecma-international.org/wp-content/uploads/ECMA-119_5th_edition_december_2024.pdf). Text extraction from the PDF confirmed Table 8 on p. 37 assigns BP 27 to File unit size and BP 28 to Interleave gap size; §§10.1.8–10.1.9 on p. 40 define both as 8-bit fields, zero unless the file section is interleaved. The zero-based indexes are 26 and 27.
+- Tests added: independent cases for file-unit-only and interleave-gap-only values on `SYSTEM.CNF`, the boot executable and a subdirectory; all must raise `INTERLEAVED_UNSUPPORTED`, and file-based cases must leave the input SHA-256 unchanged. No parser offset change was made.
+- Focused run: `python -m unittest tests.test_iso_inspector.IsoInspectorTests.test_ecma119_bp27_bp28_rejected_independently tests.test_iso_inspector.IsoInspectorTests.test_interleaved_field_rejection_preserves_input_bytes -v` — 2 tests, PASS.
+- Full Python suite: `python -m unittest discover -s tests -v` — 72 tests, PASS. ISO inspector subset: 51 tests.
+- Artifact guard: `python tools/check_forbidden_artifacts.py --root .` — PASS.
+- `cmake --preset windows-msvc` and `cmake --build --preset windows-msvc` — PASS; build target reported CTest 3/3. There is no `windows-msvc` CTest preset, so the direct follow-up used `ctest --test-dir build/cmake-msvc --output-on-failure` — 3/3 PASS.
+- `scripts/run-msvc.ps1` through the developer environment — `PASS_LOCAL_DIFFERENTIAL_SPIKE`, `native_matches_oracle: true`, `windows_msvc_verified: true`, fixture SHA-256 `b21f1f7793236d1ccba7308cc82f42d9f89915c87c0b037c46d8170f28349ca9`, generated C++ SHA-256 `5316e0f51ba8b1fa1252e409f38cb9ac7db7606fee17b28ef0dcf1be162ae795`.
+- Updated `docs/REFERENCES.md`, `docs/RISKS.md` R-017, `docs/STATE.md`, `docs/HANDOFF.md`, `docs/ISO_INSPECTOR.md`, `docs/COMPATIBILITY.md`, `docs/ROADMAP.md` and the generated progress text. Interleaved layouts remain unsupported.
+- These are local results only. The new commits are not pushed and are not CI-verified; the current master prompt prohibits pushing.

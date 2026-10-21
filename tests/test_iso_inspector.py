@@ -445,6 +445,42 @@ class IsoInspectorTests(unittest.TestCase):
             inspector.inspect_bytes(bytes(_iso(subdir_flags=0, subdir_interleave=(1, 1))))
         self.assertEqual(ctx.exception.code, "INTERLEAVED_UNSUPPORTED")
 
+    def test_ecma119_bp27_bp28_rejected_independently(self):
+        cases = (
+            ("SYSTEM.CNF file-unit", {"system_interleave": (1, 0)}),
+            ("SYSTEM.CNF interleave-gap", {"system_interleave": (0, 1)}),
+            ("boot executable file-unit", {"boot_interleave": (1, 0)}),
+            ("boot executable interleave-gap", {"boot_interleave": (0, 1)}),
+            ("subdirectory file-unit", {"subdir_flags": 0, "subdir_interleave": (1, 0)}),
+            ("subdirectory interleave-gap", {"subdir_flags": 0, "subdir_interleave": (0, 1)}),
+        )
+        for label, kwargs in cases:
+            with self.subTest(case=label):
+                with self.assertRaises(inspector.InspectError) as ctx:
+                    inspector.inspect_bytes(bytes(_iso(**kwargs)))
+                self.assertEqual(ctx.exception.code, "INTERLEAVED_UNSUPPORTED")
+
+    def test_interleaved_field_rejection_preserves_input_bytes(self):
+        cases = (
+            ("SYSTEM.CNF file-unit", {"system_interleave": (1, 0)}),
+            ("SYSTEM.CNF interleave-gap", {"system_interleave": (0, 1)}),
+            ("boot executable file-unit", {"boot_interleave": (1, 0)}),
+            ("boot executable interleave-gap", {"boot_interleave": (0, 1)}),
+            ("subdirectory file-unit", {"subdir_flags": 0, "subdir_interleave": (1, 0)}),
+            ("subdirectory interleave-gap", {"subdir_flags": 0, "subdir_interleave": (0, 1)}),
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "interleaved.iso"
+            for label, kwargs in cases:
+                with self.subTest(case=label):
+                    data = bytes(_iso(**kwargs))
+                    path.write_bytes(data)
+                    before = hashlib.sha256(data).hexdigest()
+                    with self.assertRaises(inspector.InspectError) as ctx:
+                        inspector.inspect_path(path)
+                    self.assertEqual(ctx.exception.code, "INTERLEAVED_UNSUPPORTED")
+                    self.assertEqual(before, hashlib.sha256(path.read_bytes()).hexdigest())
+
     def test_rejects_multi_volume_set(self):
         image = _iso()
         image[16 * BLOCK + 120:16 * BLOCK + 124] = _both16(2)

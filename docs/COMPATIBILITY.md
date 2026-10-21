@@ -28,7 +28,7 @@ ISO inspector evidence:
 - Supported: single-volume ISO 9660 primary volume descriptors, 2048-byte logical blocks, root `SYSTEM.CNF`, `BOOT2`/`BOOT` path resolution, ELF32 PT_LOAD metadata, and bounded/chunked file reads with a 4 MiB default cap.
 - Retail sample: the current owner-authorized titles passed read-only inspection with no warnings. Four have equal PVD volume space and file sector counts; `God of War II` reports a smaller PVD volume space (dual-layer is unverified). One boot executable (`Need for Speed - Most Wanted`) is larger than the 4 MiB default materialization cap. No boot or port exists.
 - Directory surveys of the sample found no multi-extent or interleaved records. Those layouts remain explicitly rejected by normal inspection.
-- Interleave field offsets are not verified against the ECMA-119 text; a zero-interleave sample does not validate them.
+- ECMA-119 5th edition Table 8 and §§10.1.8–10.1.9 confirm that zero-based record bytes 26 and 27 are the file-unit and interleave-gap fields. Targeted tests reject either field independently; interleaved layouts remain unsupported.
 - Explicitly unsupported: multi-volume sets, multi-extent files/directories, interleaved files/directories, Joliet/Rock Ridge extensions, 2352-byte raw sectors and broad retail-layout validation.
 - The inspector is read-only and does not extract, boot, emulate or recompile a game.
 

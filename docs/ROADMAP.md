@@ -66,6 +66,7 @@ A clean checkout can configure/build/test using documented commands; CI is green
 - [x] Confirm CI passes on Windows/MSVC and Linux/GCC.
 - [x] Record an initial owner-authorized real-ISO inspection (Downhill Domination USA) in `docs/games/downhill-domination/STATUS.md`.
 - [x] Validate against a broader owner-authorized set of real ISO layouts; record exact hashes and test outcomes without committing game images.
+- [x] Check the directory-record file-unit/interleave-gap field mapping against ECMA-119 and add independent synthetic tests for each byte.
 - [ ] Review ISO 9660 variants and multi-extent handling before claiming broad disc compatibility.
 
 This phase is an inspector only. It does not launch a game, implement the PS2 runtime, or establish clean-room/legal disposition.
@@ -83,7 +84,7 @@ This phase is an inspector only. It does not launch a game, implement the PS2 ru
 
 **Verified locally:** single-volume PVD validation, root `SYSTEM.CNF` inspection, BOOT path resolution, PVD/root/boot metadata, SHA-256, ELF PT_LOAD checks, metadata-only directory survey, explicit error codes, deterministic JSON, CLI JSON success/error, the ISO inspector suite and the full Python suite. CTest results and the retail sample are recorded in `docs/VERIFICATION_LOG.md`.
 
-**Still open:** retail layouts beyond the current sample, interleave-field verification, multi-extent and ISO-variant review, safe extraction boundaries and the owner's formal Gate 0 disposition. Clean-room handling is recorded in ADR-0003.
+**Still open:** retail layouts beyond the current sample, interleaved-file support, multi-extent and ISO-variant review, safe extraction boundaries and the owner's formal Gate 0 disposition. Clean-room handling is recorded in ADR-0003.
 
 **Pass criteria:** deterministic inspection results on synthetic fixtures, robust rejection of malformed inputs, no writes outside the requested output directory, and clear reporting when an image is unsupported.
 
