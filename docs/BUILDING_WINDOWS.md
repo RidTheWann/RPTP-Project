@@ -32,6 +32,6 @@ It checks the artifact guard, compiles and executes the generated C++ with MSVC,
 
 ## Evidence and limitations
 
-Check for PASS_LOCAL_DIFFERENTIAL_SPIKE, native_matches_oracle: true, and windows_msvc_verified: true in the local report. The report is a local build artifact and must not be committed. The checked-in evidence/ directory contains the previously recorded GCC/Clang evidence, not the machine's local MSVC output.
+Check for PASS_LOCAL_DIFFERENTIAL_SPIKE, native_matches_oracle: true, and windows_msvc_verified: true in the local report. The ignored build copy is a local artifact. A sanitized copy of the current Windows/MSVC report and its command record is checked in under `evidence/windows-msvc/`; `evidence/host-gcc/` holds the previously recorded GCC/Clang evidence.
 
 This spike uses one original synthetic ELF32/EM_MIPS fixture and a deliberately limited instruction subset. It does not prove full R5900 behavior, retail ISO support, PS2 runtime services, or compatibility with any commercial game. Formal Gate 0 acceptance remains subject to human review, including the recorded clean-room exposure question.
