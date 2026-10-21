@@ -44,6 +44,7 @@ On 2026-10-21 the branch was cloned into `<temp>\rptp-clean` from the local repo
 - CMake configure: PASS; MSVC `19.44.35227.0`, toolset `14.44.35207`.
 - CMake build/CTest: PASS; 3 of 3 tests passed.
 - Python unit tests: PASS; 34 tests.
+- Generated Gate 0 report: `PASS_LOCAL_DIFFERENTIAL_SPIKE`, `windows_msvc_verified: true`, `native_matches_oracle: true`, 22 trace steps; fixture and generated-C++ SHA-256 values match the recorded values.
 - This is a **clean-checkout local run**, not a substitute for CI on this branch. The branch was not pushed, so no branch CI result exists.
 
 ## Windows x64/MSVC evidence
