@@ -16,7 +16,7 @@
 
 ## Current phase
 
-B1b repository/toolchain baseline and B1c ISO inspector prototype: CMake presets, rptp doctor, CTest wrappers, the synthetic-only ISO inspector, and Windows/MSVC + Linux CI are present. Main commit `371cec8` has green CI (run `39561754883`). The reconciliation branch was renamed to `development` on 2026-10-21 after an email-only rewrite to GitHub noreply identities; the first `development -> main` pull request and development CI are pending. A clean-checkout local Windows run at pre-push commit `83459c1` (now `b4d6fa7`; content unchanged) passed; it is recorded in STATE.md and is not a substitute for branch CI. Gate 2 synthetic hardening and one real ISO inspection are locally verified, but broader real ISO layouts, multi-extent support and safe extraction boundaries remain open. Do not access sealed projects; apply ADR-0003 to all new work. Do not expand R5900 instruction semantics or PS2 runtime implementation until the owner completes the formal Gate 0 review.
+B1b repository/toolchain baseline and B1c ISO inspector prototype: CMake presets, rptp doctor, CTest wrappers, the synthetic-only ISO inspector, and Windows/MSVC + Linux CI are present. PR #1 (`development -> main`) merged as `5bf62b2`; main CI run `39594267744` and development sync run `39594304857` passed, and the branch-policy job passed on the PR run. A clean-checkout local Windows run at pre-push commit `83459c1` (now `b4d6fa7`; content unchanged) passed; it is recorded in STATE.md. Gate 2 synthetic hardening and one real ISO inspection are locally verified, but broader real ISO layouts, multi-extent support and safe extraction boundaries remain open. Do not access sealed projects; apply ADR-0003 to all new work. Do not expand R5900 instruction semantics or PS2 runtime implementation until the owner completes the formal Gate 0 review.
 
 ## Expected local commands
 
@@ -38,6 +38,6 @@ If a CI job fails, record the exact runner, command and error before updating pr
 2. Enforce ADR-0003: keep sealed projects off-limits, preserve provenance, and quarantine any work that cannot demonstrate independent derivation.
 3. Arrange an independent review or re-derivation of the build/CI/doctor layer marked `Review required` in `docs/CLEAN_ROOM_AUDIT.md`; do not claim clean-room certification before it is recorded.
 4. Keep the two-branch policy enforced: work on `development`, require green CI, and merge to `main` only through a `development -> main` pull request.
-5. After the Gate 0 disposition, require green development CI before treating B1b as passed; keep every capability claim tied to reproducible evidence.
+5. Keep every capability claim tied to reproducible evidence. B1b technical checks and development CI now pass; the independent clean-room review of the build/CI/doctor layer remains open.
 5. Continue validating the ISO inspector only against owner-authorized discs; keep `docs/games/` records current, record hashes and outcomes without committing game images, and do not promote compatibility from synthetic tests.
 6. Review multi-extent, ISO 9660 variants and safe extraction boundaries before treating Gate 2 as passed.

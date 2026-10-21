@@ -24,7 +24,7 @@ Snapshot date: 2026-10-21.
 
 ## Current work
 
-The repository baseline includes CMake presets, an environment doctor, unit tests for diagnostic behavior, and CI for Windows/MSVC plus Linux/host compiler. Main commit `371cec8` has green CI; the development branch carries the reconciliation and ISO inspector work. CI runs on development pushes and on pull requests, and the branch-policy job requires every pull request to be `development -> main`. This infrastructure must be authored independently and must not use previously viewed PS2 Web Recomp build files as templates. The ISO inspector has been exercised against one owner-authorized retail ISO (Downhill Domination USA); the result is a read-only metadata record, not a boot or port.
+The repository baseline includes CMake presets, an environment doctor, unit tests for diagnostic behavior, and CI for Windows/MSVC plus Linux/host compiler. PR #1 (`development -> main`) merged as `5bf62b2`; main CI run `39594267744`, PR CI run `39594147110`, and development sync run `39594304857` passed. CI runs on development and main pushes and on pull requests, and the branch-policy job requires every pull request to be `development -> main`. This infrastructure must be authored independently and must not use previously viewed PS2 Web Recomp build files as templates. The ISO inspector has been exercised against one owner-authorized retail ISO (Downhill Domination USA); the result is a read-only metadata record, not a boot or port.
 
 ## Open owner review
 
