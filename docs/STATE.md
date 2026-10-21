@@ -2,9 +2,9 @@
 
 - **Snapshot date:** 2026-10-21
 - **Remote repository:** RidTheWann/RPTP-Project, public, default branch main.
-- **Current main:** `371cec896095738ff16b9a81460b8b183063eae3`; the latest RPTP CI run on this commit is green.
-- **Branch model:** exactly `main` (release-only) and `development` (work); no other branches are allowed. See `docs/BRANCH_POLICY.md`.
-- **Development branch:** `development`; it contains the audited Gate 0 reconciliation, environment-alignment, ISO inspector hardening and game-record commits. The reconciliation branch was renamed to `development` after an email-only rewrite to GitHub noreply identities (content unchanged). CI and the first `development -> main` pull request are pending.
+- **Latest code release:** PR #1 merge commit `5bf62b271cd7aa7fa691f5ae4bdd8f0786bb9e42`; main CI run `39594267744` passed. The repository tip may be ahead by documentation-only follow-ups.
+- **Branch model:** exactly `main` (release-only) and `development` (work); no other branches are allowed on origin. See `docs/BRANCH_POLICY.md`.
+- **Development branch:** `development`; it contains the audited Gate 0 reconciliation, environment-alignment, ISO inspector hardening and game-record commits and is synced with main. The reconciliation branch was renamed to `development` after an email-only rewrite to GitHub noreply identities (content unchanged); development CI run `39594304857` passed.
 - **Architecture:** from-scratch static ahead-of-time recompilation of supported Emotion Engine code to C++, plus a native Windows x64 runtime planned.
 - **License:** GPL-3.0-or-later was confirmed by the owner on 2026-10-21. The decision remains recorded in ADR-0001; no license decision was changed here.
 - **CLI/log/error language:** English.
@@ -13,11 +13,11 @@
 ## Single current status
 
 - **Gate 0 technical spike:** passed on Windows x64/MSVC and on the recorded Linux host toolchains. Formal Gate 0 disposition remains pending owner review.
-- **B1b repository/toolchain baseline:** CMake presets, the RPTP doctor, CTest targets and Windows/Linux CI are present. CI is green on current main only. The Windows preset passed locally on the work laptop and in a clean clone at pre-push commit `83459c1` (now `b4d6fa7`; content unchanged); the development branch CI result is pending, so B1b is not passed. The build/CI/doctor layer is `Review required` in `docs/CLEAN_ROOM_AUDIT.md` and is not clean-room certified.
+- **B1b repository/toolchain baseline:** CMake presets, the RPTP doctor, CTest targets and Windows/Linux CI are present. CI is green on main and development, including the `development -> main` branch-policy check. The Windows preset passed locally on the work laptop and in a clean clone at pre-push commit `83459c1` (now `b4d6fa7`; content unchanged). Technical B1b checks pass; the build/CI/doctor layer remains `Review required` in `docs/CLEAN_ROOM_AUDIT.md` and is not clean-room certified.
 - **B1c ISO inspector prototype / Gate 2 synthetic hardening:** single-volume PVD parsing, root `SYSTEM.CNF` regular single-extent validation, BOOT path resolution, PVD/root/boot metadata, SHA-256, ELF PT_LOAD checks, warnings and an explicit error taxonomy are implemented. 33 ISO inspector tests and 53 total tests pass. An initial real-disc inspection is recorded for Downhill Domination (USA); broader retail ISO layouts, multi-extent support, safe extraction boundaries and broad disc compatibility remain unverified.
 - **Game work record:** Downhill Domination (USA) was inspected read-only; the record is `docs/games/downhill-domination/STATUS.md`. No boot, recompilation or native port exists.
 - **Clean-room/source-exposure:** on 2026-10-21 the owner selected the sealed-source policy in ADR-0003. PS2Recomp, PS2 Web Recomp, PCSX2, Play! and comparable implementations are sealed; do not access them again. Prior exposure remains documented and cannot be erased. Component-level provenance is tracked in `docs/CLEAN_ROOM_AUDIT.md`; no existing file is certified clean-room, and the build/CI/doctor layer is `Review required`.
-- **Owner decisions still open:** formal Gate 0 review. The two-branch policy is recorded in `docs/BRANCH_POLICY.md` and is not a gate substitute.
+- **Owner decisions still open:** formal Gate 0 review and the independent clean-room review of the build/CI/doctor layer. The two-branch policy is recorded in `docs/BRANCH_POLICY.md` and is not a gate substitute.
 
 ## Verification performed on 2026-10-21
 
@@ -32,8 +32,10 @@ The commands below were run from Developer PowerShell x64 on the work laptop. Th
 - RPTP doctor: PASS.
 - CMake configure: PASS; C++ compiler identified.
 - CMake build/CTest: PASS; 3 of 3 tests passed (`artifact_guard`, `python_unit_tests`, `gate0_differential_spike`).
-- Python unit tests: PASS; 34 tests in total (12 original Gate 0, 16 ISO inspector, 6 doctor).
+- Python unit tests: PASS; 34 tests at this earlier checkpoint (12 original Gate 0, 16 ISO inspector, 6 doctor). The current suite is 53 tests.
 - GitHub Actions run `39561754883` on main commit `371cec8`: Windows x64/MSVC and Linux/GCC jobs both completed successfully.
+- PR #1 CI run `39594147110`: `Branch policy`, Windows x64/MSVC and Linux/GCC all passed.
+- Main CI run `39594267744` and development sync run `39594304857`: both passed.
 
 ### Work-laptop clean-checkout run (C2)
 
@@ -47,9 +49,9 @@ On 2026-10-21 the branch was cloned into `<temp>\rptp-clean` from the local repo
 - RPTP doctor: PASS.
 - CMake configure: PASS.
 - CMake build/CTest: PASS; 3 of 3 tests passed.
-- Python unit tests: PASS; 34 tests.
+- Python unit tests: PASS; 34 tests at this earlier checkpoint. The current suite is 53 tests.
 - Generated Gate 0 report: `PASS_LOCAL_DIFFERENTIAL_SPIKE`, `windows_msvc_verified: true`, `native_matches_oracle: true`, 22 trace steps; fixture and generated-C++ SHA-256 values match the recorded values.
-- This is a **clean-checkout local run**, not a substitute for CI on the development branch. The development CI result is pending.
+- This is a **clean-checkout local run**, not a substitute for CI. Development CI was subsequently verified by runs `39594147110` and `39594304857`.
 
 ### Work-laptop license-header verification (C3)
 
@@ -58,7 +60,7 @@ After adding the SPDX headers and `tests/test_license_headers.py`, the same doct
 - RPTP doctor: PASS.
 - CMake configure: PASS.
 - CMake build/CTest: PASS; 3 of 3 tests passed.
-- Python unit tests: PASS; 35 tests (12 Gate 0, 16 ISO inspector, 6 doctor, 1 license-header check).
+- Python unit tests: PASS; 35 tests at this earlier checkpoint (12 Gate 0, 16 ISO inspector, 6 doctor, 1 license-header check). The current suite is 53 tests.
 - `git grep -n -i -E 'D:\\|C:\\Users' -- docs evidence README.md` matched only the documented generic example paths in README.md and ISO_INSPECTOR.md; no personal path was found.
 
 ### Work-laptop post-alignment verification (VS 2026)
@@ -74,7 +76,7 @@ The work laptop was aligned to the `371cec8` software reference and the checks w
 - CMake build/CTest: PASS; 3 of 3 tests passed.
 - Python unit tests: PASS; 53 tests (12 Gate 0, 33 ISO inspector, 6 doctor, 1 license-header check, 1 game-record check).
 - Gate 0 report: `PASS_LOCAL_DIFFERENTIAL_SPIKE`, `windows_msvc_verified: true`, `native_matches_oracle: true`, 22 trace steps; local ignored reports at `build/cmake-msvc/gate0/report.json` and `build/gate0-msvc/report.json`.
-- Branch CI has not run; B1b is still not passed.
+- Development CI run `39594304857` passed; B1b technical checks pass. The clean-room review of the build/CI/doctor layer remains open.
 
 ### ISO inspector hardening verification (Gate 2 synthetic scope)
 
@@ -111,12 +113,12 @@ The sanitized files under `evidence/windows-msvc/` were captured before the work
 
 The home-PC software/version record is the one at commit `371cec8`: MSVC x64 `19.51.36260.0`, with Python 3.10+, CMake 3.25+, Ninja, and a C++20 compiler as documented in README.md and BUILDING_WINDOWS.md.
 
-The work laptop now uses MSVC 19.51.36260.0 and Python 3.13.16. Its runs remain local evidence and do not replace this home-PC record or branch CI.
+The work laptop now uses MSVC 19.51.36260.0 and Python 3.13.16. Its runs remain local evidence and do not replace this home-PC record or CI evidence.
 
 ## Linux host toolchain evidence
 
 - Recorded host evidence (not rerun in this session): 12 original Gate 0 tests passed; the artifact guard passed; GCC 14.2.0 and Clang 17.0.0 builds passed the differential spike; repeated runs reproduced the fixture and generated-C++ hashes.
-- The Linux/GCC CI job on current main completed successfully in run `39561754883`.
+- The Linux/GCC CI job is green on main and development: runs `39594267744`, `39594147110` and `39594304857` completed successfully.
 
 ## Scope and blockers
 
