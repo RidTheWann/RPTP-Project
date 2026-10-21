@@ -28,22 +28,29 @@ add_custom_target(
 )
 
 if(BUILD_TESTING)
-    add_test(
-        NAME artifact_guard
-        COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/check_forbidden_artifacts.py" --root "${PROJECT_SOURCE_DIR}"
+    function(rptp_add_python_test name)
+        add_test(
+            NAME "${name}"
+            COMMAND "${Python3_EXECUTABLE}" ${ARGN}
+        )
+        set_tests_properties(
+            "${name}"
+            PROPERTIES WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+        )
+    endfunction()
+
+    rptp_add_python_test(
+        artifact_guard
+        "${PROJECT_SOURCE_DIR}/tools/check_forbidden_artifacts.py" --root "${PROJECT_SOURCE_DIR}"
     )
-    add_test(
-        NAME python_unit_tests
-        COMMAND "${Python3_EXECUTABLE}" -m unittest discover -s tests -v
+    rptp_add_python_test(
+        python_unit_tests
+        -m unittest discover -s tests -v
     )
-    add_test(
-        NAME gate0_differential_spike
-        COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/rptp_gate0_spike.py"
-                --out "${CMAKE_BINARY_DIR}/gate0" --compiler "${RPTP_GATE0_COMPILER}"
-    )
-    set_tests_properties(
-        artifact_guard python_unit_tests gate0_differential_spike
-        PROPERTIES WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+    rptp_add_python_test(
+        gate0_differential_spike
+        "${PROJECT_SOURCE_DIR}/tools/rptp_gate0_spike.py"
+        --out "${CMAKE_BINARY_DIR}/gate0" --compiler "${RPTP_GATE0_COMPILER}"
     )
 endif()
 

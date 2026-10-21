@@ -1,6 +1,7 @@
 # Clean-room provenance audit
 
 - **Audit date:** 2026-10-21
+- **Last evidence update:** 2026-10-22 — read-only Gate 2 scope and agent-led build re-derivation; statuses unchanged.
 - **Policy:** [ADR-0003](DECISIONS/ADR-0003-sealed-source-clean-room-policy.md)
 - **Exposure record:** [docs/REFERENCES.md](REFERENCES.md)
 
@@ -20,7 +21,7 @@ This audit tracks what can be said about existing work. It does not certify a fi
 |---|---|---|---|---|
 | Gate 0 synthetic fixture generator, ELF parser, oracle interpreter and C++ generator | Prior exposure included issue/release prose but no sealed `.cpp` implementation file. Generic MIPS/ELF references are recorded. | Gate 0 tests and differential trace, fixture and generated-source hashes, `docs/REFERENCES.md` | `Provisional independent` | Independent provenance review before Gate 3. Keep tests and hashes reproducible. |
 | ISO inspector | Uses ELF and ISO 9660 structures. No sealed source recorded. | ISO inspector tests and full suite pass; CTest results recorded in `docs/VERIFICATION_LOG.md`; ELF reference and ECMA-119 reference | `Provisional independent` | Independent provenance review before Gate 2 closure. |
-| CMake presets, CI workflows, doctor and build wrappers | Prior exposure included PS2 Web Recomp `CMakeLists.txt`, `scripts/port.sh` and `scripts/windows.py`. Functional overlap exists. | Independently authored claim only; no recorded template diff or independent review | `Review required` | A reviewer must confirm independent structure and expression, or the layer must be re-derived from current CMake/toolchain documentation and tests. B1b must not be described as clean-room certified meanwhile. |
+| CMake presets, CI workflows, doctor and build wrappers | Prior exposure included PS2 Web Recomp `CMakeLists.txt`, `scripts/port.sh` and `scripts/windows.py`. Functional overlap exists. | Agent-led re-derivation recorded in `docs/BUILD_PROVENANCE.md` against official CMake, Microsoft, GitHub Actions, Python and PowerShell references (`RPTP-REF-007`–`012`); guarded by `tests/test_build_contract.py`. Local evidence is recorded in `docs/VERIFICATION_LOG.md`. | `Review required` | An independent reviewer must confirm independent structure and expression against the exposure record, or the layer must be re-derived again. B1b must not be described as clean-room certified meanwhile. |
 | Runtime and recompiler expansion | Prior issue/release text included implementation-level descriptions. | None beyond the isolated synthetic spike | `Blocked` | Do not start until the formal Gate 0 disposition and a provenance plan for the affected area are recorded. |
 | Documentation and exposure record | Records prior access; not an implementation source. | `docs/REFERENCES.md`, ADR-0001, ADR-0003 | `Recorded` | Update whenever exposure changes; never use a sealed project as a reference. |
 | Synthetic binary fixtures | No game data. | `tests/fixtures/MANIFEST`, hashes, artifact guard | `Recorded` | Keep synthetic, manifest-registered and hash-checked. |
@@ -35,4 +36,4 @@ This audit tracks what can be said about existing work. It does not certify a fi
 
 ## Current conclusion
 
-No existing file is certified clean-room. The Gate 0 and ISO inspector code have recorded neutral-reference and test evidence; the build/CI/doctor layer requires independent review. The owner's sealed-source policy is in force, and no new PS2 Web Recomp material was accessed during this audit.
+No existing file is certified clean-room. The Gate 0 and ISO inspector code have recorded neutral-reference and test evidence; the build/CI/doctor layer has an agent-led re-derivation record and contract tests but still requires independent review. The owner's sealed-source policy is in force, and no new PS2 Web Recomp material was accessed during this audit.

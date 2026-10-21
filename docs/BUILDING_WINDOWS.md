@@ -28,7 +28,7 @@ The explicit runner is also available:
 
     powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-msvc.ps1
 
-It checks the artifact guard, compiles and executes the generated C++ with MSVC, and runs the Python tests. Preserve the complete output and inspect build/gate0-msvc/report.json.
+It checks the artifact guard, compiles and executes the generated C++ with MSVC, and runs the Python tests. It resolves the repository from the script location, so it can be invoked from any working directory. Preserve the complete output and inspect build/gate0-msvc/report.json.
 
 ## Evidence and limitations
 

@@ -31,7 +31,7 @@ This verifies only the synthetic ELF32/EM_MIPS instruction subset. It does not p
 
 ## B1b — Repository/toolchain baseline
 
-**Status: technical baseline verified. CI is green for the published baseline, and the clean-checkout local Windows run passed. The build/CI/doctor layer is `Review required` in `docs/CLEAN_ROOM_AUDIT.md` and must not be described as clean-room certified. Formal Gate 0 remains pending. This work does not expand the PS2 instruction/runtime implementation.**
+**Status: technical baseline verified. CI is green for the published baseline, and the clean-checkout local Windows run passed. The build/CI/doctor layer is `Review required` in `docs/CLEAN_ROOM_AUDIT.md`; its agent-led re-derivation record and contract tests are in [BUILD_PROVENANCE.md](BUILD_PROVENANCE.md) and `tests/test_build_contract.py`, and it must not be described as clean-room certified. Formal Gate 0 remains pending. This work does not expand the PS2 instruction/runtime implementation.**
 
 - [x] Add a CMake project baseline and repeatable windows-msvc / host presets.
 - [x] Add rptp doctor environment and artifact-guard diagnostics.
@@ -51,7 +51,7 @@ A clean checkout can configure/build/test using documented commands; CI is green
 
 ## B1c — Read-only ISO inspection prototype
 
-**Prototype expanded with metadata, explicit validation and deterministic malformed-input tests. The ISO inspector suite and the full Python suite pass locally; CI is green. The current owner-authorized retail sample has been inspected read-only; broad compatibility remains unverified.**
+**Prototype expanded with metadata, explicit validation and deterministic malformed-input tests. The ISO inspector suite and the full Python suite pass locally; CI is green for the published baseline. The current owner-authorized retail sample has been inspected read-only; broad compatibility remains unverified.**
 
 - [x] Parse ISO 9660 primary volume descriptor and validate dual-endian fields.
 - [x] Enforce single-volume PVD and directory volume sequences.

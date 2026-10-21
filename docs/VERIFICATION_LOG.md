@@ -213,3 +213,21 @@ Environment: Windows x64, Python 3.13.16, MSVC toolset 14.51.36231, CMake 4.1.0 
 - `scripts/run-msvc.ps1` through the developer environment — `PASS_LOCAL_DIFFERENTIAL_SPIKE`, `native_matches_oracle: true`, `windows_msvc_verified: true`, fixture SHA-256 `b21f1f7793236d1ccba7308cc82f42d9f89915c87c0b037c46d8170f28349ca9`, generated C++ SHA-256 `5316e0f51ba8b1fa1252e409f38cb9ac7db7606fee17b28ef0dcf1be162ae795`.
 - Updated `docs/REFERENCES.md`, `docs/RISKS.md` R-017, `docs/STATE.md`, `docs/HANDOFF.md`, `docs/ISO_INSPECTOR.md`, `docs/COMPATIBILITY.md`, `docs/ROADMAP.md` and the generated progress text. Interleaved layouts remain unsupported.
 - These are local results only. The new commits are not pushed and are not CI-verified; the current master prompt prohibits pushing.
+
+## 2026-10-22 — read-only Gate 2 scope and build provenance
+
+Environment: Windows x64, Python 3.13.16, MSVC toolset 14.51.36231, CMake 4.1.0 and Ninja 1.13.2 through the Visual Studio 18 Community developer environment.
+
+- Scope decision recorded in `docs/DECISIONS/ADR-0004-gate2-read-only-scope.md`; Gate 2 extraction remains unimplemented and future-only. Gate 2 is still not passed.
+- Gate 0 decision package added at `docs/GATE0_REVIEW.md`; it records prior evidence and owner options and does not close the gate.
+- Official references checked and recorded as `RPTP-REF-007`–`012`: CMake 3.25 presets manual, CMake 3.25 `add_test`, Microsoft MSVC command-line setup, GitHub Actions workflow syntax, Python `unittest` and PowerShell `about_Scripts`.
+- Agent-led build re-derivation: CMake test registration now uses one helper; `scripts/run-msvc.ps1` resolves the repository through `$PSScriptRoot`, restores the caller location in a `finally` block, and passes when invoked from a temporary directory. Build provenance and its limits are recorded in `docs/BUILD_PROVENANCE.md`; the audit status remains `Review required`.
+- `tests/test_build_contract.py`: 5 tests, PASS. It guards the CMake/preset/workflow/wrapper contracts and checks the recorded reference IDs and review status.
+- `python tools/rptp_doctor.py` through `VsDevCmd.bat` — PASS; Python 3.13.16, MSVC 14.51.36231, all required paths present, artifact guard PASS.
+- `cmake --preset windows-msvc` and `cmake --build --preset windows-msvc` through `VsDevCmd.bat` — PASS; the build target reported CTest 3/3 PASS.
+- `ctest --test-dir build/cmake-msvc --output-on-failure` from a plain shell — artifact guard and Python tests passed; `gate0_differential_spike` failed explicitly with `Compiler 'cl' was not found on PATH`. The same command through `VsDevCmd.bat` — 3/3 PASS. This is an environment limitation, not a repository defect.
+- `python -m unittest discover -s tests -v` — 77 tests, PASS. The license-header check initially skipped the new test while it was untracked; after staging, the license-header, build-contract and progress-consistency tests passed.
+- Artifact guard: `python tools/check_forbidden_artifacts.py --root .` — PASS.
+- `scripts/run-msvc.ps1` invoked from a temporary directory outside the repository through `VsDevCmd.bat` — `PASS_LOCAL_DIFFERENTIAL_SPIKE`, `native_matches_oracle: true`, `windows_msvc_verified: true`, 28 instructions, 22 trace steps, `/std:c++20 /EHsc /W4 /WX /permissive- /utf-8`, fixture SHA-256 `b21f1f7793236d1ccba7308cc82f42d9f89915c87c0b037c46d8170f28349ca9`, generated C++ SHA-256 `5316e0f51ba8b1fa1252e409f38cb9ac7db7606fee17b28ef0dcf1be162ae795`.
+- No retail ISO was inspected in this session. No sealed project material was accessed.
+- These are local results only. The new commits are not pushed and are not CI-verified.
