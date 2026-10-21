@@ -11,13 +11,13 @@
 ## Single current status
 
 - **Gate 0 technical spike:** passed on Windows x64/MSVC and on the recorded Linux host toolchains. Formal Gate 0 disposition remains pending owner review.
-- **B1b repository/toolchain baseline:** CMake presets, the RPTP doctor, CTest targets and Windows/Linux CI are present. CI is green on current main only. The Windows preset passed locally in this checkout and in a clean clone at commit `83459c1`; the branch itself has not run CI, so B1b is not passed.
+- **B1b repository/toolchain baseline:** CMake presets, the RPTP doctor, CTest targets and Windows/Linux CI are present. CI is green on current main only. The Windows preset passed locally on the work laptop and in a clean clone at commit `83459c1`; the branch itself has not run CI, so B1b is not passed.
 - **B1c ISO inspector prototype:** implemented and covered by synthetic valid/malformed-input tests. It is not validated against real retail ISO layouts and does not establish broad disc compatibility.
 - **Owner decisions still open:** formal Gate 0 review and clean-room/source-exposure handling.
 
 ## Verification performed on 2026-10-21
 
-The commands below were run from Developer PowerShell for Visual Studio 2022, x64, in this checkout:
+The commands below were run from Developer PowerShell x64 on the work laptop. The C1/C2/C3 runs predate the work-laptop toolchain alignment; the post-alignment run uses Visual Studio 2026 Build Tools 18.11.1 and Python 3.13.16. The canonical home-PC software/version reference is the record at commit `371cec8`; work-laptop runs are separate and do not replace it.
 
     python tools/rptp_doctor.py
     cmake --preset windows-msvc
@@ -25,13 +25,13 @@ The commands below were run from Developer PowerShell for Visual Studio 2022, x6
     powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-msvc.ps1
     python -m unittest discover -s tests -v
 
-- RPTP doctor: PASS (Python 3.11.9, MSVC, CMake, Ninja, git and artifact guard).
-- CMake configure: PASS; C++ compiler identified as MSVC 19.44.35227.0.
+- RPTP doctor: PASS.
+- CMake configure: PASS; C++ compiler identified.
 - CMake build/CTest: PASS; 3 of 3 tests passed (`artifact_guard`, `python_unit_tests`, `gate0_differential_spike`).
 - Python unit tests: PASS; 34 tests in total (12 original Gate 0, 16 ISO inspector, 6 doctor).
 - GitHub Actions run `39561754883` on main commit `371cec8`: Windows x64/MSVC and Linux/GCC jobs both completed successfully.
 
-### Clean-checkout local run (C2)
+### Work-laptop clean-checkout run (C2)
 
 On 2026-10-21 the branch was cloned into `<temp>\rptp-clean` from the local repository at commit `83459c1`, outside the working tree. From Developer PowerShell for Visual Studio 2022 (x64), in that clean clone:
 
@@ -41,13 +41,13 @@ On 2026-10-21 the branch was cloned into `<temp>\rptp-clean` from the local repo
     python -m unittest discover -s tests -v
 
 - RPTP doctor: PASS.
-- CMake configure: PASS; MSVC `19.44.35227.0`, toolset `14.44.35207`.
+- CMake configure: PASS.
 - CMake build/CTest: PASS; 3 of 3 tests passed.
 - Python unit tests: PASS; 34 tests.
 - Generated Gate 0 report: `PASS_LOCAL_DIFFERENTIAL_SPIKE`, `windows_msvc_verified: true`, `native_matches_oracle: true`, 22 trace steps; fixture and generated-C++ SHA-256 values match the recorded values.
 - This is a **clean-checkout local run**, not a substitute for CI on this branch. The branch was not pushed, so no branch CI result exists.
 
-### License-header verification (C3)
+### Work-laptop license-header verification (C3)
 
 After adding the SPDX headers and `tests/test_license_headers.py`, the same doctor, configure, build/CTest and unittest commands were run in the working checkout:
 
@@ -57,6 +57,21 @@ After adding the SPDX headers and `tests/test_license_headers.py`, the same doct
 - Python unit tests: PASS; 35 tests (12 Gate 0, 16 ISO inspector, 6 doctor, 1 license-header check).
 - `git grep -n -i -E 'D:\\|C:\\Users' -- docs evidence README.md` matched only the documented generic example paths in README.md and ISO_INSPECTOR.md; no personal path was found.
 
+### Work-laptop post-alignment verification (VS 2026)
+
+The work laptop was aligned to the `371cec8` software reference and the checks were rerun on 2026-10-21:
+
+- Visual Studio 2026 Build Tools 18.11.1; MSVC x64 19.51.36260.0, toolset 14.51.36231.
+- Python 3.13.16; CMake 4.1.0; Ninja 1.13.2; Windows 11 SDK 10.0.26100.
+- Required components installed: Desktop C++ Build Tools workload (`Microsoft.VisualStudio.Workload.VCTools`), MSVC x64/x86 latest, Windows 11 SDK, and C++ CMake tools.
+- Optional components not installed: C++ ATL, C++ Build Insights, Just-In-Time debugger, C++ profiling tools.
+- RPTP doctor: PASS (Python 3.13.16, MSVC 19.51.36260, CMake, Ninja, git, artifact guard).
+- CMake configure: PASS; compiler identified as MSVC 19.51.36260.0.
+- CMake build/CTest: PASS; 3 of 3 tests passed.
+- Python unit tests: PASS; 35 tests.
+- Gate 0 report: `PASS_LOCAL_DIFFERENTIAL_SPIKE`, `windows_msvc_verified: true`, `native_matches_oracle: true`, 22 trace steps; local ignored reports at `build/cmake-msvc/gate0/report.json` and `build/gate0-msvc/report.json`.
+- Branch CI has not run; B1b is still not passed.
+
 ## Windows x64/MSVC evidence
 
 Command:
@@ -64,7 +79,7 @@ Command:
     powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-msvc.ps1
 
 - Report status: PASS_LOCAL_DIFFERENTIAL_SPIKE.
-- Compiler: MSVC x64, version 19.44.35227 (cl 14.44.35207 toolset).
+- Compiler: MSVC x64, version 19.51.36260.0.
 - Flags: /std:c++20 /EHsc /W4 /WX /permissive- /utf-8.
 - Artifact guard: passed.
 - windows_msvc_verified: true.
@@ -73,17 +88,17 @@ Command:
 - Synthetic ELF: 28 instructions; executed trace: 22 steps.
 - Fixture SHA-256: b21f1f7793236d1ccba7308cc82f42d9f89915c87c0b037c46d8170f28349ca9.
 - Generated C++ SHA-256: 5316e0f51ba8b1fa1252e409f38cb9ac7db7606fee17b28ef0dcf1be162ae795.
-- The local report is preserved as sanitized evidence at `evidence/windows-msvc/report.json`; the ignored build copy remains at `build/gate0-msvc/report.json`.
+- The detailed report remains a local ignored build artifact at `build/gate0-msvc/report.json`; it is not committed.
 
-## MSVC compiler version history
+## Work-laptop evidence
 
-Each run is recorded separately; older notes are not rewritten as if they were current evidence.
+The sanitized files under `evidence/windows-msvc/` were captured before the work-laptop toolchain alignment. They remain historical local evidence and do not replace the home-PC software reference at commit `371cec8` or the post-alignment report above.
 
-- **Earlier recorded note, commit `e3d5ff8` (2026-10-21 05:43 +0700):** MSVC x64 version `19.51.36260.0` was reported for `scripts/run-msvc.ps1`. The note does not record the run date or environment, and no matching report exists in repository history. Status: **reported, not verified (dilaporkan, belum terverifikasi)**.
-- **Reconciliation session C1, 2026-10-21, local checkout:** Windows 11 x64, Developer PowerShell for Visual Studio 2022 Build Tools 17.14.32 x64, `cl` 19.44.35227 for x64, toolset `14.44.35207`; CMake identified `19.44.35227.0`. Status: **Terverifikasi** by `evidence/windows-msvc/report.json` and `commands.txt`.
-- **Reconciliation session C2, 2026-10-21, clean clone at `83459c1`:** Windows 11 x64, Developer PowerShell for Visual Studio 2022 Build Tools 17.14.32 x64, `cl` 19.44.35227 for x64, toolset `14.44.35207`; CMake identified `19.44.35227.0`; doctor PASS, 3/3 CTest targets passed, 34 Python tests passed. Status: **Terverifikasi** as a local clean-checkout run, not as branch CI.
+## Home-PC software reference
 
-The earlier `19.51.36260.0` value and the verified `19.44.35227` value are therefore separate runs, not a replacement of one historical note by another. The report JSON does not contain a separate `cl` version field; it records the compiler executable path for toolset `14.44.35207`. The matching `cl` banner version from the same environment is `19.44.35227`, as recorded in `commands.txt`.
+The home-PC software/version record is the one at commit `371cec8`: MSVC x64 `19.51.36260.0`, with Python 3.10+, CMake 3.25+, Ninja, and a C++20 compiler as documented in README.md and BUILDING_WINDOWS.md.
+
+The work laptop now uses MSVC 19.51.36260.0 and Python 3.13.16. Its runs remain local evidence and do not replace this home-PC record or branch CI.
 
 ## Linux host toolchain evidence
 
