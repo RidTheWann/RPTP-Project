@@ -60,7 +60,7 @@ Release tags and release artifacts are created only from release-ready commits w
 
 ## Development phases
 
-1. **Gate 0 — Foundation and spike:** technical differential test completed and CI verified; formal review remains open.
+1. **Gate 0 — Foundation and spike:** technical differential test completed and CI verified; formal review remains open. The [decision evidence package](docs/GATE0_REVIEW.md) records the scope, limits and owner options.
 2. **B1a — Project foundation:** license and architecture decision recorded; the owner confirmed GPL-3.0-or-later on 2026-10-21. Clean-room handling is governed by the owner-approved sealed-source policy in ADR-0003; prior exposure remains documented.
 3. **B1b — Repository/toolchain baseline:** CMake, diagnostics, tests and CI are implemented; CI is green for the published baseline `d334139`, and the clean-checkout local Windows run passed. Local commits after that baseline are not CI-verified. The clean-room review of the build/CI/doctor layer remains open.
 4. **B1c — ISO Inspector prototype:** read-only ISO9660 and `SYSTEM.CNF` inspection, boot metadata, an explicit error taxonomy, ELF PT_LOAD checks, hashing and synthetic malformed-input tests are implemented. A broader owner-authorized real-disc sample is recorded; ISO-variant review and the read-only Gate 2 review remain open. Gate 2 is read-only per [ADR-0004](docs/DECISIONS/ADR-0004-gate2-read-only-scope.md); extraction is deferred future work.

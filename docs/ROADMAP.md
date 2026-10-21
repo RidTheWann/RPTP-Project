@@ -19,7 +19,7 @@
 
 The Windows MSVC runner reported PASS_LOCAL_DIFFERENTIAL_SPIKE, windows_msvc_verified true and native_matches_oracle true; all original Gate 0 tests passed. The same fixture and generated-source SHA-256 values were reproduced across separate spike runs. See STATE.md.
 
-This verifies only the synthetic ELF32/EM_MIPS instruction subset. It does not prove full R5900 correctness, retail ISO support, a working PS2 runtime or commercial-game compatibility. Technical success does not automatically close the formal gate or resolve clean-room concerns.
+This verifies only the synthetic ELF32/EM_MIPS instruction subset. It does not prove full R5900 correctness, retail ISO support, a working PS2 runtime or commercial-game compatibility. Technical success does not automatically close the formal gate or resolve clean-room concerns. A conservative [Gate 0 decision package](GATE0_REVIEW.md) collects the recorded evidence, reproduction commands, limits and owner options; it is not a disposition.
 
 ## B1a — Project foundation
 

@@ -38,7 +38,7 @@ If a CI job fails, record the exact runner, command and error before updating pr
 
 ## Next review points
 
-1. Human owner completes formal Gate 0 review.
+1. Human owner completes formal Gate 0 review using [GATE0_REVIEW.md](GATE0_REVIEW.md) as the evidence package; the package itself does not close the gate.
 2. Enforce ADR-0003: keep sealed projects off-limits, preserve provenance, and quarantine any work that cannot demonstrate independent derivation.
 3. Arrange an independent review or re-derivation of the build/CI/doctor layer marked `Review required` in `docs/CLEAN_ROOM_AUDIT.md`; do not claim clean-room certification before it is recorded.
 4. Keep every capability claim tied to reproducible evidence. B1b technical checks and CI now pass; the independent clean-room review of the build/CI/doctor layer remains open.
