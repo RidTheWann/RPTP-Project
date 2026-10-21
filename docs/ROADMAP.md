@@ -82,7 +82,7 @@ This phase is an inspector only. It does not launch a game, implement the PS2 ru
 
 **Verified locally:** single-volume PVD validation, root `SYSTEM.CNF` inspection, BOOT path resolution, PVD/root/boot metadata, SHA-256, ELF PT_LOAD checks, explicit error codes, deterministic JSON, CLI JSON success/error, 33 ISO inspector tests and 54 total tests. CTest is 3/3 on Windows/MSVC.
 
-**Still open:** broader owner-authorized real-disc validation, multi-extent and ISO-variant review, safe extraction boundaries, Linux CI and the owner's formal Gate 0 disposition. Clean-room handling is recorded in ADR-0003.
+**Still open:** broader owner-authorized real-disc validation, multi-extent and ISO-variant review, safe extraction boundaries and the owner's formal Gate 0 disposition. Clean-room handling is recorded in ADR-0003.
 
 **Pass criteria:** deterministic inspection results on synthetic fixtures, robust rejection of malformed inputs, no writes outside the requested output directory, and clear reporting when an image is unsupported.
 

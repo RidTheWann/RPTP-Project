@@ -102,3 +102,21 @@ The work laptop now uses MSVC 19.51.36260.0 and Python 3.13.16. Its runs remain 
 
 - Recorded host evidence (not rerun in this session): 12 original Gate 0 tests passed; the artifact guard passed; GCC 14.2.0 and Clang 17.0.0 builds passed the differential spike; repeated runs reproduced the fixture and generated-C++ hashes.
 - The Linux/GCC CI job is green: runs `39594267744`, `39594147110` and `39594304857` completed successfully.
+
+## 2026-10-22 — integrity pass local run
+
+Environment: Windows, plain PowerShell without the MSVC developer environment. Python 3.13.16, CMake 4.4.4, Ninja 1.13.2, git 2.56.0; `cl.exe` was not on `PATH`.
+
+    python tools/rptp_doctor.py
+    cmake --preset windows-msvc
+    cmake --build --preset windows-msvc
+    python -m unittest discover -s tests -v
+    powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-msvc.ps1
+
+- RPTP doctor: FAIL; the only failing check is the missing `cl.exe`. Python, project layout, CMake, Ninja, git and the artifact guard pass.
+- CMake configure (`windows-msvc`): PASS.
+- CMake build: FAIL at the `rptp-doctor` target for the same missing `cl.exe`; this is an environment limitation, not a repository defect.
+- Python unit tests: PASS; 54 tests. The suite grew by one progress-consistency test after the earlier 53-test entries above; the earlier entries remain as recorded.
+- `ctest --test-dir build/cmake-msvc -R "artifact_guard|python_unit_tests"`: 2/2 passed. The Gate 0 CTest target was not run because MSVC is unavailable in this environment.
+- `scripts/run-msvc.ps1`: exits 1 with the explicit `cl.exe` error before building.
+- `python tools/check_forbidden_artifacts.py --root .`: PASS.
