@@ -18,7 +18,7 @@ Snapshot date: 2026-10-22.
 - Public repository: RidTheWann/RPTP-Project.
 - Published commits include the licensing/documentation baseline, the synthetic Gate 0 implementation/evidence, README cover, and subsequent README/roadmap corrections.
 - The cover file is docs/assets/rptp-cover.png; README should contain exactly one reference to it.
-- Gate 0 was run locally with Windows x64 MSVC; the recorded result is PASS_LOCAL_DIFFERENTIAL_SPIKE, with native_matches_oracle true, windows_msvc_verified true, and 12 original Gate 0 tests passing.
+- Gate 0 was run locally with Windows x64 MSVC; the recorded result is PASS_LOCAL_DIFFERENTIAL_SPIKE, with native_matches_oracle true and windows_msvc_verified true. Gate 0 test and CTest results are recorded in `docs/VERIFICATION_LOG.md`.
 - These results cover only the synthetic instruction subset. They do not establish retail ISO support, full R5900 semantics, PS2 runtime completeness or commercial-game compatibility.
 
 ## Current work
