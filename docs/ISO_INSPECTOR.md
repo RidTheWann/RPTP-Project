@@ -33,7 +33,7 @@ JSON output is sorted by key and the report is deterministic for the same input 
 
 - `.` and `..` entries are excluded from counts.
 - Directory counts include the root and count unique extents; depth 0 is the root.
-- Multi-extent and interleaved records are counted but their directories are not traversed. The main inspection still rejects those layouts.
+- Multi-extent and interleaved records are counted but their directories are not traversed. The main inspection still rejects those layouts. The PVD root record itself must be a supported single-extent, non-interleaved directory; otherwise the survey fails explicitly.
 - `highest_file_extent_end_bytes` uses the first reported extent for multi-extent files.
 - Survey limits are 64 levels, 100,000 directories and 1,000,000 records.
 
@@ -43,7 +43,7 @@ JSON output is sorted by key and the report is deterministic for the same input 
 - Volume descriptors are scanned within a fixed bound, must carry the `CD001` signature and version 1, and must end with a terminator.
 - The primary volume descriptor is present, and its volume-space, logical-block, volume-set and volume-sequence fields are validated in their ISO 9660 dual-endian forms.
 - Only single-volume sets with 2048-byte logical blocks are accepted.
-- The root directory record is non-empty, is a directory, and lies within the declared volume.
+- The root directory record is non-empty, is a directory, lies within the declared volume, and is single-extent.
 - Directory records have valid lengths, non-empty identifiers, volume sequence 1, do not cross a logical-block boundary, and stay within fixed entry and directory bounds. Per ECMA-119, zero-based record bytes 26 and 27 are the eight-bit file-unit and interleave-gap fields; either non-zero value is rejected with `INTERLEAVED_UNSUPPORTED`.
 - Root `SYSTEM.CNF` must be a regular, single-extent file within the size limit. `BOOT2` takes precedence over legacy `BOOT`.
 - BOOT path resolution accepts `\` or `/`, rejects `.` and `..` components, bounds path depth, and rejects missing, ambiguous, intermediate-file and directory targets.
@@ -162,7 +162,7 @@ The current owner-authorized sample was inspected read-only on 2026-10-22 with i
 ## Verification status
 
 - Verified locally on 2026-10-21 with Visual Studio 2026 Build Tools 18.11.1, MSVC 19.51.36260.0, Python 3.13.16, CMake 4.1.0 and Ninja 1.13.2.
-- The full Python suite passes; the ISO-inspector tests cover valid metadata, malformed inputs, multi-volume/multi-extent/interleaved rejection (including each interleave byte independently), ELF PT_LOAD validation, deterministic in-memory and file-based mutation checks, and CLI JSON success/error paths, alongside the existing Gate 0/doctor/license/game-record checks. Results are recorded in [docs/VERIFICATION_LOG.md](VERIFICATION_LOG.md).
+- The full Python suite passes; the ISO-inspector tests cover valid metadata, malformed inputs, multi-volume/multi-extent/interleaved rejection (including each interleave byte independently), ELF PT_LOAD validation, deterministic in-memory and file-based mutation checks, survey-specific malformed-record and boundary-limit checks, root multi-extent rejection, and CLI JSON success/error paths, alongside the existing Gate 0/doctor/license/game-record checks. Results are recorded in [docs/VERIFICATION_LOG.md](VERIFICATION_LOG.md).
 - The Windows MSVC CMake preset passes its CTest targets; results are recorded in the verification log.
 - The current owner-authorized retail sample is `INSPECTED` with no warnings; the records are indexed at `docs/games/README.md`. The directory survey and test-first evidence are recorded in [docs/VERIFICATION_LOG.md](VERIFICATION_LOG.md).
 - CI runs `39594267744`, `39594147110`, `39594304857` and `39664774001` are green for Windows x64/MSVC and Linux/GCC. The latest run covers the published inspector and retail-record tip `d334139`.

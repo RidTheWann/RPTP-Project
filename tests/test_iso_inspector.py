@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location("rptp_inspect", ROOT / "tools/rptp_inspect.py")
@@ -364,6 +365,129 @@ class IsoInspectorTests(unittest.TestCase):
         self.assertEqual(report["directory_count"], 1)
         self.assertEqual(report["multi_extent_records"], 1)
         self.assertEqual(report["skipped_unsupported_directories"], 1)
+
+    def test_survey_rejects_multi_extent_root(self):
+        image = _iso()
+        image[16 * BLOCK + 156 + 25] = 0x82
+        with self.assertRaises(inspector.InspectError) as ctx:
+            inspector.IsoReader(BytesIO(bytes(image)), len(image), "root.iso").survey()
+        self.assertEqual(ctx.exception.code, "MULTI_EXTENT_UNSUPPORTED")
+
+    def test_survey_rejects_malformed_directory_records(self):
+        cases: list[tuple[str, bytes, str]] = []
+
+        invalid_length = _iso(tree=True)
+        invalid_length[19 * BLOCK + 68] = 33
+        cases.append(("invalid record length", bytes(invalid_length), "DIRECTORY_RECORD_LENGTH_INVALID"))
+
+        truncated_identifier = _iso(tree=True)
+        truncated_identifier[19 * BLOCK + 68 + 32] = 255
+        cases.append(("truncated identifier", bytes(truncated_identifier), "DIRECTORY_IDENTIFIER_TRUNCATED"))
+
+        unsafe_extent = _iso(tree=True)
+        unsafe_extent[19 * BLOCK + 68 + 2:19 * BLOCK + 68 + 10] = _both32(VOLUME_BLOCKS + 1)
+        cases.append(("unsafe extent", bytes(unsafe_extent), "EXTENT_OUT_OF_BOUNDS"))
+
+        crossing = _iso()
+        directory = bytearray(BLOCK)
+        for index in range(60):
+            record = _record(20, 1, bytes((65 + index,)))
+            directory[index * 34:index * 34 + len(record)] = record
+        directory[2040] = 34
+        crossing[19 * BLOCK:20 * BLOCK] = directory
+        cases.append(("record crosses block", bytes(crossing), "DIRECTORY_RECORD_CROSSES_BLOCK"))
+
+        for label, data, code in cases:
+            with self.subTest(case=label):
+                errors: list[tuple[str, str]] = []
+                for _ in range(2):
+                    with self.assertRaises(inspector.InspectError) as ctx:
+                        inspector.IsoReader(BytesIO(data), len(data), "malformed.iso").survey()
+                    errors.append((ctx.exception.code, str(ctx.exception)))
+                self.assertEqual(errors[0][0], code)
+                self.assertEqual(errors[0], errors[1])
+
+    def test_survey_enforces_limits_at_boundaries(self):
+        data = bytes(_iso(tree=True))
+        cases = (
+            ("depth", "MAX_SURVEY_DEPTH", 2, 1, "SURVEY_DEPTH_LIMIT"),
+            ("directories", "MAX_SURVEY_DIRECTORIES", 3, 2, "SURVEY_DIRECTORY_LIMIT"),
+            ("records", "MAX_SURVEY_RECORDS", 5, 4, "SURVEY_RECORD_LIMIT"),
+        )
+        for label, constant, exact, over, code in cases:
+            with self.subTest(limit=label):
+                with mock.patch.object(inspector, constant, exact):
+                    report = inspector.IsoReader(BytesIO(data), len(data), "limits.iso").survey()
+                    self.assertEqual(report["status"], "SURVEYED")
+                with mock.patch.object(inspector, constant, over):
+                    with self.assertRaises(inspector.InspectError) as ctx:
+                        inspector.IsoReader(BytesIO(data), len(data), "limits.iso").survey()
+                    self.assertEqual(ctx.exception.code, code)
+
+    def test_survey_counts_unsupported_file_and_directory_records(self):
+        data = bytes(_iso(subdir_flags=0, subdir_interleave=(0, 1), boot_flags=0x80))
+        report = inspector.IsoReader(BytesIO(data), len(data), "unsupported.iso").survey()
+        self.assertEqual(report["status"], "SURVEYED")
+        self.assertEqual(report["record_count"], 3)
+        self.assertEqual(report["directory_record_count"], 1)
+        self.assertEqual(report["file_count"], 2)
+        self.assertEqual(report["multi_extent_records"], 1)
+        self.assertEqual(report["interleaved_records"], 1)
+        self.assertEqual(report["skipped_unsupported_directories"], 1)
+
+    def test_survey_mutations_raise_only_inspect_errors(self):
+        base = bytes(_iso(tree=True))
+        rng = random.Random(20261023)
+        for _ in range(250):
+            data = _mutate(base, rng)
+            try:
+                report = inspector.IsoReader(BytesIO(data), len(data), "mutated.iso").survey()
+            except inspector.InspectError:
+                continue
+            self.assertEqual(report["status"], "SURVEYED")
+
+    def test_survey_file_mutations_preserve_input_bytes(self):
+        base = bytes(_iso(tree=True))
+        rng = random.Random(20261024)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "survey-mutated.iso"
+            for _ in range(50):
+                data = _mutate(base, rng)
+                path.write_bytes(data)
+                before = hashlib.sha256(data).hexdigest()
+                try:
+                    report = inspector.survey_path(path)
+                except inspector.InspectError:
+                    pass
+                else:
+                    self.assertEqual(report["status"], "SURVEYED")
+                self.assertEqual(before, hashlib.sha256(path.read_bytes()).hexdigest())
+
+    def test_cli_survey_json_preserves_input_for_success_and_error(self):
+        invalid = _iso()
+        invalid[19 * BLOCK + 68] = 33
+        cases = (
+            ("valid", bytes(_iso(tree=True)), 0, "SURVEYED", None),
+            ("invalid", bytes(invalid), 2, "ERROR", "DIRECTORY_RECORD_LENGTH_INVALID"),
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            for label, data, returncode, status, error_code in cases:
+                with self.subTest(case=label):
+                    path = Path(directory) / f"{label}.iso"
+                    path.write_bytes(data)
+                    before = hashlib.sha256(data).hexdigest()
+                    result = subprocess.run(
+                        [sys.executable, str(ROOT / "tools/rptp_inspect.py"), str(path), "--survey", "--json"],
+                        capture_output=True,
+                        text=True,
+                        check=False,
+                    )
+                    self.assertEqual(result.returncode, returncode, result.stderr)
+                    payload = json.loads(result.stdout)
+                    self.assertEqual(payload["status"], status)
+                    if error_code is not None:
+                        self.assertEqual(payload["error_code"], error_code)
+                    self.assertEqual(before, hashlib.sha256(path.read_bytes()).hexdigest())
 
     def test_cli_survey_json(self):
         with tempfile.TemporaryDirectory() as directory:

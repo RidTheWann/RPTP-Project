@@ -231,3 +231,22 @@ Environment: Windows x64, Python 3.13.16, MSVC toolset 14.51.36231, CMake 4.1.0 
 - `scripts/run-msvc.ps1` invoked from a temporary directory outside the repository through `VsDevCmd.bat` — `PASS_LOCAL_DIFFERENTIAL_SPIKE`, `native_matches_oracle: true`, `windows_msvc_verified: true`, 28 instructions, 22 trace steps, `/std:c++20 /EHsc /W4 /WX /permissive- /utf-8`, fixture SHA-256 `b21f1f7793236d1ccba7308cc82f42d9f89915c87c0b037c46d8170f28349ca9`, generated C++ SHA-256 `5316e0f51ba8b1fa1252e409f38cb9ac7db7606fee17b28ef0dcf1be162ae795`.
 - No retail ISO was inspected in this session. No sealed project material was accessed.
 - These are local results only. The new commits are not pushed and are not CI-verified.
+
+## 2026-10-22 — directory survey robustness
+
+Environment: Windows x64, Python 3.13.16, MSVC toolset 14.51.36231, CMake 4.1.0 and Ninja 1.13.2 through the Visual Studio 18 Community developer environment.
+
+- Test-first review of `IsoReader.survey` and `--survey`. Added seven focused tests for seeded survey mutations, malformed directory record length/identifier/cross-block cases, unsafe extents, exact depth/directory/record limits, unsupported file/directory records, file-based mutation hash preservation and CLI JSON success/error preservation.
+- First focused run:
+  - `python -m unittest tests.test_iso_inspector.IsoInspectorTests.test_survey_rejects_multi_extent_root tests.test_iso_inspector.IsoInspectorTests.test_survey_rejects_malformed_directory_records tests.test_iso_inspector.IsoInspectorTests.test_survey_enforces_limits_at_boundaries tests.test_iso_inspector.IsoInspectorTests.test_survey_counts_unsupported_file_and_directory_records tests.test_iso_inspector.IsoInspectorTests.test_survey_mutations_raise_only_inspect_errors tests.test_iso_inspector.IsoInspectorTests.test_survey_file_mutations_preserve_input_bytes tests.test_iso_inspector.IsoInspectorTests.test_cli_survey_json_preserves_input_for_success_and_error -v`
+  - Result: 6 passed, 1 failed. `test_survey_rejects_multi_extent_root` demonstrated that a PVD root with the multi-extent flag was traversed and reported as `SURVEYED` instead of being rejected. This was the only demonstrated production defect in the selected cases.
+- Fix: `parse_pvd` now rejects a multi-extent root with `MULTI_EXTENT_UNSUPPORTED`. The same focused run after the fix: 7/7 PASS. No survey limit, record-parser, read-only or hash behavior was changed.
+- Full Python suite: `python -m unittest discover -s tests -v` — 84 tests, PASS.
+- Artifact guard: `python tools/check_forbidden_artifacts.py --root .` — PASS.
+- `git diff --check` — PASS.
+- `python tools/rptp_doctor.py` through `VsDevCmd.bat` — PASS; Python 3.13.16, MSVC 14.51.36231, CMake, Ninja, git and artifact guard present.
+- `cmake --preset windows-msvc` and `cmake --build --preset windows-msvc` through `VsDevCmd.bat` — PASS; the build target reported CTest 3/3 PASS.
+- `ctest --test-dir build/cmake-msvc --output-on-failure` through `VsDevCmd.bat` — 3/3 PASS.
+- `scripts/run-msvc.ps1` invoked from a temporary directory outside the repository through `VsDevCmd.bat` — `PASS_LOCAL_DIFFERENTIAL_SPIKE`, `native_matches_oracle: true`, `windows_msvc_verified: true`, 28 instructions, 22 trace steps; the wrapper also ran the 84-test suite successfully.
+- No retail ISO was inspected in this session. No sealed project material was accessed.
+- These are local results only. The new commits are not pushed and are not CI-verified.

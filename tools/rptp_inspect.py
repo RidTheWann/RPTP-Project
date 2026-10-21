@@ -210,6 +210,8 @@ class IsoReader:
         root = self.parse_record(pvd[156:156 + root_len])
         if not root["directory"] or root["id"] != b"\x00" or root["size"] == 0:
             raise InspectError("ROOT_RECORD_INVALID", "PVD root record is not a valid non-empty root directory.")
+        if root["multi_extent"]:
+            raise InspectError("MULTI_EXTENT_UNSUPPORTED", "Multi-extent root directory is unsupported.")
         self.root = root
         return {
             "volume_id": _text(pvd[40:72]),
