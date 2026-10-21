@@ -20,6 +20,7 @@ MAX_DIRECTORY_ENTRIES = 100_000
 MAX_BOOT_COMPONENTS = 32
 MAX_PROGRAM_HEADERS = 4096
 CHUNK_SIZE = 1024 * 1024
+MAX_READ_BYTES = 4 * 1024 * 1024
 ELF_HEADER_SIZE = 52
 ELF_PROGRAM_HEADER_SIZE = 32
 PT_LOAD = 1
@@ -80,16 +81,33 @@ def _entry_metadata(entry: dict[str, object]) -> dict[str, object]:
 
 
 class IsoReader:
-    def __init__(self, stream: BinaryIO, size: int, name: str):
+    def __init__(
+        self,
+        stream: BinaryIO,
+        size: int,
+        name: str,
+        *,
+        max_read_bytes: int = MAX_READ_BYTES,
+        chunk_size: int = CHUNK_SIZE,
+    ):
+        if max_read_bytes <= 0:
+            raise ValueError("max_read_bytes must be positive.")
+        if chunk_size <= 0:
+            raise ValueError("chunk_size must be positive.")
         self.stream = stream
         self.size = size
         self.name = name
+        self.max_read_bytes = max_read_bytes
+        self.chunk_size = chunk_size
         self.volume_blocks = 0
         self.root: dict[str, object] | None = None
 
     def read_at(self, offset: int, size: int) -> bytes:
-        if offset < 0 or size < 0 or offset + size > self.size:
-            raise InspectError("IMAGE_BOUNDS", f"Byte range [{offset}, {offset + size}) is outside the image.")
+        if offset < 0 or size < 0 or offset > self.size or size > self.size - offset:
+            raise InspectError(
+                "IMAGE_BOUNDS",
+                f"Byte range at offset {offset} of {size} bytes is outside the image.",
+            )
         self.stream.seek(offset)
         data = self.stream.read(size)
         if len(data) != size:
@@ -99,9 +117,11 @@ class IsoReader:
     def extent(self, entry: dict[str, object]) -> tuple[int, int]:
         first_lba = int(entry["lba"]) + int(entry["xa_len"])
         length = int(entry["size"])
-        start = first_lba * BLOCK
         limit = self.volume_blocks * BLOCK
-        if first_lba > self.volume_blocks or start + length > limit or start + length > self.size:
+        if first_lba < 0 or length < 0 or first_lba > self.volume_blocks:
+            raise InspectError("EXTENT_OUT_OF_BOUNDS", f"Extent is outside the image or declared volume: {entry['name']}.")
+        start = first_lba * BLOCK
+        if start > limit or length > limit - start or start > self.size or length > self.size - start:
             raise InspectError("EXTENT_OUT_OF_BOUNDS", f"Extent is outside the image or declared volume: {entry['name']}.")
         return start, length
 
@@ -267,18 +287,30 @@ class IsoReader:
             raise InspectError("MULTI_EXTENT_UNSUPPORTED", "Multi-extent BOOT executable is not supported.")
         return entry, device, resolved_path
 
+    def read_range(self, start: int, size: int) -> bytes:
+        if size > self.max_read_bytes:
+            raise InspectError("FILE_SIZE_LIMIT", f"Read size {size} exceeds the {self.max_read_bytes}-byte safety limit.")
+        chunks: list[bytes] = []
+        offset = 0
+        while offset < size:
+            count = min(self.chunk_size, size - offset)
+            chunks.append(self.read_at(start + offset, count))
+            offset += count
+        return b"".join(chunks)
+
     def read_entry(self, entry: dict[str, object], max_size: int) -> bytes:
         start, size = self.extent(entry)
-        if size > max_size:
-            raise InspectError("FILE_SIZE_LIMIT", f"{entry['name']} exceeds the {max_size}-byte safety limit.")
-        return self.read_at(start, size)
+        limit = min(max_size, self.max_read_bytes)
+        if size > limit:
+            raise InspectError("FILE_SIZE_LIMIT", f"{entry['name']} exceeds the {limit}-byte safety limit.")
+        return self.read_range(start, size)
 
     def hash_entry(self, entry: dict[str, object]) -> str:
         start, size = self.extent(entry)
         digest = hashlib.sha256()
         offset = 0
         while offset < size:
-            count = min(CHUNK_SIZE, size - offset)
+            count = min(self.chunk_size, size - offset)
             digest.update(self.read_at(start + offset, count))
             offset += count
         return digest.hexdigest()
@@ -444,22 +476,58 @@ class IsoReader:
         }
 
 
-def inspect_stream(stream: BinaryIO, size: int, name: str = "<stream>") -> dict[str, object]:
-    return IsoReader(stream, size, name).inspect()
+def inspect_stream(
+    stream: BinaryIO,
+    size: int,
+    name: str = "<stream>",
+    *,
+    max_read_bytes: int = MAX_READ_BYTES,
+    chunk_size: int = CHUNK_SIZE,
+) -> dict[str, object]:
+    return IsoReader(
+        stream,
+        size,
+        name,
+        max_read_bytes=max_read_bytes,
+        chunk_size=chunk_size,
+    ).inspect()
 
 
-def inspect_bytes(data: bytes, name: str = "<memory>") -> dict[str, object]:
-    return inspect_stream(BytesIO(data), len(data), name)
+def inspect_bytes(
+    data: bytes,
+    name: str = "<memory>",
+    *,
+    max_read_bytes: int = MAX_READ_BYTES,
+    chunk_size: int = CHUNK_SIZE,
+) -> dict[str, object]:
+    return inspect_stream(
+        BytesIO(data),
+        len(data),
+        name,
+        max_read_bytes=max_read_bytes,
+        chunk_size=chunk_size,
+    )
 
 
-def inspect_path(path: Path) -> dict[str, object]:
+def inspect_path(
+    path: Path,
+    *,
+    max_read_bytes: int = MAX_READ_BYTES,
+    chunk_size: int = CHUNK_SIZE,
+) -> dict[str, object]:
     try:
         if not path.exists():
             raise InspectError("INPUT_NOT_FOUND", f"Input file does not exist: {path}")
         if not path.is_file():
             raise InspectError("INPUT_NOT_FILE", f"Input path is not a regular file: {path}")
         with path.open("rb") as stream:
-            return inspect_stream(stream, path.stat().st_size, str(path))
+            return inspect_stream(
+                stream,
+                path.stat().st_size,
+                str(path),
+                max_read_bytes=max_read_bytes,
+                chunk_size=chunk_size,
+            )
     except InspectError:
         raise
     except OSError as exc:

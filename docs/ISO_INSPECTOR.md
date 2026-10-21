@@ -38,7 +38,8 @@ JSON output is sorted by key and the report is deterministic for the same input 
 - BOOT path resolution accepts `\` or `/`, rejects `.` and `..` components, bounds path depth, and rejects missing, ambiguous, intermediate-file and directory targets.
 - The boot file must be ELF32, little-endian, version 1, with a valid header and program-header table.
 - Every PT_LOAD segment must fit inside the executable, cannot have `p_filesz > p_memsz`, and must use 0, 1 or a power-of-two alignment.
-- SHA-256 is calculated for both `SYSTEM.CNF` and the boot executable; boot data is streamed in bounded chunks.
+- SHA-256 is calculated for both `SYSTEM.CNF` and the boot executable; both files are streamed in bounded chunks.
+- Whole-file materialization is streamed in configurable chunks and capped by `max_read_bytes` (default 4 MiB); `SYSTEM.CNF` keeps its separate 1 MiB cap. The Python entry points accept both `max_read_bytes` and `chunk_size` (default 1 MiB).
 - No file content is extracted and no write is performed.
 
 ## Error taxonomy
@@ -93,7 +94,7 @@ Expected failures use these stable codes.
 - `AMBIGUOUS_PATH`: multiple entries match a BOOT path component.
 - `BOOT_PATH_NOT_DIRECTORY`: an intermediate BOOT component is not a directory.
 - `BOOT_TARGET_IS_DIRECTORY`: the BOOT target is a directory.
-- `FILE_SIZE_LIMIT`: `SYSTEM.CNF` exceeds the safety limit.
+- `FILE_SIZE_LIMIT`: a file read exceeds its safety limit (`SYSTEM.CNF` has a 1 MiB cap; whole-file reads default to 4 MiB).
 
 ### ELF
 

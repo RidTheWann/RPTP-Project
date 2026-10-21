@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+from io import BytesIO
 import json
 from pathlib import Path
 import random
@@ -110,6 +111,37 @@ def _iso(config: bytes | None = DEFAULT_CONFIG,
     return image
 
 
+class RecordingStream(BytesIO):
+    def __init__(self, data: bytes):
+        super().__init__(data)
+        self.read_sizes: list[int] = []
+
+    def read(self, size: int = -1) -> bytes:
+        self.read_sizes.append(size)
+        return super().read(size)
+
+
+class ShortReadStream:
+    def __init__(self, data: bytes):
+        self._data = data
+        self._position = 0
+
+    def seek(self, offset: int) -> int:
+        self._position = offset
+        return offset
+
+    def read(self, size: int) -> bytes:
+        start = self._position
+        end = min(len(self._data), start + max(0, size - 1))
+        self._position = end
+        return self._data[start:end]
+
+
+def _padded_config(size: int = 1000) -> bytes:
+    base = b"BOOT2 = cdrom0:\\SLUS_123.45;1\n"
+    return base + b"#" * (size - len(base))
+
+
 class IsoInspectorTests(unittest.TestCase):
     def test_inspects_synthetic_iso_and_elf(self):
         report = inspector.inspect_bytes(bytes(_iso()), "memory.iso")
@@ -186,6 +218,41 @@ class IsoInspectorTests(unittest.TestCase):
         with self.assertRaises(inspector.InspectError) as ctx:
             inspector.inspect_bytes(bytes(_iso(boot_lba=1000)))
         self.assertEqual(ctx.exception.code, "EXTENT_OUT_OF_BOUNDS")
+
+    def test_rejects_huge_extent_without_overflow(self):
+        data = bytes(_iso())
+        reader = inspector.IsoReader(BytesIO(data), len(data), "huge.iso")
+        reader.volume_blocks = VOLUME_BLOCKS
+        with self.assertRaises(inspector.InspectError) as ctx:
+            reader.extent({"lba": 0xFFFFFFFF, "xa_len": 0, "size": 0xFFFFFFFF, "name": "huge"})
+        self.assertEqual(ctx.exception.code, "EXTENT_OUT_OF_BOUNDS")
+
+    def test_rejects_truncated_volume_space(self):
+        image = _iso()
+        image[16 * BLOCK + 80:16 * BLOCK + 88] = _both32(VOLUME_BLOCKS + 1)
+        with self.assertRaises(inspector.InspectError) as ctx:
+            inspector.inspect_bytes(bytes(image))
+        self.assertEqual(ctx.exception.code, "IMAGE_TRUNCATED")
+
+    def test_rejects_short_stream_read(self):
+        data = bytes(_iso())
+        with self.assertRaises(inspector.InspectError) as ctx:
+            inspector.inspect_stream(ShortReadStream(data), len(data), "short.iso")
+        self.assertEqual(ctx.exception.code, "IMAGE_TRUNCATED")
+
+    def test_max_read_bytes_is_configurable(self):
+        with self.assertRaises(inspector.InspectError) as ctx:
+            inspector.inspect_bytes(bytes(_iso()), max_read_bytes=8)
+        self.assertEqual(ctx.exception.code, "FILE_SIZE_LIMIT")
+
+    def test_file_reads_use_configured_chunks(self):
+        config = _padded_config(1000)
+        data = bytes(_iso(config=config))
+        stream = RecordingStream(data)
+        report = inspector.inspect_stream(stream, len(data), "chunked.iso", chunk_size=128)
+        self.assertEqual(report["status"], "INSPECTED")
+        self.assertNotIn(len(config), stream.read_sizes)
+        self.assertIn(128, stream.read_sizes)
 
     def test_rejects_invalid_directory_record_length(self):
         image = _iso()
