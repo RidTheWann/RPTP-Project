@@ -1,7 +1,8 @@
-# Grand Theft Auto - San Andreas (USA) (v3.00)
+# Grand Theft Auto - San Andreas (USA) — owner-described original
 
 - **Status:** Inspected (read-only)
 - **Last updated:** 2026-10-22
+- **Sample provenance:** Owner-provided: original (unmodified) USA sample. This classification is declarative owner information, not a result derived from the filename or metadata.
 - **RPTP inspector:** `tools/rptp_inspect.py` at `d51f0e7`
 - **Source:** owner-provided local ISO; not committed
 - **Filename:** `Grand Theft Auto - San Andreas (USA) (v3.00).iso`
@@ -42,6 +43,8 @@
 
 ## What is not tested
 
+- Whether every file in the image is unmodified; the original-sample classification is owner-provided and not technically established.
+- A file-by-file comparison with the owner-described Indonesian-language mod; shared boot and `SYSTEM.CNF` hashes do not establish file equality or locate a modification.
 - Boot, native runtime, recompilation or gameplay.
 - Executable contents, dependencies or function discovery beyond the inspector metadata pass.
 - Other regions, revisions or disc layouts; compatibility is not established.
@@ -49,8 +52,9 @@
 
 ## Known limitations and blockers
 
-- Region and revision are taken from the filename and the observed `SYSTEM.CNF VER = 3.00`; they are not independently verified against a catalogue.
-- The boot executable SHA-256 and `SYSTEM.CNF` SHA-256 match the [Indonesian v6 record](../grand-theft-auto-san-andreas-indonesian-v6/STATUS.md), but the whole-image hashes and PVD identifiers differ. Do not treat the records as interchangeable.
+- The sample type is owner-provided: the owner identifies this as the original (unmodified) USA sample. This record does not independently establish that every file is unmodified.
+- Region and the filename revision label are not independently verified against a catalogue; `SYSTEM.CNF VER = 3.00` is boot configuration metadata.
+- The other record is the owner-described [Indonesian-language mod](../grand-theft-auto-san-andreas-indonesian-v6/STATUS.md). The boot executable SHA-256 and `SYSTEM.CNF` SHA-256 match, but the whole-image hashes and PVD identifiers differ. That proves the images are not byte-identical; it does not identify which files changed or explain the modification.
 - The boot executable exceeds the 4 MiB default materialization cap; read-only metadata inspection still completed.
 - This record is one authorized sample, not evidence of broad ISO or game compatibility.
 - No safe extraction boundary or loader exists.
@@ -59,5 +63,5 @@
 ## Next safe action
 
 1. Keep this record updated if the image or inspector changes.
-2. Keep extraction and execution out of scope until an owner-approved safe boundary exists.
-3. Record additional authorized layouts without generalizing from this sample.
+2. Preserve the owner-provided original/mod distinction and keep separate whole-image hashes; do not infer modified files from shared boot metadata.
+3. Keep extraction and execution out of scope until an owner-approved safe boundary exists.

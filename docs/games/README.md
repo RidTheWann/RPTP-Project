@@ -32,10 +32,12 @@ This is a work log, not a compatibility claim. An inspected ISO is not a bootabl
 | Bully | USA | Inspected (read-only) | 2026-10-22 | [bully](bully/STATUS.md) |
 | Downhill Domination | USA | Inspected (read-only) | 2026-10-22 | [downhill-domination](downhill-domination/STATUS.md) |
 | God of War II | USA | Inspected (read-only) | 2026-10-22 | [god-of-war-ii](god-of-war-ii/STATUS.md) |
-| Grand Theft Auto - San Andreas (Indonesian v6) | Unverified variant label | Inspected (read-only) | 2026-10-22 | [grand-theft-auto-san-andreas-indonesian-v6](grand-theft-auto-san-andreas-indonesian-v6/STATUS.md) |
-| Grand Theft Auto - San Andreas (USA) (v3.00) | USA (filename label) | Inspected (read-only) | 2026-10-22 | [grand-theft-auto-san-andreas-usa-v300](grand-theft-auto-san-andreas-usa-v300/STATUS.md) |
+| Grand Theft Auto - San Andreas (USA) — owner-described original | USA | Inspected (read-only) | 2026-10-22 | [grand-theft-auto-san-andreas-usa-v300](grand-theft-auto-san-andreas-usa-v300/STATUS.md) |
+| Grand Theft Auto - San Andreas (USA) — owner-described Indonesian-language mod | USA | Inspected (read-only) | 2026-10-22 | [grand-theft-auto-san-andreas-indonesian-v6](grand-theft-auto-san-andreas-indonesian-v6/STATUS.md) |
 | Need for Speed - Most Wanted (v2.00) | USA | Inspected (read-only) | 2026-10-22 | [need-for-speed-most-wanted](need-for-speed-most-wanted/STATUS.md) |
 | Resident Evil 4 | USA | Inspected (read-only) | 2026-10-22 | [resident-evil-4](resident-evil-4/STATUS.md) |
+
+**Owner-provided provenance:** the two GTA San Andreas USA records are separate samples. The owner describes one as the original (unmodified) sample and the other as an Indonesian-language mod. This distinction is declarative owner information, not a technical classification. Equal boot or `SYSTEM.CNF` hashes do not establish file equality or identify the modification; whole-image hashes and PVD identifiers are recorded in each record.
 
 ## STATUS.md template
 
@@ -44,6 +46,7 @@ This is a work log, not a compatibility claim. An inspected ISO is not a bootabl
 
 - **Status:** Not inspected | Inspected (read-only) | Boot analysis | Runtime bring-up | Playable (tested) | Blocked
 - **Last updated:** YYYY-MM-DD
+- **Sample provenance:** <owner-provided classification, if applicable>
 - **RPTP inspector:** <tool and revision>
 - **Source:** owner-provided local ISO; not committed
 - **Filename:** <filename only>

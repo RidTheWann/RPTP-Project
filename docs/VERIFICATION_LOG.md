@@ -274,3 +274,25 @@ Inspector source revision: `d51f0e7` (the evidence/documentation changes in this
 - `git diff --check` — PASS.
 - Read-only throughout: no image was extracted, modified, mounted, booted, emulated or executed. Raw local JSON contains absolute input paths and remains under ignored `build/session-iso-validation/`.
 - No sealed project material was accessed. These results are local only; the current evidence changes are not pushed and have no CI run.
+
+## 2026-10-22 — GTA San Andreas sample provenance clarification
+
+Base commit: `c58f127`; the documentation changes in this entry were uncommitted during the checks. Inspector source revision: `d51f0e7`.
+
+- Owner-provided provenance recorded: the two GTA San Andreas USA images are intentional, separate samples. The owner describes one as the original USA sample and the other as a USA sample modified with Indonesian-language changes. This classification is declarative owner information, not a result derived from the filename or metadata. The modified file set and method are not audited.
+- Targeted command per image: `python tools/rptp_inspect.py "<image>" --json`. Both exited `0` with status `INSPECTED` and no warnings.
+- Targeted command per image: `python tools/rptp_inspect.py "<image>" --survey --json`. Both exited `0` with status `SURVEYED`; each reported 29 directories, 299 files, max depth 3, 0 multi-extent records, 0 interleaved records and equal PVD volume space. Input size and last-write time were unchanged before and after the two runs.
+- Original sample: 4,517,036,032 bytes; volume ID `SAN_ANDREAS`; boot `SLUS_209.46;1`, 5,684,592 bytes, SHA-256 `84d4980a1253c5490ebbd039ef17384af875de75636a21f3451951093e8fc789`; `SYSTEM.CNF` SHA-256 `7d48c5d05735d54498a2e7e96c9e687ed2f9c1c00a820a36f4c3f2240d8da0bd`; `SYSTEM.CNF VER = 3.00`.
+- Indonesian-language mod sample: 3,866,394,624 bytes; volume ID `GTASA_PS2_ID_KHN`; the same boot and `SYSTEM.CNF` sizes and hashes; `SYSTEM.CNF VER = 3.00`.
+- Whole-image hashes were retained from the earlier record and were not recomputed in this run: original `c94e9b16ffab9ab04dbf15109e8716a2bf0a853a246bd3d2641bf354a5068e6d`; Indonesian-language mod `4a00e35c7b4e1dd56a6f255cba4eb7e0f5aa7a175c2c3aff9b1e3c4f90e6304f`.
+- Shared boot and `SYSTEM.CNF` hashes are consistent with shared boot configuration and executable data. They do not establish that all other files are equal and do not locate the language modification. The different whole-image hashes and PVD identifiers prove only that the images are not byte-identical.
+- No image was extracted, mounted, modified, booted, emulated or executed. Raw input paths were not added to tracked files.
+- Updated the two game records, `docs/games/README.md`, `docs/COMPATIBILITY.md`, `docs/GATE2_EVIDENCE.md`, `docs/ISO_INSPECTOR.md`, `docs/RISKS.md`, `docs/STATE.md` and `docs/HANDOFF.md`. R-020 now records the unaudited modification details and the risk of overstating shared boot metadata, rather than treating the sample identity as unknown.
+- No parser or production-code defect was found; no source, test or fixture changed.
+- `python -m unittest discover -s tests -v` — 84 tests, PASS.
+- `python tools/check_forbidden_artifacts.py --root .` — PASS.
+- `python tools/rptp_doctor.py` directly from the non-developer shell — FAIL only because `cl.exe` was not on `PATH`; through `VsDevCmd.bat` — overall PASS.
+- `cmake --preset windows-msvc` and `cmake --build --preset windows-msvc` through `VsDevCmd.bat` — PASS; CTest 3/3 PASS. Separate `ctest --test-dir build/cmake-msvc --output-on-failure` — 3/3 PASS.
+- `scripts/run-msvc.ps1` invoked from a temporary directory outside the repository through `VsDevCmd.bat` — `PASS_LOCAL_DIFFERENTIAL_SPIKE`, `native_matches_oracle: true`, `windows_msvc_verified: true`, 28 instructions, 22 trace steps.
+- `git diff --check` — PASS after the documentation changes.
+- No sealed project material was accessed. These results are local only; the documentation commit is not pushed and has no CI run.

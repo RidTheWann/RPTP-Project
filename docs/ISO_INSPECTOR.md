@@ -155,8 +155,8 @@ The owner-authorized local sample was surveyed read-only on 2026-10-22 with insp
 - All sampled images are 2048-byte aligned, expose a 2048-byte logical block size and completed as `INSPECTED` with no warnings.
 - Seven images report PVD volume space equal to the file sector count. `God of War II (USA)` reports a smaller PVD volume space; dual-layer media is **Dugaan**, not verified.
 - Directory surveys found no multi-extent or interleaved records and no skipped unsupported directories in the sample. The field positions themselves were checked later against ECMA-119, 5th edition (December 2024), Table 8 and §§10.1.8–10.1.9; targeted synthetic tests reject each field independently. Interleaved layouts remain unsupported.
-- Boot executable sizes range from 1,691,684 to 5,684,592 bytes. Four images (`Need for Speed - Most Wanted`, `Bully`, and both San Andreas variants) have boot executables above the 4 MiB default materialization cap; their read-only inspections still completed and the cap was not changed.
-- The two San Andreas images share boot and `SYSTEM.CNF` hashes but have different whole-image hashes and PVD identifiers; the filename variant labels do not establish revision identity.
+- Boot executable sizes range from 1,691,684 to 5,684,592 bytes. Four images (`Need for Speed - Most Wanted`, `Bully`, and both owner-described San Andreas samples) have boot executables above the 4 MiB default materialization cap; their read-only inspections still completed and the cap was not changed.
+- The two San Andreas images are separate owner-provided samples: an original USA sample and an Indonesian-language mod. They share boot and `SYSTEM.CNF` hashes but have different whole-image hashes and PVD identifiers. Shared boot metadata does not establish file equality or identify which files were modified; the owner-provided mod description is recorded in the game records.
 - Surveying is metadata-only. The existing inspection pass still hashes `SYSTEM.CNF` and boot data and reads ELF metadata; no game files were extracted, executed or modified.
 - The sample is not evidence of broad retail-layout support, boot support or game compatibility.
 

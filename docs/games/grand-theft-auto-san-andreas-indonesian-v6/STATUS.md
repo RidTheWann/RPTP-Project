@@ -1,7 +1,8 @@
-# Grand Theft Auto - San Andreas (Indonesian v6)
+# Grand Theft Auto - San Andreas (USA) — owner-described Indonesian-language mod
 
 - **Status:** Inspected (read-only)
 - **Last updated:** 2026-10-22
+- **Sample provenance:** Owner-provided: a USA San Andreas sample modified with Indonesian-language changes. This classification is declarative owner information, not a result derived from the filename or metadata; the modified file set and method are not audited.
 - **RPTP inspector:** `tools/rptp_inspect.py` at `d51f0e7`
 - **Source:** owner-provided local ISO; not committed
 - **Filename:** `Grand Theft Auto - San Andreas (Indonesian v6).iso`
@@ -42,16 +43,19 @@
 
 ## What is not tested
 
+- The list of files changed, translation scope, modification method, and whether all intended Indonesian-language content is covered; read-only metadata does not determine these.
+- A file-by-file comparison with the owner-described original sample; shared boot and `SYSTEM.CNF` hashes do not establish file equality or locate the modification.
 - Boot, native runtime, recompilation or gameplay.
 - Executable contents, dependencies or function discovery beyond the inspector metadata pass.
-- The relationship between the filename label `Indonesian v6` and the observed `SYSTEM.CNF VER = 3.00`; variant identity is unverified.
 - Other regions, revisions or disc layouts; compatibility is not established.
 - Extraction or materialization of the boot executable above the 4 MiB cap.
 
 ## Known limitations and blockers
 
-- Region and variant identity are not independently verified. The filename says `Indonesian v6`, while the parsed `SYSTEM.CNF` reports `VER = 3.00`.
-- The boot executable SHA-256 and `SYSTEM.CNF` SHA-256 match the [USA v3.00 record](../grand-theft-auto-san-andreas-usa-v300/STATUS.md), but the whole-image hashes and PVD identifiers differ. Do not treat the records as interchangeable.
+- The sample type is owner-provided: the owner identifies this as an Indonesian-language modification of the USA sample. The modified file set, translation scope and modification method are not audited.
+- The filename label `Indonesian v6` and `SYSTEM.CNF VER = 3.00` do not independently establish the mod's version, source, or contents.
+- The other record is the owner-described [original USA sample](../grand-theft-auto-san-andreas-usa-v300/STATUS.md). The boot executable SHA-256 and `SYSTEM.CNF` SHA-256 match, but the whole-image hashes and PVD identifiers differ. That proves the images are not byte-identical; it does not identify which files changed or explain the modification.
+- The shared boot metadata is consistent with shared boot configuration and executable data; it is not a parser defect and does not prove that all other files are identical.
 - The boot executable exceeds the 4 MiB default materialization cap; read-only metadata inspection still completed.
 - This record is one authorized sample, not evidence of broad ISO or game compatibility.
 - No safe extraction boundary or loader exists.
@@ -60,5 +64,5 @@
 ## Next safe action
 
 1. Keep this record updated if the image or inspector changes.
-2. Treat the variant label and version discrepancy as unresolved; do not infer provenance or compatibility.
-3. Keep extraction and execution out of scope until an owner-approved safe boundary exists.
+2. Preserve the owner-provided original/mod distinction; do not infer changed files, revision, or compatibility from the filename or shared boot metadata.
+3. Any content audit requires an owner-approved extraction boundary; keep extraction and execution out of scope until then.

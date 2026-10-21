@@ -33,8 +33,8 @@ Eight owner-authorized images have read-only inspection records. Five earlier re
 
 - All eight reported no interleaved or multi-extent records, so they do not exercise those layouts.
 - `God of War II` has a PVD volume space smaller than the file; second-layer coverage is **Dugaan**.
-- Four images (`Need for Speed - Most Wanted`, `Bully`, and both San Andreas variants) have boot executables above the 4 MiB materialization cap; the cap is unchanged and inspection still completed.
-- The two San Andreas images share boot and `SYSTEM.CNF` hashes but have different whole-image hashes and PVD identifiers; the filename variant labels do not establish revision identity.
+- Four images (`Need for Speed - Most Wanted`, `Bully`, and both owner-described San Andreas samples) have boot executables above the 4 MiB materialization cap; the cap is unchanged and inspection still completed.
+- The two San Andreas images are separate owner-provided samples: an original USA sample and an Indonesian-language mod. They share boot and `SYSTEM.CNF` hashes but have different whole-image hashes and PVD identifiers. Shared boot metadata does not establish file equality or identify which files were modified.
 - No image was extracted, booted or recompiled.
 
 ## What would close Gate 2
