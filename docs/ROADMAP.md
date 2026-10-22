@@ -2,7 +2,7 @@
 
 ## Gate 0 — Foundation research and native spike
 
-**Technical spike: passed. Formal Gate 0 disposition: pending human review.**
+**Technical spike: passed. Gate 0 is accepted as a technical pass for the narrow synthetic scope by explicit owner delegation on 2026-10-23. This is not a clean-room certification, an independent review or a Gate 2 disposition.**
 
 - [x] Write an original synthetic ELF32/EM_MIPS fixture generator.
 - [x] Parse ELF header and executable load segment with basic bounds checks.
@@ -12,14 +12,14 @@
 - [x] Record permitted public references and historical source exposure.
 - [x] Write a renderer comparison plan; renderer selection remains open.
 - [x] Run the generated program under MSVC on Windows x64 and record actual output.
-- [ ] Human owner reviews all Gate 0 criteria and records the formal disposition.
+- [x] Owner delegated and the agent recorded the narrow Gate 0 technical pass on 2026-10-23; independent provenance review remains a release prerequisite.
 - [x] Human owner adopted the ADR-0003 sealed-source clean-room policy on 2026-10-21; prior exposure remains documented and affected work must be independently derived.
 
 ### Gate 0 evidence and limits
 
-The Windows MSVC runner reported PASS_LOCAL_DIFFERENTIAL_SPIKE, windows_msvc_verified true and native_matches_oracle true; all original Gate 0 tests passed. The same fixture and generated-source SHA-256 values were reproduced across separate spike runs. See STATE.md.
+The Windows MSVC runner reported PASS_LOCAL_DIFFERENTIAL_SPIKE, windows_msvc_verified true and native_matches_oracle true; all original Gate 0 tests passed. The same fixture and generated-source SHA-256 values were reproduced across separate spike runs. Published commit `6499b05` is green on Windows x64/MSVC and Linux/GCC in CI run `39838955979`. See STATE.md.
 
-This verifies only the synthetic ELF32/EM_MIPS instruction subset. It does not prove full R5900 correctness, retail ISO support, a working PS2 runtime or commercial-game compatibility. Technical success does not automatically close the formal gate or resolve clean-room concerns. A conservative [Gate 0 decision package](GATE0_REVIEW.md) collects the recorded evidence, reproduction commands, limits and owner options; it is not a disposition.
+The recorded disposition accepts only the synthetic ELF32/EM_MIPS instruction subset and the tested differential evidence. It does not prove full R5900 correctness, retail ISO support, a working PS2 runtime or commercial-game compatibility. Technical success does not resolve clean-room concerns. The [Gate 0 decision package](GATE0_REVIEW.md) records the accepted scope, limits and authority; the separate [provenance execution plan](PROVENANCE_PLAN.md) records the remaining reviews and forbidden material. Neither document is a clean-room certification.
 
 ## B1a — Project foundation
 
@@ -31,7 +31,7 @@ This verifies only the synthetic ELF32/EM_MIPS instruction subset. It does not p
 
 ## B1b — Repository/toolchain baseline
 
-**Status: technical baseline verified. CI is green for the published baseline, and the clean-checkout local Windows run passed. The build/CI/doctor layer is `Review required` in `docs/CLEAN_ROOM_AUDIT.md`; its agent-led re-derivation record and contract tests are in [BUILD_PROVENANCE.md](BUILD_PROVENANCE.md) and `tests/test_build_contract.py`, and it must not be described as clean-room certified. Formal Gate 0 remains pending. This work does not expand the PS2 instruction/runtime implementation.**
+**Status: technical baseline verified. CI is green for published `6499b05`, and the clean-checkout local Windows run passed. The build/CI/doctor layer is `Review required` in `docs/CLEAN_ROOM_AUDIT.md`; its agent-led re-derivation record and contract tests are in [BUILD_PROVENANCE.md](BUILD_PROVENANCE.md) and `tests/test_build_contract.py`, and it must not be described as clean-room certified. The narrow Gate 0 technical pass is recorded; this work does not expand the PS2 instruction/runtime implementation.**
 
 - [x] Add a CMake project baseline and repeatable windows-msvc / host presets.
 - [x] Add rptp doctor environment and artifact-guard diagnostics.
@@ -42,6 +42,7 @@ This verifies only the synthetic ELF32/EM_MIPS instruction subset. It does not p
 - [x] Confirm PR #1 CI (`39594147110`) passed the Windows and Linux jobs, then merge.
 - [x] Confirm CI runs (`39594267744`) and (`39594304857`) passed after the merge.
 - [x] Confirm post-publication CI run (`39664774001`) passed on Windows x64/MSVC and Linux/GCC for `d334139`.
+- [x] Confirm CI run (`39838955979`) passed on Windows x64/MSVC and Linux/GCC for the later published tip `6499b05`.
 - [x] Confirm dependency/license inventory remains complete before introducing any dependency; no third-party code is currently vendored or linked.
 - [x] Re-run the full Windows CMake preset from a clean checkout (local run at pre-push commit `83459c1` (now `b4d6fa7`; content unchanged); not a substitute for CI).
 
@@ -51,7 +52,7 @@ A clean checkout can configure/build/test using documented commands; CI is green
 
 ## B1c — Read-only ISO inspection prototype
 
-**Prototype expanded with metadata, explicit validation and deterministic malformed-input tests. The ISO inspector suite and the full Python suite pass locally; CI is green for the published baseline. The current owner-authorized retail sample has been inspected read-only; broad compatibility remains unverified.**
+**Prototype expanded with metadata, explicit validation and deterministic malformed-input tests. The ISO inspector suite and the full Python suite pass locally; CI is green for published `6499b05`. The current owner-authorized retail sample has been inspected read-only; broad compatibility remains unverified.**
 
 - [x] Parse ISO 9660 primary volume descriptor and validate dual-endian fields.
 - [x] Enforce single-volume PVD and directory volume sequences.
@@ -73,7 +74,7 @@ This phase is an inspector only. It does not launch a game, implement the PS2 ru
 
 ## Gate 2 — ISO Inspector expansion
 
-**Status: synthetic hardening and a read-only retail sample validation are implemented and locally verified; multi-extent/ISO-variant review and formal Gate 0 disposition remain open. Gate 2 is a read-only milestone under [ADR-0004](DECISIONS/ADR-0004-gate2-read-only-scope.md); extraction is deferred future work. Gate 2 is not passed.** The criterion-to-evidence map is maintained in [GATE2_EVIDENCE.md](GATE2_EVIDENCE.md); it is evidence, not a disposition.
+**Status: synthetic hardening and a read-only retail sample validation are implemented and locally verified; multi-extent/ISO-variant review and the independent ISO inspector provenance review remain open. The narrow Gate 0 technical pass is recorded but does not close Gate 2. Gate 2 is a read-only milestone under [ADR-0004](DECISIONS/ADR-0004-gate2-read-only-scope.md); extraction is deferred future work. Gate 2 is not passed.** The criterion-to-evidence map is maintained in [GATE2_EVIDENCE.md](GATE2_EVIDENCE.md); it is evidence, not a disposition.
 
 - Expand the B1c prototype into read-only ISO9660 parsing and SYSTEM.CNF inspection across the documented formats.
 - Identify boot executable metadata and calculate hashes.
@@ -84,7 +85,7 @@ This phase is an inspector only. It does not launch a game, implement the PS2 ru
 
 **Verified locally:** single-volume PVD validation, root `SYSTEM.CNF` inspection, BOOT path resolution, PVD/root/boot metadata, SHA-256, ELF PT_LOAD checks, metadata-only directory survey, explicit error codes, deterministic JSON, CLI JSON success/error, the ISO inspector suite and the full Python suite. CTest results and the retail sample are recorded in `docs/VERIFICATION_LOG.md`.
 
-**Still open:** retail layouts beyond the current sample, interleaved-file support, multi-extent and ISO-variant review, and the owner's formal Gate 0 disposition. Extraction is outside Gate 2 and requires a separate ADR and threat model. Clean-room handling is recorded in ADR-0003.
+**Still open:** retail layouts beyond the current sample, interleaved-file support, multi-extent and ISO-variant review, and the independent ISO inspector provenance review. Extraction is outside Gate 2 and requires a separate ADR and threat model. Clean-room handling is recorded in ADR-0003 and the execution steps in [PROVENANCE_PLAN.md](PROVENANCE_PLAN.md).
 
 **Pass criteria:** deterministic inspection results on synthetic fixtures, robust rejection of malformed inputs, no write path to the input or host, and clear reporting when an image is unsupported.
 

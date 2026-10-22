@@ -10,7 +10,7 @@ from xml.sax.saxutils import escape
 ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
 ASSETS = DOCS / "assets"
-SNAPSHOT_DATE = "2026-10-22"
+SNAPSHOT_DATE = "2026-10-23"
 
 COLORS = {
     "verified": ("#238636", "#2ea043", "#f0f6fc"),
@@ -38,7 +38,7 @@ FOUNDATION = [
     ("Synthetic tests", "verified"),
     ("Real ISO sample", "verified"),
     ("Game work records", "verified"),
-    ("Gate 0 formal", "partial"),
+    ("Gate 0 formal", "verified"),
     ("Clean-room review", "partial"),
     ("ISO variants", "open"),
     ("Extraction design", "open"),

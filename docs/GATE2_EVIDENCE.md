@@ -1,13 +1,13 @@
 # Gate 2 evidence dossier
 
 - **Status: NOT PASSED — evidence only.** Only the human owner records a Gate disposition.
-- **Base commit:** `d334139d11526e2abc4fad7d4ad09eced3b7da4a`; CI run `39664774001` passed Windows x64/MSVC and Linux/GCC.
-- **Local follow-up:** commits after `d334139`; run `git log origin/main..main` for the current list. They are local-only and not CI-verified. See `docs/STATE.md` for status.
+- **Base commit:** `6499b05d710837f3cae4b3f7e06fa5ab0cb9e55a`; CI run `39838955979` passed Windows x64/MSVC and Linux/GCC.
+- **Local follow-up:** the 2026-10-23 Gate 0/provenance documentation update is local-only and not CI-verified. See `docs/STATE.md` for status.
 - **Scope:** read-only ISO inspection and synthetic test evidence, per [ADR-0004](DECISIONS/ADR-0004-gate2-read-only-scope.md). No boot, extraction, recompilation or compatibility claim.
 
 ## Owner prerequisites
 
-- Formal Gate 0 disposition: **pending human review**.
+- Gate 0 disposition: **narrow technical pass recorded 2026-10-23 by explicit owner delegation**; it does not close Gate 2. See [GATE0_REVIEW.md](GATE0_REVIEW.md).
 - Independent provenance review of the ISO inspector: **not recorded**; the component remains `Provisional independent` in [CLEAN_ROOM_AUDIT.md](CLEAN_ROOM_AUDIT.md).
 - Independent review of the build/CI/doctor layer: **not recorded**; that layer remains `Review required`.
 
@@ -26,7 +26,7 @@
 | Extraction boundary | No extraction or output-directory feature exists; ADR-0004 records read-only scope and defers extraction. | Not a Gate 2 criterion. Future extraction needs a separate ADR and threat model. |
 | Multi-extent and ISO-variant support | Multi-extent layouts are rejected, not supported; Joliet, Rock Ridge and raw-sector variants are unsupported. | **Open by design; fail-closed.** |
 | Interleave field provenance | ECMA-119 5th edition (December 2024), Table 8 (p. 37) and §§10.1.8–10.1.9 (p. 40); independent field tests. | Evidenced. Interleaved file data remains unsupported. |
-| CI on the current evidence | `d334139` is green; later local commits are not CI-verified. | **Open for the new commits.** |
+| CI on the current evidence | `6499b05` is green on both jobs; the 2026-10-23 documentation update is not CI-verified. | **Open for the snapshot commit.** |
 
 ## Retail sample limits
 
@@ -40,7 +40,7 @@ Eight owner-authorized images have read-only inspection records. Five earlier re
 
 ## What would close Gate 2
 
-1. Owner records the formal Gate 0 disposition and an independent review of the ISO inspector's provenance.
+1. Record an independent review of the ISO inspector's provenance; the narrow Gate 0 technical disposition is already recorded but does not substitute for it.
 2. Confirm the read-only Gate 2 scope in ADR-0004; extraction is deferred and requires a separate threat model.
 3. Review the documented ISO variants and multi-extent handling, with synthetic tests for every accepted or rejected case.
 4. Owner publication of the final evidence commit followed by green Windows x64/MSVC and Linux/GCC CI.

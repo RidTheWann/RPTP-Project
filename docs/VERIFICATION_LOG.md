@@ -326,3 +326,23 @@ Base commit: `4f6369e`; the test and this log entry were uncommitted during the 
 - `python tools/check_forbidden_artifacts.py --root .` — PASS.
 - `python -m compileall -q tools tests` — PASS.
 - These results are local only; the commit is not pushed and has no CI run.
+
+## 2026-10-23 - Gate 0 narrow technical disposition and provenance plan
+
+Base commit: `6499b05d710837f3cae4b3f7e06fa5ab0cb9e55a`; the documentation, generated progress assets and progress-generator changes in this entry were uncommitted during the checks. Environment: Windows 11 x64, Python 3.13.16, Visual Studio 2026 Community, MSVC toolset 14.51.36231, CMake 4.4.4 and Ninja 1.13.2 through the Visual Studio developer environment.
+
+- Published CI baseline: GitHub Actions run `39838955979` for `6499b05` reported success. The run page lists both jobs, `Windows x64 / MSVC` and `Linux / GCC`, with successful results. This is the published baseline; the snapshot commit in this entry is local and has no CI run.
+- Owner authority: the 2026-10-23 owner instruction explicitly delegated recording of a technical pass for the narrow synthetic differential-spike scope. `docs/GATE0_REVIEW.md` records the accepted scope, non-claims and decision record. It is not a clean-room certification, independent review, legal opinion, Gate 2 disposition or game-compatibility claim.
+- `docs/PROVENANCE_PLAN.md` records the concrete execution plan: current traceability, the per-increment reference/test/audit procedure, prohibited material, re-derivation and quarantine rules, and the independent reviews required before Gate 2 closure and product release.
+- Status documents updated to remove the stale pending-Gate-0 claims: `README.md`, `docs/STATE.md`, `docs/ROADMAP.md`, `docs/HANDOFF.md`, `docs/EXECUTION_CONTEXT.md`, `docs/GATE0_REVIEW.md`, `docs/GATE2_EVIDENCE.md`, `docs/CLEAN_ROOM_AUDIT.md`, `docs/BUILD_PROVENANCE.md`, `docs/BUILDING_WINDOWS.md`, `docs/COMPATIBILITY.md`, `docs/ISO_INSPECTOR.md`, ADR-0001 and the eight indexed game records. Gate 2 remains open and read-only; no extraction, boot or compatibility claim was added.
+- The build/CI/doctor layer remains `Review required`; the Gate 0 and ISO inspector components remain `Provisional independent`; no component was certified clean-room. The runtime/recompiler expansion row is recorded as a met prerequisite with no implementation beyond the synthetic spike.
+- `python tools/rptp_progress.py` - PASS; regenerated `docs/progress.html`, `docs/assets/progress.svg`, `docs/assets/badge-foundation.svg` and `docs/assets/badge-runtime.svg`. The foundation badge moved from 72.2% to 77.8% (14 of 18 checklist items verified); the README uses the generated value.
+- `python -m unittest discover -s tests -v` - 85 tests, PASS.
+- `python tools/check_forbidden_artifacts.py --root .` - PASS.
+- `python -m compileall -q tools tests` - PASS.
+- Relative-link check: 92 relative links across 32 Markdown files - PASS; all resolve to existing repository paths.
+- `git diff --check` - PASS for whitespace errors; Git emitted LF-to-CRLF normalization warnings for modified text and generated SVG files. No whitespace error was reported.
+- `python tools/rptp_doctor.py` through `VsDevCmd.bat` - PASS; Python 3.13.16, MSVC 14.51.36231, CMake, Ninja, git, required layout and artifact guard all passed.
+- `cmake --preset windows-msvc` and `cmake --build --preset windows-msvc` through `VsDevCmd.bat` - PASS; the build target ran CTest 3/3 PASS.
+- `scripts/run-msvc.ps1` invoked from a temporary directory outside the repository through `VsDevCmd.bat` - `PASS_LOCAL_DIFFERENTIAL_SPIKE`; `native_matches_oracle: true`; `windows_msvc_verified: true`; 28 instructions; 22 trace steps; fixture SHA-256 `b21f1f7793236d1ccba7308cc82f42d9f89915c87c0b037c46d8170f28349ca9`; generated C++ SHA-256 `5316e0f51ba8b1fa1252e409f38cb9ac7db7606fee17b28ef0dcf1be162ae795`; the wrapper also ran the 85-test suite successfully.
+- No retail ISO was inspected, extracted, modified, mounted, booted, emulated or executed in this session. No sealed project material was accessed. These are local results only; the snapshot commit is not pushed and has no CI run.

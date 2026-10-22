@@ -1,12 +1,14 @@
-# Handoff — RPTP after Gate 0 publication
+# Handoff — RPTP after the Gate 0 technical disposition
 
 ## Current position
 
-- Public repository: RidTheWann/RPTP-Project.
+- Public repository: RidTheWann/RPTP-Project. Published tip: `6499b05`; CI run `39838955979` passed Windows x64/MSVC and Linux/GCC.
+- 2026-10-23 Gate 0 disposition: the owner explicitly delegated recording of a **technical pass for the narrow synthetic differential-spike scope**. It is recorded in `docs/GATE0_REVIEW.md`; it is not a clean-room certification, independent review or Gate 2 disposition.
+- 2026-10-23 provenance plan: `docs/PROVENANCE_PLAN.md` records what is traceable, the per-increment procedure, prohibited material, re-derivation/quarantine rules and the independent reviews still required before release.
 - The README cover is published at docs/assets/rptp-cover.png; README should contain one cover reference.
 - The isolated Gate 0 spike is published. The owner ran scripts/run-msvc.ps1 on Windows x64 and recorded PASS_LOCAL_DIFFERENTIAL_SPIKE, native_matches_oracle true and windows_msvc_verified true.
 - The original Gate 0 tests and artifact guard passed in the recorded Windows run. Linux/GCC and Linux/Clang spike evidence is also recorded.
-- The work laptop is aligned to Visual Studio 2026 Build Tools 18.11.1 / MSVC 19.51.36260.0 and Python 3.13.16. Doctor, CMake configure, CTest and the Gate 0 spike pass locally.
+- The work laptop is aligned to Visual Studio 2026 Community, MSVC toolset 14.51.36231 and Python 3.13.16. Doctor, CMake configure, CTest and the Gate 0 spike pass locally.
 - The ISO inspector was expanded with single-volume checks, `SYSTEM.CNF`/BOOT validation, PVD/root/boot metadata, SHA-256, ELF PT_LOAD checks, warnings, an explicit error taxonomy, chunked read limits, explicit interleaved/multi-extent rejection, a metadata-only directory survey and deterministic in-memory/file-based mutation tests. The ISO inspector suite and the full Python suite pass; CTest results are recorded in `docs/VERIFICATION_LOG.md`.
 - The current owner-authorized retail sample is inspected read-only and indexed in `docs/games/README.md`. No boot or native port exists. Every game worked on must get a `docs/games/<slug>/STATUS.md` record. Gate 2 is read-only under ADR-0004; extraction is deferred future work and requires a separate threat model.
 - The project license is GPL-3.0-or-later for original RPTP material. Third-party licensing remains a per-dependency audit.
@@ -19,14 +21,14 @@
 - 2026-10-22 GTA sample provenance: the owner clarified that the two San Andreas samples are intentional different images, one original USA and one Indonesian-language mod. Slugs were retained to avoid breaking existing links and history; headings, index entries, compatibility notes and records now label the owner-provided distinction. Targeted read-only rechecks matched the recorded metadata. R-020 now describes the unaudited modification details, not an unknown identity.
 - 2026-10-22 R-018 investigation: `God of War II (USA)` was re-inspected and surveyed read-only at inspector `d51f0e7`. The PVD declares 2,083,888 blocks (4,267,802,624 bytes) in an 8,533,671,936-byte image; all 15 reported files lie inside the volume and the highest extent ends 32,768 bytes before the volume end. The remaining 2,082,944 sectors are outside the inspected volume. ECMA-119 §9.4.9 and an independent metadata read support the declared-volume boundary; the purpose of the extra bytes and any dual-layer explanation remain unverified. No parser defect was reproduced and no code changed. R-018 remains open.
 - 2026-10-22 publication audit: the R-018 statement that existing tests covered an image larger than its PVD volume was inaccurate. Added `test_accepts_image_larger_than_pvd_volume`, appended a correction to `docs/VERIFICATION_LOG.md`, and re-ran 85 tests, the artifact guard and `compileall` locally. No production code or retail image changed. The rest of the unpublished stack passed the local audit; none of these local commits has CI evidence.
-- Session-3 commits through `d334139`, including the survey capability, are published on `main`; CI run `39664774001` passed both supported jobs. Local commits after `d334139` include `6ae4a3a`, `33d8392` and `800b90a` plus later documentation/test records; run `git log origin/main..main` for the current list. None is pushed or CI-verified.
-- Formal Gate 0 acceptance is pending human review.
+- The previously local publication stack is now published through `6499b05`; CI run `39838955979` passed both supported jobs. The 2026-10-23 Gate 0/provenance documentation commit is local until the owner publishes it and is not CI-verified.
+- The narrow Gate 0 technical pass is recorded. Independent provenance reviews of the Gate 0 and ISO inspector components and the build/CI/doctor layer remain open; Gate 2 remains open and read-only.
 - Historical source exposure involving PS2Recomp and PS2 Web Recomp remains documented; this must not be described as erased or resolved by the license decision.
 - On 2026-10-21 the owner adopted ADR-0003: those projects and other emulator/recompiler implementations are sealed. Do not access them again; new work must be independently derived from neutral specifications and tests. `docs/CLEAN_ROOM_AUDIT.md` tracks component status; no file is certified clean-room, and the build/CI/doctor layer is `Review required`.
 
 ## Current phase
 
-B1b repository/toolchain baseline and B1c ISO inspector prototype: CMake presets, rptp doctor, CTest wrappers, the synthetic-only ISO inspector, and Windows/MSVC + Linux CI are present. PR #1 merged as `5bf62b2`; CI runs `39594267744`, `39594147110`, `39594304857` and `39664774001` passed for the published history. A clean-checkout local Windows run at pre-push commit `83459c1` (now `b4d6fa7`; content unchanged) passed; it is recorded in `docs/VERIFICATION_LOG.md`. Gate 2 synthetic hardening and a read-only retail sample validation are locally verified; the interleave field mapping is spec-checked. ISO variants, multi-extent support and interleaved-file support remain open; extraction is outside the read-only Gate 2 scope and remains future work. Do not access sealed projects; apply ADR-0003 to all new work. Do not expand R5900 instruction semantics or PS2 runtime implementation until the owner completes the formal Gate 0 review.
+B1b repository/toolchain baseline and B1c ISO inspector prototype: CMake presets, rptp doctor, CTest wrappers, the synthetic-only ISO inspector, and Windows/MSVC + Linux CI are present. PR #1 merged as `5bf62b2`; CI runs `39594267744`, `39594147110`, `39594304857`, `39664774001` and `39838955979` passed for the published history. A clean-checkout local Windows run at pre-push commit `83459c1` (now `b4d6fa7`; content unchanged) passed; it is recorded in `docs/VERIFICATION_LOG.md`. Gate 2 synthetic hardening and a read-only retail sample validation are locally verified; the interleave field mapping is spec-checked. ISO variants, multi-extent support, interleaved-file support and the independent ISO inspector review remain open; extraction is outside the read-only Gate 2 scope and remains future work. Do not access sealed projects; apply ADR-0003 and the per-increment procedure in `docs/PROVENANCE_PLAN.md` to all new work. The narrow Gate 0 technical pass is recorded; expansion is permitted only with references, tests and fail-closed diagnostics. Gate 2 is still not passed.
 
 ## Expected local commands
 
@@ -44,9 +46,9 @@ If a CI job fails, record the exact runner, command and error before updating pr
 
 ## Next review points
 
-1. Human owner completes formal Gate 0 review using [GATE0_REVIEW.md](GATE0_REVIEW.md) as the evidence package; the package itself does not close the gate.
-2. Enforce ADR-0003: keep sealed projects off-limits, preserve provenance, and quarantine any work that cannot demonstrate independent derivation.
+1. Review the recorded narrow Gate 0 disposition in [GATE0_REVIEW.md](GATE0_REVIEW.md); do not describe it as more than the synthetic scope or as a clean-room certification. Complete the independent Gate 0 provenance review before product release.
+2. Enforce ADR-0003 and the per-increment procedure in [PROVENANCE_PLAN.md](PROVENANCE_PLAN.md): keep sealed projects off-limits, preserve provenance, and quarantine any work that cannot demonstrate independent derivation.
 3. Arrange an independent review or re-derivation of the build/CI/doctor layer marked `Review required` in `docs/CLEAN_ROOM_AUDIT.md`; do not claim clean-room certification before it is recorded.
-4. Keep every capability claim tied to reproducible evidence. B1b technical checks pass locally and CI is green for published `d334139`; later local commits are not CI-verified. The independent clean-room review of the build/CI/doctor layer remains open.
+4. Keep every capability claim tied to reproducible evidence. B1b technical checks pass locally and CI is green for published `6499b05`; the local snapshot commit is not CI-verified. The independent clean-room review of the build/CI/doctor layer remains open.
 5. Continue validating the ISO inspector only against owner-authorized discs; keep `docs/games/` records current, record hashes and outcomes without committing game images, and do not promote compatibility from synthetic tests.
 6. Review multi-extent and other ISO 9660 variants before treating Gate 2 as passed; interleaved layouts remain unsupported despite the spec-checked field mapping. Gate 2 is read-only under ADR-0004; extraction is deferred future work and requires a separate threat model.

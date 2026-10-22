@@ -1,7 +1,7 @@
 # Bully (USA)
 
 - **Status:** Inspected (read-only)
-- **Last updated:** 2026-10-22
+- **Last updated:** 2026-10-23
 - **RPTP inspector:** `tools/rptp_inspect.py` at `d51f0e7`
 - **Source:** owner-provided local ISO; not committed
 - **Filename:** `Bully (USA).iso`
@@ -50,7 +50,7 @@
 - The boot executable exceeds the 4 MiB default materialization cap; read-only metadata inspection still completed.
 - This record is one authorized sample, not evidence of broad ISO or game compatibility.
 - No safe extraction boundary or loader exists.
-- Formal Gate 0 review and the ADR-0003 clean-room prerequisites remain owner-controlled.
+- The narrow Gate 0 technical pass for synthetic code was recorded on 2026-10-23; it does not authorize boot, recompilation or compatibility claims for this title. ADR-0003 clean-room prerequisites and independent provenance reviews remain in force.
 
 ## Next safe action
 

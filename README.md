@@ -6,7 +6,7 @@
 
 RPTP is an open-source research project exploring how to transform a user-owned PlayStation 2 game image into a native Windows x64 build by statically recompiling supported Emotion Engine (EE) code to C++, alongside a from-scratch runtime for the PS2 services a game needs.
 
-> **Development status: early research.** The published Gate 0 spike is a narrow, passing synthetic differential test, and CI is green on both supported jobs. This is not a PS2 game loader, a complete R5900 recompiler, or evidence that any commercial game boots or runs.
+> **Development status: early research.** The published Gate 0 spike is a narrow, passing synthetic differential test; the owner-delegated technical pass for that scope is recorded. CI is green on both supported jobs for `6499b05`. This is not a PS2 game loader, a complete R5900 recompiler, a clean-room certification, or evidence that any commercial game boots or runs.
 
 ## Project goals
 
@@ -18,7 +18,7 @@ RPTP is an open-source research project exploring how to transform a user-owned 
 
 ## Current status
 
-[![Foundation checklist: 72.2% verified](https://ridthewann.github.io/RPTP-Project/assets/badge-foundation.svg)](https://ridthewann.github.io/RPTP-Project/progress.html) [![Runtime checklist: 0.0% verified](https://ridthewann.github.io/RPTP-Project/assets/badge-runtime.svg)](https://ridthewann.github.io/RPTP-Project/progress.html)
+[![Foundation checklist: 77.8% verified](https://ridthewann.github.io/RPTP-Project/assets/badge-foundation.svg)](https://ridthewann.github.io/RPTP-Project/progress.html) [![Runtime checklist: 0.0% verified](https://ridthewann.github.io/RPTP-Project/assets/badge-runtime.svg)](https://ridthewann.github.io/RPTP-Project/progress.html)
 
 [![RPTP progress map](https://ridthewann.github.io/RPTP-Project/assets/progress.svg)](https://ridthewann.github.io/RPTP-Project/progress.html)
 
@@ -26,7 +26,7 @@ RPTP is an open-source research project exploring how to transform a user-owned 
 
 ### Gate 0 — synthetic recompilation spike
 
-**Technical spike: passed on Windows x64/MSVC and Linux host compilers. Formal Gate 0 acceptance: pending owner review.**
+**Technical spike: passed on Windows x64/MSVC and Linux host compilers. Gate 0 is accepted as a technical pass for the narrow synthetic scope by explicit owner delegation on 2026-10-23. This is not a clean-room certification, an independent review or a Gate 2 disposition.**
 
 The published spike currently demonstrates:
 
@@ -60,10 +60,10 @@ Release tags and release artifacts are created only from release-ready commits w
 
 ## Development phases
 
-1. **Gate 0 — Foundation and spike:** technical differential test completed and CI verified; formal review remains open. The [decision evidence package](docs/GATE0_REVIEW.md) records the scope, limits and owner options.
+1. **Gate 0 — Foundation and spike:** technical differential test completed and CI verified; the narrow technical pass was recorded on 2026-10-23 by explicit owner delegation. The [decision evidence package](docs/GATE0_REVIEW.md) records the accepted scope and limits; the [provenance execution plan](docs/PROVENANCE_PLAN.md) records the independent reviews that remain before release.
 2. **B1a — Project foundation:** license and architecture decision recorded; the owner confirmed GPL-3.0-or-later on 2026-10-21. Clean-room handling is governed by the owner-approved sealed-source policy in ADR-0003; prior exposure remains documented.
-3. **B1b — Repository/toolchain baseline:** CMake, diagnostics, tests and CI are implemented; CI is green for the published baseline `d334139`, and the clean-checkout local Windows run passed. Local commits after that baseline are not CI-verified. The clean-room review of the build/CI/doctor layer remains open.
-4. **B1c — ISO Inspector prototype:** read-only ISO9660 and `SYSTEM.CNF` inspection, boot metadata, an explicit error taxonomy, ELF PT_LOAD checks, hashing and synthetic malformed-input tests are implemented. A broader owner-authorized real-disc sample is recorded; ISO-variant review and the read-only Gate 2 review remain open. Gate 2 is read-only per [ADR-0004](docs/DECISIONS/ADR-0004-gate2-read-only-scope.md); extraction is deferred future work.
+3. **B1b — Repository/toolchain baseline:** CMake, diagnostics, tests and CI are implemented; CI is green for published `6499b05`, and the clean-checkout local Windows run passed. The 2026-10-23 snapshot update is local until the owner publishes it. The clean-room review of the build/CI/doctor layer remains open.
+4. **B1c — ISO Inspector prototype:** read-only ISO9660 and `SYSTEM.CNF` inspection, boot metadata, an explicit error taxonomy, ELF PT_LOAD checks, hashing and synthetic malformed-input tests are implemented. A broader owner-authorized real-disc sample is recorded; ISO-variant review, the independent ISO inspector provenance review and the read-only Gate 2 disposition remain open. Gate 2 is read-only per [ADR-0004](docs/DECISIONS/ADR-0004-gate2-read-only-scope.md); extraction is deferred future work.
 5. **Recompiler MVP:** verified instruction catalog, decoder, IR, function discovery, deterministic code generation and differential tests.
 6. **First-game vertical slice:** boot, minimum runtime services, graphics, audio/input/save and repeatable gameplay.
 7. **Compatibility and release:** expand subsystem coverage using measured blockers, then validate clean-machine builds and release artifacts.
@@ -115,7 +115,7 @@ Build outputs are local and should not be committed. Only synthetic binary fixtu
 - **Approach:** from-scratch static ahead-of-time recompilation; native Windows x64 target.
 - **Generated output:** C++ compiled by the target host toolchain.
 - **Verification:** deterministic output, reference-oracle differential tests, fixture hashes and explicit unsupported-instruction errors.
-- **Clean room:** do not copy implementation source from emulators or recompilers. Prior technical-source exposure is documented in [docs/REFERENCES.md](docs/REFERENCES.md) and [ADR-0001](docs/DECISIONS/ADR-0001-foundation-and-clean-room.md); it must not be ignored or represented as erased. The owner-approved [ADR-0003](docs/DECISIONS/ADR-0003-sealed-source-clean-room-policy.md) seals those projects: no further access, and new work must be independently derived from neutral specifications and tests. Component-level status is in [docs/CLEAN_ROOM_AUDIT.md](docs/CLEAN_ROOM_AUDIT.md). This is a process policy, not a legal guarantee.
+- **Clean room:** do not copy implementation source from emulators or recompilers. Prior technical-source exposure is documented in [docs/REFERENCES.md](docs/REFERENCES.md) and [ADR-0001](docs/DECISIONS/ADR-0001-foundation-and-clean-room.md); it must not be ignored or represented as erased. The owner-approved [ADR-0003](docs/DECISIONS/ADR-0003-sealed-source-clean-room-policy.md) seals those projects: no further access, and new work must be independently derived from neutral specifications and tests. Component-level status is in [docs/CLEAN_ROOM_AUDIT.md](docs/CLEAN_ROOM_AUDIT.md); the execution steps and remaining independent reviews are in [docs/PROVENANCE_PLAN.md](docs/PROVENANCE_PLAN.md). This is a process policy, not a legal guarantee.
 
 ## License
 

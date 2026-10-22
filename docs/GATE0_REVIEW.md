@@ -1,9 +1,22 @@
 # Gate 0 — decision evidence package
 
-- **Status:** technical evidence package; **formal Gate 0 disposition pending**. This document does not close the gate and is not a certification.
+- **Status:** **Accepted — technical pass for the narrow synthetic differential-spike scope, recorded 2026-10-23 by explicit owner delegation.** This is a technical scope disposition, not a clean-room certification, independent review or legal opinion.
 - **Prepared:** 2026-10-22
-- **Owner decision requested:** review the evidence and record the formal Gate 0 disposition.
+- **Disposition recorded:** 2026-10-23
+- **Authority:** The project owner explicitly delegated recording of this technical pass to the agent on 2026-10-23. The owner remains the decision owner. The independent provenance review required before product release is separate and is tracked in [PROVENANCE_PLAN.md](PROVENANCE_PLAN.md).
 - **Scope:** the synthetic ELF32/EM_MIPS differential spike and its reproducible checks. This package does not cover retail executables, the full R5900 ISA, the PS2 runtime, rendering, audio, input, storage or game compatibility.
+
+## Disposition
+
+Gate 0 is accepted as a **technical pass for the narrow synthetic scope only**. The accepted claim is limited to the synthetic ELF32/EM_MIPS fixture, its bounds-checked parser, the tested instruction subset, deterministic C++20 generation, compilation with MSVC on Windows x64, and native-versus-oracle equality for the tested register state, memory, stop PC and executed-PC trace.
+
+The disposition does **not** accept or imply:
+
+- full R5900 correctness, EE-specific floating-point/MMI behavior, COP0, exceptions, interrupts or timing;
+- retail PS2 ELF or ISO support, extraction, boot, playability or compatibility with any commercial game;
+- EE kernel, syscalls, IOP, DMA, VU, GS, SPU2, CDVD, controller or memory-card behavior;
+- clean-room certification, independent provenance review or legal clearance; or
+- a Gate 2, Gate 3 or later disposition. Gate 2 remains open and read-only.
 
 ## What the spike tested
 
@@ -11,7 +24,7 @@ The spike generates a synthetic ELF32/EM_MIPS fixture, parses its executable seg
 
 ## Recorded evidence
 
-The following results come from the append-only [verification log](VERIFICATION_LOG.md). They were not rerun while preparing this package.
+The results below come from the append-only [verification log](VERIFICATION_LOG.md). Historical rows retain their original dates and are not rewritten here.
 
 | Check | Recorded result | Evidence |
 |---|---|---|
@@ -20,9 +33,9 @@ The following results come from the append-only [verification log](VERIFICATION_
 | Compiler flags | `/std:c++20 /EHsc /W4 /WX /permissive- /utf-8` | Same section |
 | Fixture SHA-256 | `b21f1f7793236d1ccba7308cc82f42d9f89915c87c0b037c46d8170f28349ca9` | Same section and [fixture manifest](../tests/fixtures/MANIFEST) |
 | Generated C++ SHA-256 | `5316e0f51ba8b1fa1252e409f38cb9ac7db7606fee17b28ef0dcf1be162ae795` | Same section |
-| Original Gate 0 unit tests | 12 passed | Same section |
+| Original Gate 0 unit tests | 12 passed at the time of the original spike | Same section |
 | Linux host toolchains | GCC 14.2.0 and Clang 17.0.0 builds passed; hashes reproduced | [Linux host toolchain evidence](VERIFICATION_LOG.md#linux-host-toolchain-evidence) |
-| CI baseline | Windows x64/MSVC and Linux/GCC jobs passed for published `d334139` (run `39664774001`) | [Current status](STATE.md) |
+| Published CI baseline | Windows x64/MSVC and Linux/GCC jobs passed for `6499b05` (run `39838955979`) | [Current status](STATE.md) |
 
 The detailed spike report is a local, ignored build artifact at `build/gate0-msvc/report.json`; it is not committed. Regeneration is the reproducibility mechanism.
 
@@ -37,7 +50,7 @@ From the repository root in a Visual Studio developer environment:
     powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-msvc.ps1
     python -m unittest tests.test_gate0_spike -v
 
-The build preset's `rptp-ci` target runs the doctor and the test suite. These commands regenerate the fixture and generated source; equality of both SHA-256 values across runs is part of the determinism check. A local run is not CI evidence, and this package does not claim that any later local commit has passed CI.
+The build preset's `rptp-ci` target runs the doctor and the test suite. These commands regenerate the fixture and generated source; equality of both SHA-256 values across runs is part of the determinism check. A local run is not CI evidence. CI evidence exists only for the published commit identified above.
 
 ## Explicit limits
 
@@ -47,15 +60,16 @@ The build preset's `rptp-ci` target runs the doctor and the test suite. These co
 - The artifact guard checks the repository working tree, not every possible host-side artifact.
 - The build/CI/doctor layer is `Review required` in [CLEAN_ROOM_AUDIT.md](CLEAN_ROOM_AUDIT.md); this package does not independently certify its provenance.
 - No runtime or renderer is selected; ADR-0002 remains a plan only.
+- Gate 2 remains open, read-only and not passed under [ADR-0004](DECISIONS/ADR-0004-gate2-read-only-scope.md).
 
 ## Clean-room and provenance considerations
 
-Gate 0 work predates the sealed-source policy recorded in [ADR-0003](DECISIONS/ADR-0003-sealed-source-clean-room-policy.md). Prior exposure is documented in [REFERENCES.md](REFERENCES.md) and cannot be erased. The owner's policy requires affected work to be independently derived; a technical differential pass does not by itself resolve provenance concerns. Updated build provenance and independent contract evidence are separate follow-up work and must not be described as clean-room certification.
+Gate 0 work predates the sealed-source policy recorded in [ADR-0003](DECISIONS/ADR-0003-sealed-source-clean-room-policy.md). Prior exposure is documented in [REFERENCES.md](REFERENCES.md) and cannot be erased. The owner's policy requires affected work to be independently derived; this technical differential pass does not by itself resolve provenance concerns.
 
-## Decision options for the owner
+An execution plan for traceability, re-derivation and independent review is recorded in [PROVENANCE_PLAN.md](PROVENANCE_PLAN.md). Recording that plan is not a clean-room certification and does not replace the independent review that must occur before product release.
 
-1. **Record a formal technical pass for the narrow synthetic scope**, accepting the stated limits and the separate provenance follow-up.
-2. **Keep the disposition pending** until independent provenance review or re-derivation is recorded.
-3. **Reject or require rework** if the evidence, scope or provenance is insufficient.
+## Decision record
 
-Only the owner may choose and record this disposition. The agent does not recommend treating a local run or this package as a Gate closure.
+The owner's 2026-10-23 instruction delegated and selected the first option: **record a formal technical pass for the narrow synthetic scope**, accepting the stated limits and keeping provenance follow-up separate.
+
+The other options were not selected: the disposition is not being held pending independent provenance review, and the technical evidence was not rejected or required to be reworked. The owner has not recorded a clean-room disposition, a Gate 2 disposition or any commercial-compatibility claim.

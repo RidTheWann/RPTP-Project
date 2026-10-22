@@ -1,7 +1,7 @@
 # ADR-0001 — Foundation, from-scratch decision, and clean-room boundaries
 
 - **Date:** 2026-10-21
-- **Status:** Accepted — from-scratch direction, GPL-3.0-or-later and the sealed-source policy in ADR-0003 approved; formal Gate 0 disposition remains pending
+- **Status:** Accepted — from-scratch direction, GPL-3.0-or-later and the sealed-source policy in ADR-0003 approved; the narrow Gate 0 technical pass was recorded on 2026-10-23 by explicit owner delegation
 - **Decision owner:** Human project owner
 - **Related:** Gate 0 / B1a; `docs/REFERENCES.md`; `docs/RISKS.md`
 
@@ -48,9 +48,11 @@ The recorded report at `build/gate0-msvc/report.json` has:
 
 The spike covers only a synthetic ELF32/EM_MIPS fixture and a limited instruction subset: ADDIU, ADDU, LW, SW, BEQ, BNE, J, JAL, JR and NOP, including delay slots. The generated native program matches the reference interpreter for the tested state and execution trace.
 
-**Technical spike status: passed. Formal Gate 0 disposition: pending human review.**
+**Technical spike status: passed. Gate 0 disposition: accepted as a technical pass for the narrow synthetic scope on 2026-10-23, recorded under explicit owner delegation.** The accepted scope covers the synthetic fixture, tested instruction subset, deterministic C++ generation and native-versus-oracle differential result. It does not cover retail executables, full R5900 behavior, the PS2 runtime, game boot or compatibility. See [GATE0_REVIEW.md](../GATE0_REVIEW.md).
 
 This evidence does not establish complete R5900 accuracy, retail ISO compatibility, game boot, or support for PS2 kernel services, VU, GS, IOP, audio or other hardware behavior. Continue to use explicit test evidence and compatibility milestones for all broader claims.
+
+The technical disposition is not a clean-room certification or independent review. The concrete provenance execution plan, including the reviews still required before release, is recorded in [PROVENANCE_PLAN.md](../PROVENANCE_PLAN.md).
 
 ## Consequences
 
@@ -58,7 +60,7 @@ This evidence does not establish complete R5900 accuracy, retail ISO compatibili
 - Every supported instruction family needs independent semantic tests and explicit verification status.
 - Game-specific compatibility is earned per title; generated executable presence does not count as playable.
 - Original covered RPTP software distributed in source or binary form must comply with GPL-3.0-or-later's applicable conditions. For covered object-code distributions, provide or offer the corresponding source as required by the license. Preserve license and copyright notices. GPL permits commercial use and does not guarantee public recognition, protect a project name as a trademark, or prevent compliant forks.
-- Third-party components do not become GPL-3.0-or-later merely by inclusion; retain their own licenses and required notices. Before expanding recompiler/runtime implementation and before any further publication, apply ADR-0003 and complete the formal Gate 0 disposition. The historical exposure record remains part of the project record.
+- Third-party components do not become GPL-3.0-or-later merely by inclusion; retain their own licenses and required notices. Before expanding recompiler/runtime implementation, apply ADR-0003 and follow the per-increment procedure and review gates in [PROVENANCE_PLAN.md](../PROVENANCE_PLAN.md). The historical exposure record remains part of the project record.
 
 ## Re-evaluation criteria
 

@@ -36,7 +36,7 @@ No build behavior in this layer was derived from a sealed project's build files 
 
 ## Evidence and limits
 
-- The contract tests are local evidence. Their presence does not make the layer CI-verified; CI is green only for published baseline `d334139`.
+- The contract tests are local evidence. Their presence does not make the layer CI-verified; CI is green for published `6499b05` (run `39838955979`). The 2026-10-23 documentation update is local until the owner publishes it.
 - The wrapper change was checked through the current Visual Studio developer environment and invoked from a temporary working directory outside the repository. A local pass is not a clean-machine guarantee.
 - The doctor and workflow are not proven correct for every Visual Studio edition, runner image, shell, locale or filesystem.
 - No dependency was added, and no third-party action or CMake module was vendored.
@@ -44,4 +44,4 @@ No build behavior in this layer was derived from a sealed project's build files 
 
 ## What would change the status
 
-Only an independent reviewer may record what was compared and why this layer is not derived from sealed material, as required by [CLEAN_ROOM_AUDIT.md](CLEAN_ROOM_AUDIT.md). Until then the status stays `Review required`, and the layer must not be described as clean-room certified.
+Only an independent reviewer may record what was compared and why this layer is not derived from sealed material, as required by [CLEAN_ROOM_AUDIT.md](CLEAN_ROOM_AUDIT.md) and [PROVENANCE_PLAN.md](PROVENANCE_PLAN.md). Until then the status stays `Review required`, and the layer must not be described as clean-room certified.

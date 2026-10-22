@@ -15,8 +15,8 @@ No commercial PS2 game has been booted or tested for gameplay. The current owner
 | Need for Speed - Most Wanted (USA) (v2.00) | Retail PS2 ISO | `Inspect passed (read-only)` | The boot executable is larger than the default 4 MiB materialization cap. No extraction, boot, recompilation or gameplay was tested. See [the game record](games/need-for-speed-most-wanted/STATUS.md). |
 | Resident Evil 4 (USA) | Retail PS2 ISO | `Inspect passed (read-only)` | The inspector resolved `SYSTEM.CNF` and `BOOT2` and reported boot metadata. No boot, recompilation or gameplay was tested. See [the game record](games/resident-evil-4/STATUS.md). |
 | Other retail PS2 ISOs outside the current sample | Retail game | `Not tested` | The current sample is not evidence of broad compatibility. No boot or game-compatibility claim is made. |
-| Windows/MSVC | Build platform check | `Verified` | Visual Studio 2026 Build Tools, MSVC 19.51.36260.0: doctor, configure, CTest and Gate 0 differential spike pass locally; results are recorded in [docs/VERIFICATION_LOG.md](VERIFICATION_LOG.md). |
-| Linux/GCC | Build platform check | `Verified in CI` | Runs `39594267744`, `39594147110`, `39594304857` and `39664774001` passed. |
+| Windows/MSVC | Build platform check | `Verified` | Visual Studio 2026 Build Tools, MSVC toolset 14.51.36231: doctor, configure, CTest and Gate 0 differential spike pass locally; results are recorded in [docs/VERIFICATION_LOG.md](VERIFICATION_LOG.md). |
+| Linux/GCC | Build platform check | `Verified in CI` | Runs `39594267744`, `39594147110`, `39594304857`, `39664774001` and `39838955979` passed. |
 
 Fixture metadata:
 

@@ -1,7 +1,7 @@
 # Downhill Domination (USA)
 
 - **Status:** Inspected (read-only)
-- **Last updated:** 2026-10-22
+- **Last updated:** 2026-10-23
 - **RPTP inspector:** `tools/rptp_inspect.py` at `25b4ab8` (initial record at `5d9db90`; pre-push `14e6f02`)
 - **Source:** owner-provided local ISO; not committed
 - **Filename:** `Downhill Domination (USA).iso`
@@ -50,11 +50,11 @@
 - The PVD volume identifier is empty; the inspector accepts it, but it is not a game title source.
 - The current retail sample includes other authorized titles, but broad ISO-layout and game compatibility remain unverified.
 - No safe extraction boundary or loader exists yet.
-- Formal Gate 0 review and the ADR-0003 clean-room prerequisites remain owner-controlled. Do not start runtime or recompiler expansion from this inspection alone.
+- The narrow Gate 0 technical pass for synthetic code was recorded on 2026-10-23; it does not authorize boot, recompilation or compatibility claims for this title. ADR-0003 clean-room prerequisites and independent provenance reviews remain in force. Do not start runtime or recompiler expansion from this inspection alone.
 
 ## Next safe action
 
 1. Keep this record updated if the file is re-inspected or the RPTP inspector changes.
 2. Record further owner-authorized ISO layouts before generalizing the inspector.
 3. Analyze the boot ELF and dependencies only from permitted references and independent tests.
-4. Do not implement or claim native boot/playability until the formal Gate 0 disposition and the relevant gate criteria are satisfied.
+4. Do not implement or claim native boot/playability until the relevant gate criteria and independent provenance requirements are satisfied.

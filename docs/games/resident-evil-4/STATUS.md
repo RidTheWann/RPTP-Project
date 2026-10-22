@@ -1,7 +1,7 @@
 # Resident Evil 4 (USA)
 
 - **Status:** Inspected (read-only)
-- **Last updated:** 2026-10-22
+- **Last updated:** 2026-10-23
 - **RPTP inspector:** `tools/rptp_inspect.py` at `25b4ab8`
 - **Source:** owner-provided local ISO; not committed
 - **Filename:** `Resident Evil 4 (USA).iso`
@@ -43,7 +43,7 @@
 - The PVD volume identifier is empty; the boot executable name is the only product code observed.
 - This record is one authorized sample, not evidence of broad ISO or game compatibility.
 - No safe extraction boundary or loader exists.
-- Formal Gate 0 review and the ADR-0003 clean-room prerequisites remain owner-controlled.
+- The narrow Gate 0 technical pass for synthetic code was recorded on 2026-10-23; it does not authorize boot, recompilation or compatibility claims for this title. ADR-0003 clean-room prerequisites and independent provenance reviews remain in force.
 
 ## Next safe action
 
