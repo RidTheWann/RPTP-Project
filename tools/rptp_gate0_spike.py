@@ -228,8 +228,9 @@ def decode_instruction(pc: int, word: int) -> dict[str, Any]:
         raise ValueError(f"Unsupported SPECIAL instruction 0x{word:08X} at 0x{pc:08X}")
     if op == 0x09:
         return {"pc": pc, "word": word, "op": "addiu", "rs": rs, "rt": rt, "imm": simm}
-    if op == 0x0D:
-        return {"pc": pc, "word": word, "op": "ori", "rs": rs, "rt": rt, "imm": imm}
+    if op in (0x0C, 0x0D, 0x0E):
+        name = {0x0C: "andi", 0x0D: "ori", 0x0E: "xori"}[op]
+        return {"pc": pc, "word": word, "op": name, "rs": rs, "rt": rt, "imm": imm}
     if op == 0x23:
         return {"pc": pc, "word": word, "op": "lw", "rs": rs, "rt": rt, "imm": simm}
     if op == 0x2B:
@@ -295,6 +296,14 @@ def execute_oracle(entry: int, words: dict[int, int]) -> dict[str, Any]:
                 r[ins["rd"]] = result & 0xFFFFFFFFFFFFFFFF
         elif op == "ori":
             value = (r[ins["rs"]] | ins["imm"]) & 0xFFFFFFFF
+            if ins["rt"]:
+                r[ins["rt"]] = value
+        elif op == "andi":
+            value = ((r[ins["rs"]] & 0xFFFFFFFF) & ins["imm"]) & 0xFFFFFFFF
+            if ins["rt"]:
+                r[ins["rt"]] = value
+        elif op == "xori":
+            value = ((r[ins["rs"]] & 0xFFFFFFFF) ^ ins["imm"]) & 0xFFFFFFFF
             if ins["rt"]:
                 r[ins["rt"]] = value
         elif op == "lw":

@@ -4,7 +4,7 @@
 - **Scope:** synthetic ELF32/EM_MIPS input and the currently supported instruction subset only.
 - **Status:** Gate 3 remains in progress. This is not a product recompiler, a complete R5900 model, a function-boundary recovery pass, a runtime, or a compatibility claim.
 - **Implementation:** `tools/rptp_ir.py`; generated-code lowering: `tools/rptp_lower.py`
-- **Tests:** `tests/test_ir_cfg.py`; `tests/test_ir_lowering.py`
+- **Tests:** `tests/test_ir_cfg.py`; `tests/test_ir_lowering.py`; `tests/test_instruction_logical.py`
 
 ## Purpose
 
@@ -37,7 +37,7 @@ Immediate semantics are explicit:
 | Kind | Instructions | Meaning |
 |---|---|---|
 | `signed16` | `ADDIU`, `LW`, `SW`, `BEQ`, `BNE` | The 16-bit field is sign-extended for the existing synthetic semantic model. |
-| `zero16` | `ORI` | The 16-bit field is zero-extended. |
+| `zero16` | `ANDI`, `ORI`, `XORI` | The 16-bit field is zero-extended. |
 
 The raw word is kept even when the normalized fields are sufficient. A destination of `None` means the modeled instruction does not write an architectural register in this subset; this includes writes to `$zero` and non-writing instructions such as `SW`.
 
@@ -81,7 +81,7 @@ Each candidate is labeled `candidate` with the limitation text stored by the mod
 - The live state contains a 64-bit register array, a word-addressed `std::map` for initialized guest memory, a trace vector, the current PC and a halt flag. The output JSON is emitted in a fixed order.
 - A control transfer records a pending target. Its delay slot executes next; the pending target is applied only after that slot. Conditional branches choose the direct target or `pc + 8` in the delay-slot step.
 - `$zero` is suppressed by `write_register` and cleared after every executed instruction.
-- `ADDIU` and `ADDU` wrap at 32 bits and sign-extend the result; `ORI` zero-extends; `LW` requires initialized memory and sign-extends the loaded word; `SW` stores the low 32 bits; `JAL` writes `pc + 8` to `$ra`; `JR` reads its target from the runtime register.
+- `ADDIU` and `ADDU` wrap at 32 bits and sign-extend the result; `ANDI`, `ORI` and `XORI` apply the logical operation with the zero-extended immediate and zero-extend the 32-bit result; `LW` requires initialized memory and sign-extends the loaded word; `SW` stores the low 32 bits; `JAL` writes `pc + 8` to `$ra`; `JR` reads its target from the runtime register.
 - A direct target is emitted from the validated IR. The lowerer does not re-decode the raw word, although it requires the raw word to be present and well-formed.
 - Uninitialized `LW` throws. Generated `main` writes `LOWER_RUNTIME_ERROR: <detail>\n` to stderr and exits `2`.
 - A non-code dynamic PC, including the return sentinel, halts the synthetic program. This matches the oracle; it is not a hardware exception or kernel model.
@@ -121,10 +121,11 @@ The CFG tests build a 15-instruction ELF at test time with `tools/rptp_gate0_spi
 
 The expected function-entry candidates are the ELF entry at `0x00100000` and the `JAL` target at `0x00100030`. The tests verify deterministic bytes and analysis output. No new binary fixture is written or committed, so the fixture manifest is unchanged.
 
-The lowering tests build two additional synthetic ELFs at test time:
+The synthetic lowering tests build the following additional ELFs at test time:
 
-- The main lowering fixture has 29 instructions (`0x74` bytes) and contains every supported operation, both branch outcomes, direct and indirect control flow, delay slots, `$zero` writes, 32-bit wraparound, `ORI` zero-extension, memory load/store and an unreachable instruction. It executes 26 PCs and stops at the return sentinel. The fixture SHA-256 is `0309e92bd180203fd82f7a89d17c5c213b79515e8f2fa779803d32b62f9735b9`; the generated C++ SHA-256 is `8d8e960b3add141db18e78e9c86a8abdc90298117041602c4b7094da3e931a67`.
+- The main lowering fixture has 29 instructions (`0x74` bytes) and contains the ten-opcode Gate 0 subset plus `ORI`, both branch outcomes, direct and indirect control flow, delay slots, `$zero` writes, 32-bit wraparound, `ORI` zero-extension, memory load/store and an unreachable instruction. It executes 26 PCs and stops at the return sentinel. The fixture SHA-256 is `0309e92bd180203fd82f7a89d17c5c213b79515e8f2fa779803d32b62f9735b9`; the generated C++ SHA-256 is `8d8e960b3add141db18e78e9c86a8abdc90298117041602c4b7094da3e931a67`.
 - The dynamic-JR fixture has 13 instructions (`0x34` bytes) and returns through a runtime register target after a `JAL` to a synthetic helper. It executes 13 PCs and stops at the return sentinel. The fixture SHA-256 is `47302fd9e04428a8dd38374896c7ba4890fd9eff5dd81ffff7168b8b968b5894`; the generated C++ SHA-256 is `074d639aab7e8fe42ef76b9ab6e2c9f4b8f4356501aa6469dfcbcf1115b937d0`.
+- The logical-immediate fixture has 18 instructions (`0x48` bytes) and composes `ANDI`/`XORI` with `ADDIU` and `ORI`. It covers positive and high-bit immediates, zero-extension, `$zero`, destination/source overlap, all-zero/all-one values and masking/toggling. It executes 18 PCs and stops at the return sentinel. The fixture SHA-256 is `475209a09cadcd0e95fb52f7e5a44c5001d4eee97528d3c578d011c123a74c15`; the generated C++ SHA-256 is `2eece492ca8626d70d5bc7f45cecc02e731ea5244c0cefeb0d57673141e90306`.
 
 The generated native state is compared with the oracle for registers, memory, stop PC, halt flag and executed-PC trace. A separate one-instruction fixture checks the uninitialized-load diagnostic and exit code.
 
@@ -132,10 +133,10 @@ The registered Gate 0 fixture and the ORI fixture are not modified. Their fixtur
 
 ## Limitations
 
-- The subset is the existing synthetic ten-opcode Gate 0 subset plus `ORI`; no new instruction opcode is added by this increment.
+- The subset is the existing synthetic ten-opcode Gate 0 subset plus `ORI`, `ANDI` and `XORI`. No other opcode is added by the logical-immediate increment.
 - The CFG is a syntactic partition of the validated code range. It does not prove reachability.
 - Function entries are candidates only. There are no function extents, symbols, call graphs with return edges, or confident `JR $ra` return-path claims.
-- The IR is lowered only for the synthetic model. The generated C++ is not optimized, not a product recompiler or runtime, and not a substitute for the Gate 0 or ORI differential paths.
+- The IR is lowered only for the synthetic model. The generated C++ is not optimized, not a product recompiler or runtime, and not a substitute for the Gate 0, ORI or logical-immediate differential paths.
 - A dynamic non-code PC halts the synthetic program. There is no R5900 exception, fault, pipeline, MMIO, kernel, IOP, VU, GS, SPU2, CDVD, controller, memory-card, or timing model.
 - No retail ELF, ISO, BIOS, or game-derived material is used by these tests.
 
@@ -147,11 +148,12 @@ The registered Gate 0 fixture and the ORI fixture are not modified. Their fixtur
 - The block, immediate, `$zero`, candidate and lowering rules are defined by this repository's tests and are not a hardware specification.
 - The generated C++ state machine, JSON shape, failure text and exit code are test-defined behavior, not R5900 or PS2 hardware behavior.
 
-Local verification is recorded in [VERIFICATION_LOG.md](VERIFICATION_LOG.md). The IR/CFG tests are host-Python tests; the lowering tests add generated C++ and native differential coverage under MSVC. The ORI and lowering increments are local until owner publication; hosted CI for the local commit remains pending.
+Local verification is recorded in [VERIFICATION_LOG.md](VERIFICATION_LOG.md). The IR/CFG tests are host-Python tests; the lowering tests add generated C++ and native differential coverage under MSVC. The ORI and lowering increments are published through `9c4f675`; the ANDI/XORI increment is local until owner publication, so hosted CI for that local commit remains pending.
 
 ## Verification commands
 
 ```powershell
+python -m unittest tests.test_instruction_logical -v
 python -m unittest tests.test_ir_cfg -v
 python -m unittest tests.test_ir_lowering -v
 python -m unittest discover -s tests -v
