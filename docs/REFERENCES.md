@@ -23,9 +23,11 @@ Access date for the public technical references below: 2026-10-21; ECMA-119 fift
 
 **ECMA-119 volume-space text (checked 2026-10-22):** *ECMA-119, 5th edition (December 2024)*, §9.4.9 (p. 26) defines Volume space size (BP 81 to 88) as a 32-bit number of logical blocks in which the volume space of the volume is recorded. The inspector reads this field in both-endian form, rejects an image smaller than the declaration, and bounds directory and file reads to the declared volume. An image larger than the declared volume is accepted; bytes beyond it are not treated as ISO 9660 content. This standard text does not explain layered PS2 media or the meaning of such extra bytes.
 
+**ORI synthetic model (recorded 2026-10-23):** `tests/test_instruction_ori.py` defines and tests a narrow 32-bit zero-extending `ORI` model for opcode `0x0D`, including zero-register handling, through an independent synthetic program and a generated-C++ differential. This is an RPTP test definition and not a claim of complete R5900 semantics or a hardware specification. The accepted Gate 0 fixture and its SHA-256 are unchanged; see [INSTRUCTION_CATALOG.md](INSTRUCTION_CATALOG.md).
+
 ## Verification labels
 
-- **Verified by local test:** the synthetic fixture is reproducible; its parser accepts it and rejects selected malformed inputs; generated C++ matches the reference interpreter for the supported fixture path. The recorded runs include Linux/GCC, Linux/Clang and Windows x64/MSVC.
+- **Verified by local test:** the synthetic fixture is reproducible; its parser accepts it and rejects selected malformed inputs; generated C++ matches the reference interpreter for the supported fixture path. The recorded runs include Linux/GCC, Linux/Clang and Windows x64/MSVC. A separate synthetic ORI program covers the post-Gate-0 zero-extension increment.
 - **Document-cross-checked:** common MIPS instruction encodings and generic ELF fields referenced above.
 - **Not verified:** complete R5900 semantics, delay-slot details beyond the fixture model, EE-specific floating-point/MMI behavior, VU behavior, GS pixel behavior, IOP services, DMA ordering, hardware timing, ISO inspection/boot and commercial-game compatibility.
 

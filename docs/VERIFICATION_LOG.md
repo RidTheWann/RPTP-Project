@@ -346,3 +346,21 @@ Base commit: `6499b05d710837f3cae4b3f7e06fa5ab0cb9e55a`; the documentation, gene
 - `cmake --preset windows-msvc` and `cmake --build --preset windows-msvc` through `VsDevCmd.bat` - PASS; the build target ran CTest 3/3 PASS.
 - `scripts/run-msvc.ps1` invoked from a temporary directory outside the repository through `VsDevCmd.bat` - `PASS_LOCAL_DIFFERENTIAL_SPIKE`; `native_matches_oracle: true`; `windows_msvc_verified: true`; 28 instructions; 22 trace steps; fixture SHA-256 `b21f1f7793236d1ccba7308cc82f42d9f89915c87c0b037c46d8170f28349ca9`; generated C++ SHA-256 `5316e0f51ba8b1fa1252e409f38cb9ac7db7606fee17b28ef0dcf1be162ae795`; the wrapper also ran the 85-test suite successfully.
 - No retail ISO was inspected, extracted, modified, mounted, booted, emulated or executed in this session. No sealed project material was accessed. These are local results only; the snapshot commit is not pushed and has no CI run.
+
+## 2026-10-23 - Gate 3 synthetic instruction catalog and ORI differential
+
+Base commit: `89b70ff`; the source, test and documentation changes in this entry were uncommitted during the checks. Environment: Windows 11 x64, Python 3.13.16, Visual Studio 2026 Community, MSVC toolset 14.51.36231, CMake 4.4.4 and Ninja 1.13.2 through the Visual Studio developer environment. No retail ISO or sealed project material was accessed.
+
+- Test-first check: before implementation, `python -m unittest tests.test_instruction_ori -v` failed on opcode `0x0D` with `Unsupported opcode 0x0D` in the decoder and `AttributeError` for the missing separate ORI fixture builder; the native case skipped because no compiler was on the plain-shell PATH.
+- Implementation: added `ORI` (I-type opcode `0x0D`) to the synthetic decoder, oracle and C++ emitter; the model zero-extends the 16-bit immediate, ORs the low 32 bits of `rs`, zero-extends the 32-bit result to the spike's 64-bit register array, and discards writes to `$zero`. The helper is emitted only when the decoded program contains `ORI`.
+- Registered Gate 0 fixture SHA-256 remains `b21f1f7793236d1ccba7308cc82f42d9f89915c87c0b037c46d8170f28349ca9`; the Gate 0 generated-C++ SHA-256 remains `5316e0f51ba8b1fa1252e409f38cb9ac7db7606fee17b28ef0dcf1be162ae795`. The accepted Gate 0 artifact and scope are unchanged.
+- Separate runtime-generated ORI fixture SHA-256: `6c04b37fb40b3e7eaa29f82e7f21795bf930f0668aade41d04b1e058b8ff6dbc`; generated C++ SHA-256: `2aefb52babdd9e355fd3d12f3339c5c05ee60421be8bef0f17ae8f78d848c684`; six executed PCs; `t0 = 32769`, `t1 = 49153`, `v0 = 42`, `$zero = 0`, stop PC = `0x7FFF0000`, halted.
+- Added `docs/INSTRUCTION_CATALOG.md` with the synthetic subset, verification levels, limits and references. Added `tests/test_instruction_ori.py`; updated `README.md`, `docs/STATE.md`, `docs/HANDOFF.md`, `docs/ROADMAP.md`, `docs/REFERENCES.md`, `docs/CLEAN_ROOM_AUDIT.md` and this log. No Gate 0 dossier or accepted-scope claim was rewritten.
+- `python -m unittest discover -s tests -v` from the plain shell - 88 tests, OK with one skip: the native ORI differential skipped because `cl.exe` was not on that PATH. This skip is not a native verification.
+- `python -m unittest tests.test_instruction_ori -v` through `VsDevCmd.bat -arch=x64 -host_arch=x64` - 3 tests, OK; the generated MSVC program matched the oracle.
+- `scripts/run-msvc.ps1` invoked from a temporary directory outside the repository through `VsDevCmd.bat` - 88 tests, OK, no skip; Gate 0 report remained `PASS_LOCAL_DIFFERENTIAL_SPIKE`, `native_matches_oracle: true`, `windows_msvc_verified: true`, 28 instructions, 22 trace steps, with the unchanged fixture and generated-source hashes above.
+- `cmake --preset windows-msvc` and `cmake --build --preset windows-msvc` through `VsDevCmd.bat` - PASS; doctor PASS and CTest 3/3 PASS.
+- `python tools/check_forbidden_artifacts.py --root .` - PASS. `python -m compileall -q tools tests` - PASS.
+- Relative-link check: 103 relative links across 32 Markdown files - PASS; all resolve to existing repository paths.
+- `git diff --check` - PASS for whitespace errors; Git emitted LF-to-CRLF normalization warnings for modified text files. No whitespace error was reported.
+- These are local results only; the changes are not pushed and have no CI run.

@@ -91,6 +91,8 @@ This phase is an inspector only. It does not launch a game, implement the PS2 ru
 
 ## Gate 3 — Recompiler MVP
 
+**Status: not passed. The synthetic instruction catalog now records the tested subset and evidence in [INSTRUCTION_CATALOG.md](INSTRUCTION_CATALOG.md). A separate ORI program and native differential were added after the Gate 0 disposition; the accepted Gate 0 fixture and its scope are unchanged. No documented IR, basic-block/function discovery or product recompiler exists yet.**
+
 - Maintain an instruction catalog with explicit verification status and permitted references.
 - Expand the oracle interpreter before adding corresponding native lowering.
 - Introduce a documented intermediate representation (IR), decoder, basic-block/function discovery and deterministic C++ generation.
