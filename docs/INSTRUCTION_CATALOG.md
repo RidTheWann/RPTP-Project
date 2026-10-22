@@ -3,11 +3,12 @@
 - **Status date:** 2026-10-23
 - **Scope:** narrow synthetic ELF32/EM_MIPS differential spike, not a complete R5900 implementation and not a compatibility list.
 - **Provenance:** [ADR-0003](DECISIONS/ADR-0003-sealed-source-clean-room-policy.md), [PROVENANCE_PLAN.md](PROVENANCE_PLAN.md) and [REFERENCES.md](REFERENCES.md).
-- **Gate status:** Gate 3 is not passed. This catalog records what the current synthetic tests actually exercise.
+- **Gate status:** Gate 3 is not passed. This catalog records what the current synthetic tests actually exercise. A minimal documented IR and candidate-only CFG analysis now exist for the same subset; see [IR_CFG.md](IR_CFG.md).
 
 ## Verification levels
 
 - **Native differential:** the decoder, oracle and emitted C++ are exercised by a synthetic program; the generated native state equals the oracle state under a supported host compiler. The Windows/MSVC run is recorded in [VERIFICATION_LOG.md](VERIFICATION_LOG.md).
+- **Static IR/CFG:** the decoder feeds a host-Python IR and fail-closed block analysis. This does not prove native lowering or runtime behavior. The current tests are in `tests/test_ir_cfg.py`.
 - **Decode only:** the decoder recognizes the encoding but no native differential exists. No instruction currently has this status.
 - **Unsupported:** the decoder rejects the encoding explicitly. Unsupported instructions are never silently skipped or lowered to an approximation.
 
@@ -27,6 +28,10 @@
 | `JR` | SPECIAL funct `0x08`, `rt=rd=shamt=0` | Set the next control target to the low 32 bits of `rs`; the delay slot executes. A target outside the code model halts the synthetic program. | Gate 0 fixture and native differential. | No return-address stack, speculation or exception behavior. |
 | `NOP` | SPECIAL word `0x00000000` | No architectural effect. | Gate 0 fixture and native differential. | Only the encoded all-zero NOP is recognized. |
 
+## Minimal IR and CFG coverage
+
+[IR_CFG.md](IR_CFG.md) defines the additional static contract for the same subset. It records raw words, normalized operands, explicit signed/zero-extended immediates, `$zero` destination handling, control-flow classes, direct targets, delay-slot ownership, deterministic basic blocks, and candidate-only function entries. It does not add instructions, native lowering, runtime behavior, reachability, or function extents. Gate 3 remains in progress.
+
 ## Explicitly unsupported
 
 - All other opcodes, SPECIAL functions, immediate forms and register-field combinations are rejected with an explicit `Unsupported ...` diagnostic.
@@ -39,7 +44,8 @@ Through a Visual Studio developer environment for the MSVC path:
 
 ```powershell
 python -m unittest tests.test_instruction_ori -v
+python -m unittest tests.test_ir_cfg -v
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-msvc.ps1
 ```
 
-The separate ORI test uses a runtime-generated synthetic ELF and does not modify the registered Gate 0 fixture. The Gate 0 fixture and its SHA-256 remain unchanged by this addition.
+The separate ORI test uses a runtime-generated synthetic ELF and does not modify the registered Gate 0 fixture. The IR/CFG test also builds a synthetic ELF at test time and checks the unchanged Gate 0 and ORI hashes. Neither addition modifies the registered Gate 0 fixture.

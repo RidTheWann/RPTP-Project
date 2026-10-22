@@ -91,11 +91,12 @@ This phase is an inspector only. It does not launch a game, implement the PS2 ru
 
 ## Gate 3 — Recompiler MVP
 
-**Status: not passed. The synthetic instruction catalog now records the tested subset and evidence in [INSTRUCTION_CATALOG.md](INSTRUCTION_CATALOG.md). A separate ORI program and native differential were added after the Gate 0 disposition; the accepted Gate 0 fixture and its scope are unchanged. No documented IR, basic-block/function discovery or product recompiler exists yet.**
+**Status: not passed. The synthetic instruction catalog now records the tested subset and evidence in [INSTRUCTION_CATALOG.md](INSTRUCTION_CATALOG.md). A separate ORI program and native differential were added after the Gate 0 disposition; the accepted Gate 0 fixture and its scope are unchanged. A minimal documented IR and fail-closed CFG/function-entry-candidate analysis are recorded in [IR_CFG.md](IR_CFG.md) and `tests/test_ir_cfg.py`; they do not lower to native code, prove reachability or recover function extents. No product recompiler exists yet.**
 
 - Maintain an instruction catalog with explicit verification status and permitted references.
 - Expand the oracle interpreter before adding corresponding native lowering.
-- Introduce a documented intermediate representation (IR), decoder, basic-block/function discovery and deterministic C++ generation.
+- [x] Add a minimal documented IR and deterministic fail-closed block analysis over a runtime-generated synthetic ELF, with candidate-only function entries.
+- Introduce deterministic IR-to-C++ generation for the documented subset; the existing spike remains the current differential path.
 - Add differential tests for each supported instruction family and edge cases.
 - Fail explicitly on unsupported instructions rather than silently producing incorrect output.
 
