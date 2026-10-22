@@ -314,3 +314,15 @@ Base commit: `f8feb27`; the documentation changes in this entry were uncommitted
 - `python tools/rptp_doctor.py` through `VsDevCmd.bat` — overall PASS. `cmake --preset windows-msvc` and `cmake --build --preset windows-msvc` — PASS; CTest 3/3 PASS. A separate `ctest --test-dir build/cmake-msvc --output-on-failure` — 3/3 PASS.
 - `git diff --check` — PASS after the documentation changes.
 - Read-only throughout: no image was extracted, modified, mounted, booted, emulated or executed. No absolute input path was added to tracked files and no sealed project material was accessed. These results are local only; the documentation commit is not pushed and has no CI run.
+
+## 2026-10-22 — Publication stack audit: larger-than-volume test correction
+
+Base commit: `4f6369e`; the test and this log entry were uncommitted during the checks. Inspector source revision: `d51f0e7`.
+
+- During the pre-publication audit, the R-018 entry's statement that existing tests already covered an image larger than its PVD volume was found to be inaccurate. No test constructed an image with data beyond the declared volume.
+- Added `test_accepts_image_larger_than_pvd_volume` to `tests/test_iso_inspector.py`. The test appends one 2048-byte block to the synthetic image, expects `inspect_bytes` to return `INSPECTED`, and expects the survey to report 33 sectors, 32 volume-space blocks, relation `smaller` and signed delta `-2048` bytes.
+- No production code, fixture or retail image was changed.
+- `python -m unittest discover -s tests -v` — 85 tests, PASS.
+- `python tools/check_forbidden_artifacts.py --root .` — PASS.
+- `python -m compileall -q tools tests` — PASS.
+- These results are local only; the commit is not pushed and has no CI run.

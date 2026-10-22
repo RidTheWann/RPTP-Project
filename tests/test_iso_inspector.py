@@ -289,6 +289,22 @@ class IsoInspectorTests(unittest.TestCase):
             inspector.inspect_bytes(bytes(image))
         self.assertEqual(ctx.exception.code, "IMAGE_TRUNCATED")
 
+    def test_accepts_image_larger_than_pvd_volume(self):
+        image = _iso()
+        image.extend(b"\x00" * BLOCK)
+        data = bytes(image)
+
+        report = inspector.inspect_bytes(data, "larger.iso")
+        self.assertEqual(report["status"], "INSPECTED")
+        self.assertEqual(report["image_size_bytes"], (VOLUME_BLOCKS + 1) * BLOCK)
+
+        survey = inspector.IsoReader(BytesIO(data), len(data), "larger.iso").survey()
+        self.assertEqual(survey["status"], "SURVEYED")
+        self.assertEqual(survey["sector_count"], VOLUME_BLOCKS + 1)
+        self.assertEqual(survey["volume_space_blocks"], VOLUME_BLOCKS)
+        self.assertEqual(survey["volume_space_relation"], "smaller")
+        self.assertEqual(survey["volume_space_delta_bytes"], -BLOCK)
+
     def test_rejects_short_stream_read(self):
         data = bytes(_iso())
         with self.assertRaises(inspector.InspectError) as ctx:
