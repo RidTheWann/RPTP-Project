@@ -6,7 +6,7 @@
 
 RPTP is an open-source research project exploring how to transform a user-owned PlayStation 2 game image into a native Windows x64 build by statically recompiling supported Emotion Engine (EE) code to C++, alongside a from-scratch runtime for the PS2 services a game needs.
 
-> **Development status: early research.** The published Gate 0 spike is a narrow, passing synthetic differential test; the owner-delegated technical pass for that scope is recorded. CI is green on both supported jobs for `6499b05`. This is not a PS2 game loader, a complete R5900 recompiler, a clean-room certification, or evidence that any commercial game boots or runs.
+> **Development status: early research.** The published Gate 0 spike is a narrow, passing synthetic differential test; the owner-delegated technical pass for that scope is recorded. A separate IR-to-C++ lowering path now covers the same synthetic subset locally. CI is green on both supported jobs for `9c11917`; the lowering increment is not yet published. This is not a PS2 game loader, a complete R5900 recompiler, a clean-room certification, or evidence that any commercial game boots or runs.
 
 ## Project goals
 
@@ -18,7 +18,7 @@ RPTP is an open-source research project exploring how to transform a user-owned 
 
 ## Current status
 
-[![Foundation checklist: 77.8% verified](https://ridthewann.github.io/RPTP-Project/assets/badge-foundation.svg)](https://ridthewann.github.io/RPTP-Project/progress.html) [![Runtime checklist: 0.0% verified](https://ridthewann.github.io/RPTP-Project/assets/badge-runtime.svg)](https://ridthewann.github.io/RPTP-Project/progress.html)
+[![Foundation checklist: 77.8% verified](https://ridthewann.github.io/RPTP-Project/assets/badge-foundation.svg)](https://ridthewann.github.io/RPTP-Project/progress.html) [![Runtime checklist: 5.0% verified](https://ridthewann.github.io/RPTP-Project/assets/badge-runtime.svg)](https://ridthewann.github.io/RPTP-Project/progress.html)
 
 [![RPTP progress map](https://ridthewann.github.io/RPTP-Project/assets/progress.svg)](https://ridthewann.github.io/RPTP-Project/progress.html)
 
@@ -41,6 +41,12 @@ The Windows run used MSVC x64 with C++20 and strict warnings. Both `windows_msvc
 
 **Not implemented or proven:** retail ISO compatibility/boot, full R5900 semantics, function discovery for real games, EE kernel/syscalls, VU, GS graphics, IOP, CDVD, audio, controller, memory card, timing, or commercial-game compatibility. The ISO inspector prototype below is not a game loader and does not establish disc compatibility.
 
+### Synthetic IR lowering (Gate 3, in progress)
+
+RPTP now has a separate deterministic lowering path for the same synthetic subset. The IR is validated, then emitted as a PC-keyed C++20 state machine that preserves the tested delay-slot model, register behavior and bounded memory. The generated program produces deterministic JSON and exits 2 on an uninitialized load.
+
+The native lowering fixture has 29 instructions and executes 26 PCs; a separate dynamic-`JR` fixture executes 13. Both generated programs match the oracle under MSVC for registers, memory, stop PC, halt state and executed-PC trace. The generated source is a test artifact, not product code: there is still no function discovery, real-game code generation, runtime or compatibility claim. See [the IR/CFG and lowering contract](docs/IR_CFG.md).
+
 ## ISO Inspector prototype
 
 RPTP now includes a read-only command-line ISO 9660 inspector for an image you are authorized to use. It reads the primary volume descriptor, locates root `SYSTEM.CNF`, resolves its `BOOT2` (or legacy `BOOT`) path, checks the boot file's ELF32 header, program-header table and PT_LOAD file bounds, and reports SHA-256 digests for `SYSTEM.CNF` and the boot file. It does not extract files, modify the ISO, execute the ELF, or recompile a game.
@@ -62,9 +68,9 @@ Release tags and release artifacts are created only from release-ready commits w
 
 1. **Gate 0 — Foundation and spike:** technical differential test completed and CI verified; the narrow technical pass was recorded on 2026-10-23 by explicit owner delegation. The [decision evidence package](docs/GATE0_REVIEW.md) records the accepted scope and limits; the [provenance execution plan](docs/PROVENANCE_PLAN.md) records the independent reviews that remain before release.
 2. **B1a — Project foundation:** license and architecture decision recorded; the owner confirmed GPL-3.0-or-later on 2026-10-21. Clean-room handling is governed by the owner-approved sealed-source policy in ADR-0003; prior exposure remains documented.
-3. **B1b — Repository/toolchain baseline:** CMake, diagnostics, tests and CI are implemented; CI is green for published `6499b05`, and the clean-checkout local Windows run passed. The 2026-10-23 local commits are unpublished and not CI-verified. The clean-room review of the build/CI/doctor layer remains open.
+3. **B1b — Repository/toolchain baseline:** CMake, diagnostics, tests and CI are implemented; CI is green for published `9c11917`, and the clean-checkout local Windows run passed. The 2026-10-23 lowering increment is local until publication and is not CI-verified. The clean-room review of the build/CI/doctor layer remains open.
 4. **B1c — ISO Inspector prototype:** read-only ISO9660 and `SYSTEM.CNF` inspection, boot metadata, an explicit error taxonomy, ELF PT_LOAD checks, hashing and synthetic malformed-input tests are implemented. A broader owner-authorized real-disc sample is recorded; ISO-variant review, the independent ISO inspector provenance review and the read-only Gate 2 disposition remain open. Gate 2 is read-only per [ADR-0004](docs/DECISIONS/ADR-0004-gate2-read-only-scope.md); extraction is deferred future work.
-5. **Recompiler MVP (in progress):** the synthetic [instruction catalog](docs/INSTRUCTION_CATALOG.md), a separate ORI differential, and a minimal [IR/CFG contract](docs/IR_CFG.md) with candidate-only function entries are recorded. Native IR lowering, complete function discovery and product code generation remain open; Gate 3 is not passed.
+5. **Recompiler MVP (in progress):** the synthetic [instruction catalog](docs/INSTRUCTION_CATALOG.md), a separate ORI differential, a minimal [IR/CFG contract](docs/IR_CFG.md) with candidate-only function entries, and deterministic synthetic IR-to-C++ lowering are recorded. Complete function discovery, real-game code generation and a product recompiler remain open; Gate 3 is not passed.
 6. **First-game vertical slice:** boot, minimum runtime services, graphics, audio/input/save and repeatable gameplay.
 7. **Compatibility and release:** expand subsystem coverage using measured blockers, then validate clean-machine builds and release artifacts.
 

@@ -1,20 +1,21 @@
-# RPTP minimal IR and control-flow contract
+# RPTP minimal IR, CFG and lowering contract
 
 - **Status date:** 2026-10-23
 - **Scope:** synthetic ELF32/EM_MIPS input and the currently supported instruction subset only.
 - **Status:** Gate 3 remains in progress. This is not a product recompiler, a complete R5900 model, a function-boundary recovery pass, a runtime, or a compatibility claim.
-- **Implementation:** `tools/rptp_ir.py`
-- **Tests:** `tests/test_ir_cfg.py`
+- **Implementation:** `tools/rptp_ir.py`; generated-code lowering: `tools/rptp_lower.py`
+- **Tests:** `tests/test_ir_cfg.py`; `tests/test_ir_lowering.py`
 
 ## Purpose
 
-This increment separates three concerns that were previously implicit in the Gate 0 spike:
+This increment separates four concerns that were previously implicit in the Gate 0 spike:
 
 1. decoding a supported synthetic instruction into an explicit IR instruction;
-2. partitioning the validated synthetic code range into deterministic basic blocks; and
-3. reporting provisional function-entry candidates without claiming function extents or reachability.
+2. partitioning the validated synthetic code range into deterministic basic blocks;
+3. reporting provisional function-entry candidates without claiming function extents or reachability; and
+4. lowering a validated result to deterministic C++ for the same synthetic execution model.
 
-The existing Gate 0 differential spike and ORI differential remain the execution and native-generation path. The IR module does not execute code and does not emit C++.
+The existing Gate 0 differential spike and ORI differential remain independent execution and native-generation paths. The IR module does not execute code or emit C++; `tools/rptp_lower.py` consumes the IR and emits C++.
 
 ## IR contract
 
@@ -73,6 +74,21 @@ Only two origins are reported:
 
 Each candidate is labeled `candidate` with the limitation text stored by the module. The result contains no function extent, symbol name, reachability result, or confident return-path claim. Multiple call sites are recorded for a `JAL` target so later analysis can distinguish evidence sources.
 
+## IR-to-C++ lowering contract
+
+`tools/rptp_lower.py:lower_to_cpp(result, *, return_sentinel=0x7FFF0000, max_steps=128)` validates an `AnalysisResult` and emits one deterministic C++20 source string. The generated program is a PC-keyed `switch` state machine for the existing synthetic model.
+
+- The live state contains a 64-bit register array, a word-addressed `std::map` for initialized guest memory, a trace vector, the current PC and a halt flag. The output JSON is emitted in a fixed order.
+- A control transfer records a pending target. Its delay slot executes next; the pending target is applied only after that slot. Conditional branches choose the direct target or `pc + 8` in the delay-slot step.
+- `$zero` is suppressed by `write_register` and cleared after every executed instruction.
+- `ADDIU` and `ADDU` wrap at 32 bits and sign-extend the result; `ORI` zero-extends; `LW` requires initialized memory and sign-extends the loaded word; `SW` stores the low 32 bits; `JAL` writes `pc + 8` to `$ra`; `JR` reads its target from the runtime register.
+- A direct target is emitted from the validated IR. The lowerer does not re-decode the raw word, although it requires the raw word to be present and well-formed.
+- Uninitialized `LW` throws. Generated `main` writes `LOWER_RUNTIME_ERROR: <detail>\n` to stderr and exits `2`.
+- A non-code dynamic PC, including the return sentinel, halts the synthetic program. This matches the oracle; it is not a hardware exception or kernel model.
+- The generated source is a test artifact. It is not optimized or linked into a product runtime, and it is not a complete R5900 recompiler.
+
+The lowerer raises `LoweringError` with a stable code: `LOWER_INVALID_RESULT`, `LOWER_UNSUPPORTED_OP`, `LOWER_MALFORMED_INSTRUCTION`, `LOWER_INVALID_CONTROL`, `LOWER_INVALID_TARGET`, `LOWER_INVALID_DELAY_SLOT`, `LOWER_INVALID_BLOCK`, `LOWER_LIMIT_EXCEEDED` or `LOWER_INVALID_OPTION`. It never substitutes a target, skips an instruction, or emits an approximation.
+
 ## Fail-closed validation
 
 The analysis raises `AnalysisError` with a stable `code` and an optional address. Examples of rejected conditions include:
@@ -88,7 +104,7 @@ The analysis raises `AnalysisError` with a stable `code` and an optional address
 - overlapping or uncovered block partitions;
 - unsupported or malformed control-flow structure.
 
-The module never substitutes a plausible target for an indirect `JR`, and it never silently skips an unsupported instruction.
+The module never substitutes a plausible target for an indirect `JR`, and it never silently skips an unsupported instruction. The lowerer repeats the structural checks it needs rather than trusting an arbitrary result object: code bounds and count, instruction order, operand and immediate consistency, control class, direct targets, delay-slot ownership, exact block coverage and successor sets, and the instruction limit. Invalid lowering options are rejected separately.
 
 ## Synthetic fixture
 
@@ -105,15 +121,22 @@ The CFG tests build a 15-instruction ELF at test time with `tools/rptp_gate0_spi
 
 The expected function-entry candidates are the ELF entry at `0x00100000` and the `JAL` target at `0x00100030`. The tests verify deterministic bytes and analysis output. No new binary fixture is written or committed, so the fixture manifest is unchanged.
 
-The registered Gate 0 fixture and the ORI fixture are not modified. Their fixture and generated-C++ hashes are checked by `tests/test_ir_cfg.py`.
+The lowering tests build two additional synthetic ELFs at test time:
+
+- The main lowering fixture has 29 instructions (`0x74` bytes) and contains every supported operation, both branch outcomes, direct and indirect control flow, delay slots, `$zero` writes, 32-bit wraparound, `ORI` zero-extension, memory load/store and an unreachable instruction. It executes 26 PCs and stops at the return sentinel. The fixture SHA-256 is `0309e92bd180203fd82f7a89d17c5c213b79515e8f2fa779803d32b62f9735b9`; the generated C++ SHA-256 is `8d8e960b3add141db18e78e9c86a8abdc90298117041602c4b7094da3e931a67`.
+- The dynamic-JR fixture has 13 instructions (`0x34` bytes) and returns through a runtime register target after a `JAL` to a synthetic helper. It executes 13 PCs and stops at the return sentinel. The fixture SHA-256 is `47302fd9e04428a8dd38374896c7ba4890fd9eff5dd81ffff7168b8b968b5894`; the generated C++ SHA-256 is `074d639aab7e8fe42ef76b9ab6e2c9f4b8f4356501aa6469dfcbcf1115b937d0`.
+
+The generated native state is compared with the oracle for registers, memory, stop PC, halt flag and executed-PC trace. A separate one-instruction fixture checks the uninitialized-load diagnostic and exit code.
+
+The registered Gate 0 fixture and the ORI fixture are not modified. Their fixture and generated-C++ hashes are checked by `tests/test_ir_cfg.py`; the lowering tests use separate synthetic fixtures.
 
 ## Limitations
 
 - The subset is the existing synthetic ten-opcode Gate 0 subset plus `ORI`; no new instruction opcode is added by this increment.
 - The CFG is a syntactic partition of the validated code range. It does not prove reachability.
 - Function entries are candidates only. There are no function extents, symbols, call graphs with return edges, or confident `JR $ra` return-path claims.
-- The IR is not lowered to native code, not optimized, and not executed. The existing spike remains the only differential execution path.
-- No R5900 exceptions, pipeline behavior, MMIO, kernel, IOP, VU, GS, SPU2, CDVD, controller, memory-card, or timing behavior is modeled.
+- The IR is lowered only for the synthetic model. The generated C++ is not optimized, not a product recompiler or runtime, and not a substitute for the Gate 0 or ORI differential paths.
+- A dynamic non-code PC halts the synthetic program. There is no R5900 exception, fault, pipeline, MMIO, kernel, IOP, VU, GS, SPU2, CDVD, controller, memory-card, or timing model.
 - No retail ELF, ISO, BIOS, or game-derived material is used by these tests.
 
 ## References and evidence
@@ -121,13 +144,15 @@ The registered Gate 0 fixture and the ORI fixture are not modified. Their fixtur
 - Generic instruction encodings and MIPS naming: `RPTP-REF-001`, `RPTP-REF-002`.
 - Generic ELF structure: `RPTP-REF-003`.
 - Delay-slot background: `RPTP-REF-005`, used only as a secondary cross-check for the existing synthetic model.
-- The block, immediate, `$zero`, and candidate rules are defined by this repository's tests and are not a hardware specification.
+- The block, immediate, `$zero`, candidate and lowering rules are defined by this repository's tests and are not a hardware specification.
+- The generated C++ state machine, JSON shape, failure text and exit code are test-defined behavior, not R5900 or PS2 hardware behavior.
 
-Local verification is recorded in [VERIFICATION_LOG.md](VERIFICATION_LOG.md). The IR/CFG tests are host-Python tests; this increment adds no native code. Native MSVC coverage remains required for the existing applicable differential tests. Hosted CI for local commits remains pending owner publication.
+Local verification is recorded in [VERIFICATION_LOG.md](VERIFICATION_LOG.md). The IR/CFG tests are host-Python tests; the lowering tests add generated C++ and native differential coverage under MSVC. The ORI and lowering increments are local until owner publication; hosted CI for the local commit remains pending.
 
 ## Verification commands
 
 ```powershell
 python -m unittest tests.test_ir_cfg -v
+python -m unittest tests.test_ir_lowering -v
 python -m unittest discover -s tests -v
 ```

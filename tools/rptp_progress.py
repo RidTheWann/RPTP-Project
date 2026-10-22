@@ -48,7 +48,7 @@ FOUNDATION = [
 RUNTIME = [
     ("R5900 decoder", "partial"),
     ("Synthetic recompiler", "partial"),
-    ("IR", "open"),
+    ("IR", "verified"),
     ("Function discovery", "open"),
     ("EE kernel", "open"),
     ("Syscalls", "open"),
@@ -343,8 +343,8 @@ def render_progress_svg() -> str:
     <text x="362" y="464" font-size="12" fill="#c9d1d9">Not started</text>
 
     <text x="40" y="504" font-size="12" fill="#8b949e">Percentages count only the labeled items in each checklist. They are not overall completion, boot support or game compatibility.</text>
-    <text x="40" y="526" font-size="12" fill="#8b949e">Evidence: Python test suite passes · CTest results in the verification log · authorized retail ISOs inspected read-only · Gate 0 formal review pending.</text>
-    <text x="40" y="548" font-size="12" fill="#8b949e">Next: ISO-variant review. Extraction design is deferred future work; interleaved layouts remain unsupported and runtime work remains gated.</text>
+    <text x="40" y="526" font-size="12" fill="#8b949e">Evidence: Python test suite passes · CTest results in the verification log · authorized retail ISOs inspected read-only · narrow Gate 0 technical pass recorded; independent reviews pending.</text>
+    <text x="40" y="548" font-size="12" fill="#8b949e">Next: ISO-variant review. Extraction is deferred; interleaved layouts remain unsupported. Synthetic IR lowering is local only; Gate 3 remains open.</text>
   </g>
 </svg>
 '''
@@ -454,9 +454,9 @@ def render_html() -> str:
         <ul>
           <li>The Python test suite passes; CTest and Gate 0 results are recorded in <a href="VERIFICATION_LOG.md">docs/VERIFICATION_LOG.md</a>.</li>
           <li>The current authorized retail sample has been inspected read-only; records are in the <a href="games/README.md">game work index</a>. No boot, recompilation or gameplay exists.</li>
-          <li>Formal Gate 0 disposition and the clean-room review of the build/CI/doctor layer remain pending.</li>
+          <li>The narrow Gate 0 technical pass is recorded. Independent provenance reviews and the clean-room review of the build/CI/doctor layer remain pending.</li>
         </ul>
-        <p>Next bounded work: ISO-variant review. Extraction design is deferred future work under ADR-0004. Interleaved layouts remain unsupported; runtime and recompiler expansion remain gated by formal Gate 0.</p>
+        <p>Next bounded work: ISO-variant review. Extraction design is deferred under ADR-0004. Interleaved layouts remain unsupported. Synthetic IR lowering is local only; Gate 3 remains open.</p>
       </section>
     </div>
 

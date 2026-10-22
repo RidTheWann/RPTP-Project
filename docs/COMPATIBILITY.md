@@ -5,6 +5,7 @@ No commercial PS2 game has been booted or tested for gameplay. The current owner
 | Test item | Type | Current result | What this result means |
 |---|---|---|---|
 | `gate0-r5900-subset.elf` | Original synthetic ELF32/EM_MIPS fixture | `Inspect passed` / `Recompile passed` on Windows x64/MSVC and Linux host compilers | The specific instruction sequence compiles to native C++ and matches its test oracle. It is not a PS2 retail game and is not a compatibility claim. |
+| Synthetic IR lowering fixtures | Generated ELF32/EM_MIPS at test time | `Recompile passed` on Windows x64/MSVC | The 29-instruction lowering fixture (26 executed PCs) and a 13-instruction dynamic-JR fixture match the oracle for registers, memory, stop PC and trace. Uninitialized loads exit 2. Synthetic-only; not a game or compatibility claim. |
 | Synthetic ISO inspector fixtures | Generated ISO/ELF test data | `Inspect passed` | Metadata, malformed-input rejection, chunked-read limits, deterministic in-memory and file-based mutation checks and CLI JSON paths pass in the ISO inspector suite. No real disc is involved. |
 | Black (USA) | Retail PS2 ISO | `Inspect passed (read-only)` | The inspector resolved `SYSTEM.CNF` and `BOOT2` and reported boot metadata. No boot, recompilation or gameplay was tested. See [the game record](games/black/STATUS.md). |
 | Bully (USA) | Retail PS2 ISO | `Inspect passed (read-only)` | The boot executable is larger than the default 4 MiB materialization cap; read-only metadata inspection still completed. No extraction, boot, recompilation or gameplay was tested. See [the game record](games/bully/STATUS.md). |
@@ -16,7 +17,7 @@ No commercial PS2 game has been booted or tested for gameplay. The current owner
 | Resident Evil 4 (USA) | Retail PS2 ISO | `Inspect passed (read-only)` | The inspector resolved `SYSTEM.CNF` and `BOOT2` and reported boot metadata. No boot, recompilation or gameplay was tested. See [the game record](games/resident-evil-4/STATUS.md). |
 | Other retail PS2 ISOs outside the current sample | Retail game | `Not tested` | The current sample is not evidence of broad compatibility. No boot or game-compatibility claim is made. |
 | Windows/MSVC | Build platform check | `Verified` | Visual Studio 2026 Build Tools, MSVC toolset 14.51.36231: doctor, configure, CTest and Gate 0 differential spike pass locally; results are recorded in [docs/VERIFICATION_LOG.md](VERIFICATION_LOG.md). |
-| Linux/GCC | Build platform check | `Verified in CI` | Runs `39594267744`, `39594147110`, `39594304857`, `39664774001` and `39838955979` passed. |
+| Linux/GCC | Build platform check | `Verified in CI` | Runs `39594267744`, `39594147110`, `39594304857`, `39664774001`, `39838955979` and `39852791294` passed. |
 
 Fixture metadata:
 
