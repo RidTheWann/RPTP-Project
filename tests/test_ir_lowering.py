@@ -316,7 +316,7 @@ class LoweringFailureTests(unittest.TestCase):
         _, result = lowering_result()
         self.assert_lowering_error(
             lower.LOWER_UNSUPPORTED_OP,
-            replace_instruction(result, BASE + 0x04, op="xor"),
+            replace_instruction(result, BASE + 0x04, op="nor"),
         )
 
     def test_malformed_immediate_is_rejected(self):

@@ -46,10 +46,14 @@ _CONTROLS = {
     RETURN_CANDIDATE,
 }
 _DIRECT_CONTROLS = {CONDITIONAL_BRANCH, DIRECT_JUMP, DIRECT_CALL}
-_SUPPORTED_OPS = {"nop", "addu", "addiu", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne", "j", "jal", "jr"}
+_REGISTER_DEST_OPS = {"addu", "and", "or", "xor"}
+_SUPPORTED_OPS = {"nop", "addu", "and", "or", "xor", "addiu", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne", "j", "jal", "jr"}
 _FIXED_CONTROLS = {
     "nop": FALLTHROUGH,
     "addu": FALLTHROUGH,
+    "and": FALLTHROUGH,
+    "or": FALLTHROUGH,
+    "xor": FALLTHROUGH,
     "addiu": FALLTHROUGH,
     "andi": FALLTHROUGH,
     "ori": FALLTHROUGH,
@@ -201,19 +205,19 @@ def _validate_instruction(instruction: Any, expected_pc: int) -> tuple[str, str,
     if not isinstance(control, str) or control not in _CONTROLS:
         raise LoweringError(LOWER_INVALID_CONTROL, "Unknown control-flow classification", pc=pc)
 
-    if op in {"addu", "addiu", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne", "jr"}:
+    if op in {"addu", "and", "or", "xor", "addiu", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne", "jr"}:
         rs = _register(instruction, "rs", required=True)
     else:
         _expect_none(instruction, "rs")
         rs = None
-    if op in {"addu", "addiu", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne"}:
+    if op in {"addu", "and", "or", "xor", "addiu", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne"}:
         rt = _register(instruction, "rt", required=True)
     else:
         _expect_none(instruction, "rt")
         rt = None
     if op == "lui" and rs != 0:
         raise LoweringError(LOWER_MALFORMED_INSTRUCTION, "LUI requires rs=0", pc=pc)
-    if op == "addu":
+    if op in _REGISTER_DEST_OPS:
         rd = _register(instruction, "rd", required=True)
     else:
         _expect_none(instruction, "rd")
@@ -258,7 +262,7 @@ def _validate_instruction(instruction: Any, expected_pc: int) -> tuple[str, str,
 
     if op in {"addiu", "andi", "ori", "xori", "lui", "lw"}:
         expected_destination = None if rt == 0 else rt
-    elif op == "addu":
+    elif op in _REGISTER_DEST_OPS:
         expected_destination = None if rd == 0 else rd
     elif op == "jal":
         expected_destination = RA
@@ -481,6 +485,13 @@ def _instruction_case(instruction: Any) -> list[str]:
         lines.append(
             f"            write_register(s, {_register_literal(instruction.rd)}, "
             f"addu32(s.registers[{_register_literal(instruction.rs)}], s.registers[{_register_literal(instruction.rt)}]));"
+        )
+        lines.append("            break;")
+    elif op in {"and", "or", "xor"}:
+        operator = {"and": "&", "or": "|", "xor": "^"}[op]
+        lines.append(
+            f"            write_register(s, {_register_literal(instruction.rd)}, "
+            f"s.registers[{_register_literal(instruction.rs)}] {operator} s.registers[{_register_literal(instruction.rt)}]);"
         )
         lines.append("            break;")
     elif op in {"andi", "ori", "xori"}:

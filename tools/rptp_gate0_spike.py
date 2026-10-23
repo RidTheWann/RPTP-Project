@@ -221,6 +221,9 @@ def decode_instruction(pc: int, word: int) -> dict[str, Any]:
     if op == 0x00:
         if funct == 0x21 and shamt == 0:
             return {"pc": pc, "word": word, "op": "addu", "rs": rs, "rt": rt, "rd": rd}
+        if funct in (0x24, 0x25, 0x26) and shamt == 0:
+            name = {0x24: "and", 0x25: "or", 0x26: "xor"}[funct]
+            return {"pc": pc, "word": word, "op": name, "rs": rs, "rt": rt, "rd": rd}
         if funct == 0x08 and rt == 0 and rd == 0 and shamt == 0:
             return {"pc": pc, "word": word, "op": "jr", "rs": rs}
         if funct == 0x00 and rs == 0 and rt == 0 and rd == 0 and shamt == 0:
@@ -296,6 +299,18 @@ def execute_oracle(entry: int, words: dict[int, int]) -> dict[str, Any]:
         elif op == "addu":
             value = ((r[ins["rs"]] & 0xFFFFFFFF) + (r[ins["rt"]] & 0xFFFFFFFF)) & 0xFFFFFFFF
             result = sign_extend_32(value)
+            if ins["rd"]:
+                r[ins["rd"]] = result & 0xFFFFFFFFFFFFFFFF
+        elif op == "and":
+            result = r[ins["rs"]] & r[ins["rt"]]
+            if ins["rd"]:
+                r[ins["rd"]] = result & 0xFFFFFFFFFFFFFFFF
+        elif op == "or":
+            result = r[ins["rs"]] | r[ins["rt"]]
+            if ins["rd"]:
+                r[ins["rd"]] = result & 0xFFFFFFFFFFFFFFFF
+        elif op == "xor":
+            result = r[ins["rs"]] ^ r[ins["rt"]]
             if ins["rd"]:
                 r[ins["rd"]] = result & 0xFFFFFFFFFFFFFFFF
         elif op == "ori":
