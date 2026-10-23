@@ -35,7 +35,7 @@ The results below come from the append-only [verification log](VERIFICATION_LOG.
 | Generated C++ SHA-256 | `5316e0f51ba8b1fa1252e409f38cb9ac7db7606fee17b28ef0dcf1be162ae795` | Same section |
 | Original Gate 0 unit tests | 12 passed at the time of the original spike | Same section |
 | Linux host toolchains | GCC 14.2.0 and Clang 17.0.0 builds passed; hashes reproduced | [Linux host toolchain evidence](VERIFICATION_LOG.md#linux-host-toolchain-evidence) |
-| Published CI baseline | Windows x64/MSVC and Linux/GCC jobs passed for the later published tip `b98ee1d` (run `39999387250`); the Gate 0 fixture and evidence are unchanged by the later synthetic increments | [Current status](STATE.md) |
+| Published CI baseline | Windows x64/MSVC and Linux/GCC jobs passed for the later published tip `bbb1738` (run `40003992195`); the Gate 0 fixture and evidence are unchanged by the later synthetic increments | [Current status](STATE.md) |
 
 The detailed spike report is a local, ignored build artifact at `build/gate0-msvc/report.json`; it is not committed. Regeneration is the reproducibility mechanism.
 

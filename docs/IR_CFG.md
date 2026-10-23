@@ -4,18 +4,19 @@
 - **Scope:** synthetic ELF32/EM_MIPS input and the currently supported instruction subset only.
 - **Status:** Gate 3 remains in progress. This is not a product recompiler, a complete R5900 model, a function-boundary recovery pass, a runtime, or a compatibility claim.
 - **Implementation:** `tools/rptp_ir.py`; generated-code lowering: `tools/rptp_lower.py`
-- **Tests:** `tests/test_ir_cfg.py`; `tests/test_ir_lowering.py`; `tests/test_instruction_logical.py`; `tests/test_instruction_lui.py`; `tests/test_instruction_register_logic.py`; `tests/test_instruction_nor.py`; `tests/test_instruction_slt.py`
+- **Tests:** `tests/test_ir_cfg.py`; `tests/test_cfg_reachability.py`; `tests/test_ir_lowering.py`; `tests/test_instruction_logical.py`; `tests/test_instruction_lui.py`; `tests/test_instruction_register_logic.py`; `tests/test_instruction_nor.py`; `tests/test_instruction_slt.py`
 
 ## Purpose
 
-This increment separates four concerns that were previously implicit in the Gate 0 spike:
+This increment separates five concerns that were previously implicit in the Gate 0 spike:
 
 1. decoding a supported synthetic instruction into an explicit IR instruction;
 2. partitioning the validated synthetic code range into deterministic basic blocks;
-3. reporting provisional function-entry candidates without claiming function extents or reachability; and
-4. lowering a validated result to deterministic C++ for the same synthetic execution model.
+3. reporting provisional function-entry candidates without claiming function extents;
+4. traversing only the CFG's already-recorded successor edges from an explicit block root; and
+5. lowering a validated result to deterministic C++ for the same synthetic execution model.
 
-The Gate 0 differential spike and the separate ORI, ANDI/XORI, LUI, register-logical AND/OR/XOR/NOR and SLT differentials remain independent execution and native-generation paths. The IR module does not execute code or emit C++; `tools/rptp_lower.py` consumes the IR and emits C++.
+The Gate 0 differential spike and the separate ORI, ANDI/XORI, LUI, register-logical AND/OR/XOR/NOR and SLT differentials remain independent execution and native-generation paths. The IR module does not execute code or emit C++; `tools/rptp_lower.py` consumes the IR and emits C++. Known-edge graph traversal is static analysis, not a runtime result.
 
 ## IR contract
 
@@ -66,6 +67,22 @@ Successors are deterministic:
 
 The call target of a `JAL` is represented as a function-entry candidate. The instruction after a call is a syntactic partition start, not proof of a return path.
 
+## Known-edge graph reachability
+
+`tools/rptp_ir.py:analyze_known_edge_reachability(result, root_pc)` validates an existing `AnalysisResult`, starts at the explicit root block, and traverses only the successor edges already stored in `BasicBlock.successors`. It does not synthesize a fallthrough, resolve an indirect `JR` target, add a call-return edge, or inspect instruction semantics to discover paths.
+
+The root must be 4-byte aligned, inside the analysed code range, not in a delay slot, and exactly equal to a known basic-block start. A bad root raises `AnalysisError` with `IR_REACHABILITY_INVALID_ROOT`, `IR_REACHABILITY_UNALIGNED_ROOT`, `IR_REACHABILITY_ROOT_OUT_OF_RANGE`, `IR_REACHABILITY_ROOT_IN_DELAY_SLOT` or `IR_REACHABILITY_ROOT_NOT_BLOCK_START`. A malformed result or block partition raises `IR_REACHABILITY_INVALID_RESULT` or `IR_REACHABILITY_INVALID_BLOCK`; the function never partially analyses an inconsistent graph.
+
+`KnownEdgeReachability` reports:
+
+- the selected `root_pc`;
+- `reached_block_starts` and `not_reached_block_starts`, both in deterministic block order;
+- `unresolved_transfer_blocks` reached blocks whose terminator is an indirect jump or return candidate;
+- `direct_call_blocks` reached blocks whose terminator is a direct call; and
+- the fixed `limitations` text.
+
+The report's `model` is `known_edge_cfg_graph`. A block in `not_reached_block_starts` is only absent from this traversal: it is not proven semantically dead, impossible to execute, or outside a function. The recorded limitation text states that unresolved indirect jumps have no successor; that a direct call has no modeled return edge, so a caller continuation can be absent even when runtime execution could return; and that the result is not runtime reachability or a function-extent claim.
+
 ## Function-entry candidates
 
 Only two origins are reported:
@@ -73,7 +90,7 @@ Only two origins are reported:
 1. the validated ELF entry point (`elf_entry`);
 2. a validated direct `JAL` target (`jal_target`).
 
-Each candidate is labeled `candidate` with the limitation text stored by the module. The result contains no function extent, symbol name, reachability result, or confident return-path claim. Multiple call sites are recorded for a `JAL` target so later analysis can distinguish evidence sources.
+Each candidate is labeled `candidate` with the limitation text stored by the module. The candidate records contain no function extent, symbol name, reachability result, or confident return-path claim; the separate known-edge report does not extend those candidate records. Multiple call sites are recorded for a `JAL` target so later analysis can distinguish evidence sources.
 
 ## IR-to-C++ lowering contract
 
@@ -103,9 +120,11 @@ The analysis raises `AnalysisError` with a stable `code` and an optional address
 - conditional fallthrough outside the range;
 - missing or malformed delay-slot ownership;
 - overlapping or uncovered block partitions;
-- unsupported or malformed control-flow structure.
+- unsupported or malformed control-flow structure;
+- a reachability root that is non-integer, unaligned, out of range, in a delay slot, or not a known block start; and
+- a reachability result or block partition that does not match a freshly validated CFG.
 
-The module never substitutes a plausible target for an indirect `JR`, and it never silently skips an unsupported instruction. The lowerer repeats the structural checks it needs rather than trusting an arbitrary result object: code bounds and count, instruction order, operand and immediate consistency, control class, direct targets, delay-slot ownership, exact block coverage and successor sets, and the instruction limit. Invalid lowering options are rejected separately.
+The module never substitutes a plausible target for an indirect `JR`, and it never silently skips an unsupported instruction. Known-edge reachability follows only stored successors; it fails closed if a stored successor is unknown. The lowerer repeats the structural checks it needs rather than trusting an arbitrary result object: code bounds and count, instruction order, operand and immediate consistency, control class, direct targets, delay-slot ownership, exact block coverage and successor sets, and the instruction limit. Invalid lowering options are rejected separately.
 
 ## Synthetic fixture
 
@@ -121,6 +140,8 @@ The CFG tests build a 15-instruction ELF at test time with `tools/rptp_gate0_spi
 ```
 
 The expected function-entry candidates are the ELF entry at `0x00100000` and the `JAL` target at `0x00100030`. The tests verify deterministic bytes and analysis output. No new binary fixture is written or committed, so the fixture manifest is unchanged.
+
+The reachability tests build small synthetic instruction maps at test time. They independently check a linear graph, a conditional branch with both stored successors, a root other than the ELF entry, direct `J`/`JAL` targets, sorted multiple not-reached blocks, an unresolved indirect `JR`, a return candidate, the `JAL` continuation caveat, invalid roots, malformed block partitions, deterministic repeated analysis and non-mutation of `AnalysisResult`. No graph edge is added by the test fixtures.
 
 The synthetic lowering tests build the following additional ELFs at test time:
 
@@ -139,8 +160,8 @@ The registered Gate 0 fixture and the ORI fixture are not modified. Their fixtur
 ## Limitations
 
 - The subset is the existing synthetic ten-opcode Gate 0 subset plus `ORI`, `ANDI`, `XORI`, `LUI`, `AND`, `OR`, `XOR`, `NOR` and `SLT`. No other opcode is added by these increments.
-- The CFG is a syntactic partition of the validated code range. It does not prove reachability.
-- Function entries are candidates only. There are no function extents, symbols, call graphs with return edges, or confident `JR $ra` return-path claims.
+- The CFG is a syntactic partition of the validated code range. Known-edge graph reachability is not runtime reachability, dead-code proof or function discovery.
+- Function entries are candidates only. There are no function extents, symbols, call graphs with return edges, or confident `JR $ra` return-path claims. The direct-call continuation caveat is explicit in the reachability report.
 - The IR is lowered only for the synthetic model. The generated C++ is not optimized, not a product recompiler or runtime, and not a substitute for the Gate 0, ORI, logical-immediate, LUI, register-logical, NOR or SLT differential paths.
 - A dynamic non-code PC halts the synthetic program. There is no R5900 exception, fault, pipeline, MMIO, kernel, IOP, VU, GS, SPU2, CDVD, controller, memory-card, or timing model.
 - No retail ELF, ISO, BIOS, or game-derived material is used by these tests.
@@ -151,10 +172,10 @@ The registered Gate 0 fixture and the ORI fixture are not modified. Their fixtur
 - Generic ELF structure: `RPTP-REF-003`.
 - Delay-slot background: `RPTP-REF-005`, used only as a secondary cross-check for the existing synthetic model.
 - `LUI` shifted-immediate semantics: `RPTP-REF-013`, MIPS64 Revision 5.04 page 225. The Rev 6.03 LUI page was not directly accessible; the limitation is recorded in [REFERENCES.md](REFERENCES.md).
-- The block, immediate, `$zero`, candidate and lowering rules are defined by this repository's tests and are not a hardware specification.
+- The block, immediate, `$zero`, candidate, known-edge reachability and lowering rules are defined by this repository's tests and are not a hardware specification.
 - The generated C++ state machine, JSON shape, failure text and exit code are test-defined behavior, not R5900 or PS2 hardware behavior.
 
-Local verification is recorded in [VERIFICATION_LOG.md](VERIFICATION_LOG.md). The IR/CFG tests are host-Python tests; the lowering tests add generated C++ and native differential coverage under MSVC. The ORI, lowering, ANDI/XORI, LUI and register-logical AND/OR/XOR/NOR increments are published through `b98ee1d`, which is CI-green in run `39999387250`; the SLT increment is local until owner publication, so hosted CI for that local commit remains pending.
+Local verification is recorded in [VERIFICATION_LOG.md](VERIFICATION_LOG.md). The IR/CFG and reachability tests are host-Python tests; the lowering tests add generated C++ and native differential coverage under MSVC. The ORI, lowering, ANDI/XORI, LUI, register-logical AND/OR/XOR/NOR and SLT increments are published through `bbb1738`, which is CI-green in run `40003992195`; the known-edge reachability increment is local until owner publication, so hosted CI for that local commit remains pending.
 
 ## Verification commands
 
@@ -165,6 +186,7 @@ python -m unittest tests.test_instruction_register_logic -v
 python -m unittest tests.test_instruction_nor -v
 python -m unittest tests.test_instruction_slt -v
 python -m unittest tests.test_ir_cfg -v
+python -m unittest tests.test_cfg_reachability -v
 python -m unittest tests.test_ir_lowering -v
 python -m unittest discover -s tests -v
 ```

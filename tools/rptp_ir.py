@@ -28,6 +28,14 @@ ORIGIN_JAL_TARGET = "jal_target"
 CANDIDATE_CONFIDENCE = "candidate"
 CANDIDATE_LIMITATIONS = "Entry point or direct JAL target only; not a function extent, symbol, reachability or return-path claim."
 
+KNOWN_EDGE_REACHABILITY_MODEL = "known_edge_cfg_graph"
+KNOWN_EDGE_LIMITATIONS = (
+    "Traversal follows only the successors already recorded by the validated CFG.",
+    "A direct call has no modeled return edge, so a caller continuation can be absent even when runtime execution could return.",
+    "An unresolved indirect jump contributes no successor; absence from the reached set is not proof of semantic unreachability or dead code.",
+    "This report is not runtime reachability, dead-code evidence or a function-extent claim.",
+)
+
 IR_ELF_INVALID = "IR_ELF_INVALID"
 IR_EMPTY_CODE = "IR_EMPTY_CODE"
 IR_LIMIT_EXCEEDED = "IR_LIMIT_EXCEEDED"
@@ -55,6 +63,13 @@ IR_BLOCK_START_IN_DELAY_SLOT = "IR_BLOCK_START_IN_DELAY_SLOT"
 IR_BLOCK_BOUNDARY = "IR_BLOCK_BOUNDARY"
 IR_OVERLAPPING_BLOCK = "IR_OVERLAPPING_BLOCK"
 IR_UNCOVERED_INSTRUCTION = "IR_UNCOVERED_INSTRUCTION"
+IR_REACHABILITY_INVALID_RESULT = "IR_REACHABILITY_INVALID_RESULT"
+IR_REACHABILITY_INVALID_ROOT = "IR_REACHABILITY_INVALID_ROOT"
+IR_REACHABILITY_UNALIGNED_ROOT = "IR_REACHABILITY_UNALIGNED_ROOT"
+IR_REACHABILITY_ROOT_OUT_OF_RANGE = "IR_REACHABILITY_ROOT_OUT_OF_RANGE"
+IR_REACHABILITY_ROOT_IN_DELAY_SLOT = "IR_REACHABILITY_ROOT_IN_DELAY_SLOT"
+IR_REACHABILITY_ROOT_NOT_BLOCK_START = "IR_REACHABILITY_ROOT_NOT_BLOCK_START"
+IR_REACHABILITY_INVALID_BLOCK = "IR_REACHABILITY_INVALID_BLOCK"
 
 _CONTROL_KINDS = {
     FALLTHROUGH,
@@ -197,6 +212,37 @@ class AnalysisResult:
             "instructions": instructions,
             "blocks": blocks,
             "function_entry_candidates": candidates,
+        }
+
+
+@dataclass(frozen=True)
+class KnownEdgeReachability:
+    root_pc: int
+    reached_block_starts: tuple[int, ...]
+    not_reached_block_starts: tuple[int, ...]
+    unresolved_transfer_blocks: tuple[int, ...]
+    direct_call_blocks: tuple[int, ...]
+    limitations: tuple[str, ...]
+
+    @property
+    def model(self) -> str:
+        return KNOWN_EDGE_REACHABILITY_MODEL
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema_version": 1,
+            "model": self.model,
+            "root_pc": self.root_pc,
+            "root_pc_hex": f"0x{self.root_pc:08X}",
+            "reached_block_starts": list(self.reached_block_starts),
+            "reached_block_starts_hex": [f"0x{pc:08X}" for pc in self.reached_block_starts],
+            "not_reached_block_starts": list(self.not_reached_block_starts),
+            "not_reached_block_starts_hex": [f"0x{pc:08X}" for pc in self.not_reached_block_starts],
+            "unresolved_transfer_blocks": list(self.unresolved_transfer_blocks),
+            "unresolved_transfer_blocks_hex": [f"0x{pc:08X}" for pc in self.unresolved_transfer_blocks],
+            "direct_call_blocks": list(self.direct_call_blocks),
+            "direct_call_blocks_hex": [f"0x{pc:08X}" for pc in self.direct_call_blocks],
+            "limitations": list(self.limitations),
         }
 
 
@@ -346,7 +392,7 @@ def build_ir(entry: int, words: Mapping[int, int], *, max_instructions: int = MA
 
 
 def discover_blocks(instructions: Sequence[IRInstruction], entry: int) -> tuple[BasicBlock, ...]:
-    """Partition validated IR into deterministic blocks without claiming reachability."""
+    """Partition validated IR into deterministic blocks without claiming runtime reachability."""
     ordered = tuple(instructions)
     if not ordered:
         raise AnalysisError(IR_EMPTY_CODE, "Code range is empty")
@@ -533,3 +579,94 @@ def analyze_elf(data: bytes, *, max_instructions: int = MAX_INSTRUCTIONS) -> Ana
     except ValueError as exc:
         raise AnalysisError(IR_ELF_INVALID, str(exc)) from exc
     return analyze_words(entry, words, max_instructions=max_instructions)
+
+
+def _validated_reachability_blocks(result: Any) -> tuple[tuple[BasicBlock, ...], int, int]:
+    if not isinstance(result, AnalysisResult):
+        raise AnalysisError(IR_REACHABILITY_INVALID_RESULT, "Analysis result must be an AnalysisResult")
+    if not isinstance(result.entry, int) or isinstance(result.entry, bool):
+        raise AnalysisError(IR_REACHABILITY_INVALID_RESULT, "Analysis entry must be an integer")
+    if not isinstance(result.instructions, tuple) or not result.instructions:
+        raise AnalysisError(IR_REACHABILITY_INVALID_RESULT, "Instructions must be a non-empty tuple")
+    if not all(isinstance(instruction, IRInstruction) for instruction in result.instructions):
+        raise AnalysisError(IR_REACHABILITY_INVALID_RESULT, "Every instruction must be an IRInstruction")
+    if not isinstance(result.blocks, tuple) or not result.blocks:
+        raise AnalysisError(IR_REACHABILITY_INVALID_RESULT, "Blocks must be a non-empty tuple")
+    if not all(isinstance(block, BasicBlock) for block in result.blocks):
+        raise AnalysisError(IR_REACHABILITY_INVALID_RESULT, "Every block must be a BasicBlock")
+
+    try:
+        expected_blocks = discover_blocks(result.instructions, result.entry)
+    except AnalysisError as exc:
+        raise AnalysisError(
+            IR_REACHABILITY_INVALID_RESULT,
+            f"CFG result is not structurally valid: {exc}",
+            pc=exc.pc,
+        ) from exc
+
+    if tuple(result.blocks) != expected_blocks:
+        raise AnalysisError(IR_REACHABILITY_INVALID_BLOCK, "Block partition does not match the validated CFG")
+    if result.code_start != expected_blocks[0].start_pc or result.code_end != expected_blocks[-1].end_pc:
+        raise AnalysisError(IR_REACHABILITY_INVALID_RESULT, "Code bounds do not match the validated CFG")
+    return expected_blocks, result.code_start, result.code_end
+
+
+def analyze_known_edge_reachability(result: AnalysisResult, root_pc: int) -> KnownEdgeReachability:
+    """Traverse only the successor edges already recorded by a validated CFG."""
+    blocks, code_start, code_end = _validated_reachability_blocks(result)
+
+    if not isinstance(root_pc, int) or isinstance(root_pc, bool):
+        raise AnalysisError(IR_REACHABILITY_INVALID_ROOT, "Root must be an integer block start")
+    if root_pc & 3:
+        raise AnalysisError(IR_REACHABILITY_UNALIGNED_ROOT, "Root is not 4-byte aligned", pc=root_pc)
+    if not code_start <= root_pc < code_end:
+        raise AnalysisError(IR_REACHABILITY_ROOT_OUT_OF_RANGE, "Root is outside the analysed code range", pc=root_pc)
+
+    for instruction in result.instructions:
+        if instruction.pc == root_pc and instruction.delay_slot_for is not None:
+            raise AnalysisError(IR_REACHABILITY_ROOT_IN_DELAY_SLOT, "Root points into a delay slot", pc=root_pc)
+
+    by_start = {block.start_pc: block for block in blocks}
+    if root_pc not in by_start:
+        raise AnalysisError(IR_REACHABILITY_ROOT_NOT_BLOCK_START, "Root is not a known basic-block start", pc=root_pc)
+
+    reached: set[int] = set()
+    pending = [root_pc]
+    while pending:
+        start = pending.pop()
+        if start in reached:
+            continue
+        block = by_start.get(start)
+        if block is None:
+            raise AnalysisError(IR_REACHABILITY_INVALID_BLOCK, "Successor is not a known block start", pc=start)
+        reached.add(start)
+        for successor in block.successors:
+            if not isinstance(successor, int) or isinstance(successor, bool) or successor not in by_start:
+                raise AnalysisError(IR_REACHABILITY_INVALID_BLOCK, "Block has an unknown successor", pc=start)
+            if successor not in reached:
+                pending.append(successor)
+
+    reached_starts = tuple(block.start_pc for block in blocks if block.start_pc in reached)
+    not_reached_starts = tuple(block.start_pc for block in blocks if block.start_pc not in reached)
+    unresolved = tuple(
+        block.start_pc
+        for block in blocks
+        if block.start_pc in reached
+        and block.terminator is not None
+        and block.terminator.control in {INDIRECT_JUMP, RETURN_CANDIDATE}
+    )
+    direct_calls = tuple(
+        block.start_pc
+        for block in blocks
+        if block.start_pc in reached
+        and block.terminator is not None
+        and block.terminator.control == DIRECT_CALL
+    )
+    return KnownEdgeReachability(
+        root_pc=root_pc,
+        reached_block_starts=reached_starts,
+        not_reached_block_starts=not_reached_starts,
+        unresolved_transfer_blocks=unresolved,
+        direct_call_blocks=direct_calls,
+        limitations=KNOWN_EDGE_LIMITATIONS,
+    )
