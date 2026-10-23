@@ -10,7 +10,7 @@ from xml.sax.saxutils import escape
 ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
 ASSETS = DOCS / "assets"
-SNAPSHOT_DATE = "2026-10-23"
+SNAPSHOT_DATE = "2026-10-24"
 
 COLORS = {
     "verified": ("#238636", "#2ea043", "#f0f6fc"),
@@ -344,7 +344,7 @@ def render_progress_svg() -> str:
 
     <text x="40" y="504" font-size="12" fill="#8b949e">Percentages count only the labeled items in each checklist. They are not overall completion, boot support or game compatibility.</text>
     <text x="40" y="526" font-size="12" fill="#8b949e">Evidence: Python test suite passes · CTest results in the verification log · authorized retail ISOs inspected read-only · narrow Gate 0 technical pass recorded; independent reviews pending.</text>
-    <text x="40" y="548" font-size="12" fill="#8b949e">Next: ISO-variant review. Extraction is deferred; interleaved layouts remain unsupported. Synthetic IR lowering covers ORI, ANDI, XORI, LUI and register-logical AND, OR, XOR and NOR locally; Gate 3 remains open.</text>
+    <text x="40" y="548" font-size="12" fill="#8b949e">Next: ISO-variant review. Extraction is deferred; interleaved layouts remain unsupported. Synthetic IR lowering covers ORI, ANDI, XORI, LUI, register-logical AND, OR, XOR, NOR and SLT locally; Gate 3 remains open.</text>
   </g>
 </svg>
 '''
@@ -456,7 +456,7 @@ def render_html() -> str:
           <li>The current authorized retail sample has been inspected read-only; records are in the <a href="games/README.md">game work index</a>. No boot, recompilation or gameplay exists.</li>
           <li>The narrow Gate 0 technical pass is recorded. Independent provenance reviews and the clean-room review of the build/CI/doctor layer remain pending.</li>
         </ul>
-        <p>Next bounded work: ISO-variant review. Extraction design is deferred under ADR-0004. Interleaved layouts remain unsupported. Synthetic IR lowering covers ORI, ANDI, XORI, LUI and register-logical AND, OR, XOR and NOR locally; Gate 3 remains open.</p>
+        <p>Next bounded work: ISO-variant review. Extraction design is deferred under ADR-0004. Interleaved layouts remain unsupported. Synthetic IR lowering covers ORI, ANDI, XORI, LUI, register-logical AND, OR, XOR, NOR and SLT locally; Gate 3 remains open.</p>
       </section>
     </div>
 

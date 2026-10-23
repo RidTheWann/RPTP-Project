@@ -36,7 +36,7 @@ No build behavior in this layer was derived from a sealed project's build files 
 
 ## Evidence and limits
 
-- The contract tests are local evidence. Their presence does not make the layer CI-verified; CI is green for published `f3782c9` (run `39994586188`). The 2026-10-24 NOR increment is local until the owner publishes it.
+- The contract tests are local evidence. Their presence does not make the layer CI-verified; CI is green for published `b98ee1d` (run `39999387250`). The 2026-10-24 SLT increment is local until the owner publishes it.
 - The wrapper change was checked through the current Visual Studio developer environment and invoked from a temporary working directory outside the repository. A local pass is not a clean-machine guarantee.
 - The doctor and workflow are not proven correct for every Visual Studio edition, runner image, shell, locale or filesystem.
 - No dependency was added, and no third-party action or CMake module was vendored.
