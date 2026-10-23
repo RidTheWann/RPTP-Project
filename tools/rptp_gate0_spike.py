@@ -221,8 +221,8 @@ def decode_instruction(pc: int, word: int) -> dict[str, Any]:
     if op == 0x00:
         if funct == 0x21 and shamt == 0:
             return {"pc": pc, "word": word, "op": "addu", "rs": rs, "rt": rt, "rd": rd}
-        if funct in (0x24, 0x25, 0x26) and shamt == 0:
-            name = {0x24: "and", 0x25: "or", 0x26: "xor"}[funct]
+        if funct in (0x24, 0x25, 0x26, 0x27) and shamt == 0:
+            name = {0x24: "and", 0x25: "or", 0x26: "xor", 0x27: "nor"}[funct]
             return {"pc": pc, "word": word, "op": name, "rs": rs, "rt": rt, "rd": rd}
         if funct == 0x08 and rt == 0 and rd == 0 and shamt == 0:
             return {"pc": pc, "word": word, "op": "jr", "rs": rs}
@@ -311,6 +311,10 @@ def execute_oracle(entry: int, words: dict[int, int]) -> dict[str, Any]:
                 r[ins["rd"]] = result & 0xFFFFFFFFFFFFFFFF
         elif op == "xor":
             result = r[ins["rs"]] ^ r[ins["rt"]]
+            if ins["rd"]:
+                r[ins["rd"]] = result & 0xFFFFFFFFFFFFFFFF
+        elif op == "nor":
+            result = ~(r[ins["rs"]] | r[ins["rt"]])
             if ins["rd"]:
                 r[ins["rd"]] = result & 0xFFFFFFFFFFFFFFFF
         elif op == "ori":

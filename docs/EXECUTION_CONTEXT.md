@@ -1,6 +1,6 @@
 # Execution context
 
-Snapshot date: 2026-10-23.
+Snapshot date: 2026-10-24.
 
 ## Human-approved project decisions
 
@@ -15,7 +15,7 @@ Snapshot date: 2026-10-23.
 
 ## Current repository state
 
-- Public repository: RidTheWann/RPTP-Project. Published tip: `3dbe3f1`; CI run `39920189021` passed Windows x64/MSVC and Linux/GCC. The local register-logical increment is not published.
+- Public repository: RidTheWann/RPTP-Project. Published tip: `f3782c9`; CI run `39994586188` passed Windows x64/MSVC and Linux/GCC. The local NOR increment is not published.
 - Published commits include the licensing/documentation baseline, the synthetic Gate 0 implementation/evidence, README cover, the minimal IR/CFG increment, and subsequent README/roadmap/status corrections.
 - The cover file is docs/assets/rptp-cover.png; README should contain exactly one reference to it.
 - Gate 0 was run locally with Windows x64 MSVC; the recorded result is PASS_LOCAL_DIFFERENTIAL_SPIKE, with native_matches_oracle true and windows_msvc_verified true. Gate 0 test and CTest results are recorded in `docs/VERIFICATION_LOG.md`.
@@ -25,7 +25,7 @@ Snapshot date: 2026-10-23.
 
 ## Current work
 
-The repository baseline includes CMake presets, an environment doctor, unit tests for diagnostic behavior, and CI for Windows/MSVC plus Linux/host compiler. PR #1 merged as `5bf62b2`; the current published tip is `3dbe3f1`, and CI run `39920189021` passed on both jobs. The 2026-10-23 register-logical increment is local until the owner publishes it and is not CI-verified; see `git log origin/main..main`. This infrastructure must be authored independently and must not use previously viewed PS2 Web Recomp build files as templates; the agent-led re-derivation record and contract tests are in `docs/BUILD_PROVENANCE.md` and `tests/test_build_contract.py`, and the audit status remains `Review required`. The ISO inspector has been exercised against eight owner-authorized retail ISO images read-only (Black, Bully, Downhill Domination, God of War II, the owner-described original and Indonesian-language mod San Andreas samples, Need for Speed - Most Wanted and Resident Evil 4); the results are metadata records, not boots or ports. Gate 2 is read-only under ADR-0004; extraction is deferred future work. Gate 3 now includes a synthetic IR, logical-immediate coverage, `LUI` shifted-immediate coverage, register-logical `AND`/`OR`/`XOR` coverage and deterministic C++ lowering, but remains in progress without function discovery, real-game generation or a product recompiler. The next permitted increment must follow `docs/PROVENANCE_PLAN.md`.
+The repository baseline includes CMake presets, an environment doctor, unit tests for diagnostic behavior, and CI for Windows/MSVC plus Linux/host compiler. PR #1 merged as `5bf62b2`; the current published tip is `f3782c9`, and CI run `39994586188` passed on both jobs. The 2026-10-24 NOR increment is local until the owner publishes it and is not CI-verified; see `git log origin/main..main`. This infrastructure must be authored independently and must not use previously viewed PS2 Web Recomp build files as templates; the agent-led re-derivation record and contract tests are in `docs/BUILD_PROVENANCE.md` and `tests/test_build_contract.py`, and the audit status remains `Review required`. The ISO inspector has been exercised against eight owner-authorized retail ISO images read-only (Black, Bully, Downhill Domination, God of War II, the owner-described original and Indonesian-language mod San Andreas samples, Need for Speed - Most Wanted and Resident Evil 4); the results are metadata records, not boots or ports. Gate 2 is read-only under ADR-0004; extraction is deferred future work. Gate 3 now includes a synthetic IR, logical-immediate coverage, `LUI` shifted-immediate coverage, register-logical `AND`/`OR`/`XOR`/`NOR` coverage and deterministic C++ lowering, but remains in progress without function discovery, real-game generation or a product recompiler. The next permitted increment must follow `docs/PROVENANCE_PLAN.md`.
 
 ## Open owner review
 

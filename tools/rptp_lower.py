@@ -46,14 +46,15 @@ _CONTROLS = {
     RETURN_CANDIDATE,
 }
 _DIRECT_CONTROLS = {CONDITIONAL_BRANCH, DIRECT_JUMP, DIRECT_CALL}
-_REGISTER_DEST_OPS = {"addu", "and", "or", "xor"}
-_SUPPORTED_OPS = {"nop", "addu", "and", "or", "xor", "addiu", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne", "j", "jal", "jr"}
+_REGISTER_DEST_OPS = {"addu", "and", "or", "xor", "nor"}
+_SUPPORTED_OPS = {"nop", "addu", "and", "or", "xor", "nor", "addiu", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne", "j", "jal", "jr"}
 _FIXED_CONTROLS = {
     "nop": FALLTHROUGH,
     "addu": FALLTHROUGH,
     "and": FALLTHROUGH,
     "or": FALLTHROUGH,
     "xor": FALLTHROUGH,
+    "nor": FALLTHROUGH,
     "addiu": FALLTHROUGH,
     "andi": FALLTHROUGH,
     "ori": FALLTHROUGH,
@@ -205,12 +206,12 @@ def _validate_instruction(instruction: Any, expected_pc: int) -> tuple[str, str,
     if not isinstance(control, str) or control not in _CONTROLS:
         raise LoweringError(LOWER_INVALID_CONTROL, "Unknown control-flow classification", pc=pc)
 
-    if op in {"addu", "and", "or", "xor", "addiu", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne", "jr"}:
+    if op in {"addu", "and", "or", "xor", "nor", "addiu", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne", "jr"}:
         rs = _register(instruction, "rs", required=True)
     else:
         _expect_none(instruction, "rs")
         rs = None
-    if op in {"addu", "and", "or", "xor", "addiu", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne"}:
+    if op in {"addu", "and", "or", "xor", "nor", "addiu", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne"}:
         rt = _register(instruction, "rt", required=True)
     else:
         _expect_none(instruction, "rt")
@@ -492,6 +493,12 @@ def _instruction_case(instruction: Any) -> list[str]:
         lines.append(
             f"            write_register(s, {_register_literal(instruction.rd)}, "
             f"s.registers[{_register_literal(instruction.rs)}] {operator} s.registers[{_register_literal(instruction.rt)}]);"
+        )
+        lines.append("            break;")
+    elif op == "nor":
+        lines.append(
+            f"            write_register(s, {_register_literal(instruction.rd)}, "
+            f"~(s.registers[{_register_literal(instruction.rs)}] | s.registers[{_register_literal(instruction.rt)}]));"
         )
         lines.append("            break;")
     elif op in {"andi", "ori", "xori"}:

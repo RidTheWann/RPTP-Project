@@ -54,7 +54,7 @@ RA = spike.RA
 AND = 0x24
 OR = 0x25
 XOR = 0x26
-NOR = 0x27
+SLT = 0x2A
 
 UINT64_MASK = 0xFFFFFFFFFFFFFFFF
 
@@ -133,7 +133,7 @@ class RegisterLogicalDecodeTests(unittest.TestCase):
 
     def test_decode_rejects_unsupported_special_function_and_opcode(self):
         with self.assertRaisesRegex(ValueError, "Unsupported SPECIAL"):
-            spike.decode_instruction(BASE, spike.encode_r(T0, T1, T2, 0, NOR))
+            spike.decode_instruction(BASE, spike.encode_r(T0, T1, T2, 0, SLT))
         with self.assertRaisesRegex(ValueError, "Unsupported opcode 0x10"):
             spike.decode_instruction(BASE, spike.encode_i(0x10, T0, T1, 0))
 
@@ -279,7 +279,7 @@ class RegisterLogicalLoweringTests(unittest.TestCase):
 
     def test_register_logical_lowering_rejects_unsupported_operation(self):
         _, result = register_logic_fixture()
-        malformed = replace_instruction(result, BASE + 8, op="nor")
+        malformed = replace_instruction(result, BASE + 8, op="slt")
 
         with self.assertRaises(lower.LoweringError) as caught:
             lower.lower_to_cpp(malformed)
