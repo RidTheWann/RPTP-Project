@@ -48,7 +48,7 @@ S7 = spike.S7
 RA = spike.RA
 
 SLT = 0x2A
-SLTU = 0x2B
+UNSUPPORTED_SPECIAL = 0x2C
 
 INT64_MIN = 0x8000000000000000
 INT64_MAX = 0x7FFFFFFFFFFFFFFF
@@ -124,7 +124,7 @@ class SltDecodeTests(unittest.TestCase):
 
     def test_decode_rejects_unsupported_special_function_and_opcode(self):
         with self.assertRaisesRegex(ValueError, "Unsupported SPECIAL"):
-            spike.decode_instruction(BASE, spike.encode_r(T0, T1, T2, 0, SLTU))
+            spike.decode_instruction(BASE, spike.encode_r(T0, T1, T2, 0, UNSUPPORTED_SPECIAL))
         with self.assertRaisesRegex(ValueError, "Unsupported opcode 0x10"):
             spike.decode_instruction(BASE, spike.encode_i(0x10, T0, T1, 0))
 
@@ -327,7 +327,7 @@ int main() {{
 
     def test_slt_lowering_rejects_unsupported_operation(self):
         _, result = slt_fixture()
-        malformed = replace_instruction(result, BASE + 8, op="sltu")
+        malformed = replace_instruction(result, BASE + 8, op="dadd")
 
         with self.assertRaises(lower.LoweringError) as caught:
             lower.lower_to_cpp(malformed)

@@ -166,6 +166,10 @@ def slt64(lhs: int, rhs: int) -> int:
     return 1 if sign_extend_64(lhs) < sign_extend_64(rhs) else 0
 
 
+def sltu64(lhs: int, rhs: int) -> int:
+    return 1 if (lhs & 0xFFFFFFFFFFFFFFFF) < (rhs & 0xFFFFFFFFFFFFFFFF) else 0
+
+
 def parse_elf(data: bytes) -> tuple[int, dict[int, int], dict[str, int]]:
     """Parse the small subset of ELF32 used by the spike, with bounds checks."""
     if len(data) < 52:
@@ -235,6 +239,8 @@ def decode_instruction(pc: int, word: int) -> dict[str, Any]:
             return {"pc": pc, "word": word, "op": name, "rs": rs, "rt": rt, "rd": rd}
         if funct == 0x2A and shamt == 0:
             return {"pc": pc, "word": word, "op": "slt", "rs": rs, "rt": rt, "rd": rd}
+        if funct == 0x2B and shamt == 0:
+            return {"pc": pc, "word": word, "op": "sltu", "rs": rs, "rt": rt, "rd": rd}
         if funct == 0x08 and rt == 0 and rd == 0 and shamt == 0:
             return {"pc": pc, "word": word, "op": "jr", "rs": rs}
         if funct == 0x00 and rs == 0 and rt == 0 and rd == 0 and shamt == 0:
@@ -330,6 +336,10 @@ def execute_oracle(entry: int, words: dict[int, int]) -> dict[str, Any]:
                 r[ins["rd"]] = result & 0xFFFFFFFFFFFFFFFF
         elif op == "slt":
             result = slt64(r[ins["rs"]], r[ins["rt"]])
+            if ins["rd"]:
+                r[ins["rd"]] = result
+        elif op == "sltu":
+            result = sltu64(r[ins["rs"]], r[ins["rt"]])
             if ins["rd"]:
                 r[ins["rd"]] = result
         elif op == "ori":

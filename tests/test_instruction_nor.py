@@ -44,7 +44,7 @@ S3 = spike.S3
 RA = spike.RA
 
 NOR = 0x27
-SLTU = 0x2B
+UNSUPPORTED_SPECIAL = 0x2C
 
 UINT64_MASK = 0xFFFFFFFFFFFFFFFF
 
@@ -114,7 +114,7 @@ class NorDecodeTests(unittest.TestCase):
 
     def test_decode_rejects_unsupported_special_function_and_opcode(self):
         with self.assertRaisesRegex(ValueError, "Unsupported SPECIAL"):
-            spike.decode_instruction(BASE, spike.encode_r(T0, T1, T2, 0, SLTU))
+            spike.decode_instruction(BASE, spike.encode_r(T0, T1, T2, 0, UNSUPPORTED_SPECIAL))
         with self.assertRaisesRegex(ValueError, "Unsupported opcode 0x10"):
             spike.decode_instruction(BASE, spike.encode_i(0x10, T0, T1, 0))
 
@@ -243,7 +243,7 @@ class NorLoweringTests(unittest.TestCase):
 
     def test_nor_lowering_rejects_unsupported_operation(self):
         _, result = nor_fixture()
-        malformed = replace_instruction(result, BASE + 8, op="sltu")
+        malformed = replace_instruction(result, BASE + 8, op="dadd")
 
         with self.assertRaises(lower.LoweringError) as caught:
             lower.lower_to_cpp(malformed)

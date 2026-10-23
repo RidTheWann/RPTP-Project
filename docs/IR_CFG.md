@@ -4,7 +4,7 @@
 - **Scope:** synthetic ELF32/EM_MIPS input and the currently supported instruction subset only.
 - **Status:** Gate 3 remains in progress. This is not a product recompiler, a complete R5900 model, a function-boundary recovery pass, a runtime, or a compatibility claim.
 - **Implementation:** `tools/rptp_ir.py`; generated-code lowering: `tools/rptp_lower.py`
-- **Tests:** `tests/test_ir_cfg.py`; `tests/test_cfg_reachability.py`; `tests/test_ir_lowering.py`; `tests/test_instruction_logical.py`; `tests/test_instruction_lui.py`; `tests/test_instruction_register_logic.py`; `tests/test_instruction_nor.py`; `tests/test_instruction_slt.py`
+- **Tests:** `tests/test_ir_cfg.py`; `tests/test_cfg_reachability.py`; `tests/test_ir_lowering.py`; `tests/test_instruction_logical.py`; `tests/test_instruction_lui.py`; `tests/test_instruction_register_logic.py`; `tests/test_instruction_nor.py`; `tests/test_instruction_slt.py`; `tests/test_instruction_sltu.py`
 
 ## Purpose
 
@@ -16,7 +16,7 @@ This increment separates five concerns that were previously implicit in the Gate
 4. traversing only the CFG's already-recorded successor edges from an explicit block root; and
 5. lowering a validated result to deterministic C++ for the same synthetic execution model.
 
-The Gate 0 differential spike and the separate ORI, ANDI/XORI, LUI, register-logical AND/OR/XOR/NOR and SLT differentials remain independent execution and native-generation paths. The IR module does not execute code or emit C++; `tools/rptp_lower.py` consumes the IR and emits C++. Known-edge graph traversal is static analysis, not a runtime result.
+The Gate 0 differential spike and the separate ORI, ANDI/XORI, LUI, register-logical AND/OR/XOR/NOR, SLT and SLTU differentials remain independent execution and native-generation paths. The IR module does not execute code or emit C++; `tools/rptp_lower.py` consumes the IR and emits C++. Known-edge graph traversal is static analysis, not a runtime result.
 
 ## IR contract
 
@@ -99,7 +99,7 @@ Each candidate is labeled `candidate` with the limitation text stored by the mod
 - The live state contains a 64-bit register array, a word-addressed `std::map` for initialized guest memory, a trace vector, the current PC and a halt flag. The output JSON is emitted in a fixed order.
 - A control transfer records a pending target. Its delay slot executes next; the pending target is applied only after that slot. Conditional branches choose the direct target or `pc + 8` in the delay-slot step.
 - `$zero` is suppressed by `write_register` and cleared after every executed instruction.
-- `ADDIU` and `ADDU` wrap at 32 bits and sign-extend the result; `ANDI`, `ORI` and `XORI` apply the logical operation with the zero-extended immediate and zero-extend the 32-bit result; `AND`, `OR`, `XOR` and `NOR` apply the bitwise operation to the full modeled 64-bit register values; `SLT` compares the sign bits and then the unsigned magnitudes of the full modeled 64-bit values to produce a signed two's-complement result of `1` or `0`; `LUI` shifts the immediate left 16 bits and sign-extends the 32-bit result; `LW` requires initialized memory and sign-extends the loaded word; `SW` stores the low 32 bits; `JAL` writes `pc + 8` to `$ra`; `JR` reads its target from the runtime register.
+- `ADDIU` and `ADDU` wrap at 32 bits and sign-extend the result; `ANDI`, `ORI` and `XORI` apply the logical operation with the zero-extended immediate and zero-extend the 32-bit result; `AND`, `OR`, `XOR` and `NOR` apply the bitwise operation to the full modeled 64-bit register values; `SLT` compares the sign bits and then the unsigned magnitudes of the full modeled 64-bit values to produce a signed two's-complement result of `1` or `0`; `SLTU` compares the full modeled 64-bit values as unsigned integers and writes `1` or `0`; `LUI` shifts the immediate left 16 bits and sign-extends the 32-bit result; `LW` requires initialized memory and sign-extends the loaded word; `SW` stores the low 32 bits; `JAL` writes `pc + 8` to `$ra`; `JR` reads its target from the runtime register.
 - A direct target is emitted from the validated IR. The lowerer does not re-decode the raw word, although it requires the raw word to be present and well-formed.
 - Uninitialized `LW` throws. Generated `main` writes `LOWER_RUNTIME_ERROR: <detail>\n` to stderr and exits `2`.
 - A non-code dynamic PC, including the return sentinel, halts the synthetic program. This matches the oracle; it is not a hardware exception or kernel model.
@@ -152,30 +152,31 @@ The synthetic lowering tests build the following additional ELFs at test time:
 - The register-logical fixture has 24 instructions (`0x60` bytes) and composes `AND`, `OR` and `XOR` with `LUI` and `ADDIU`. It covers upper-bit patterns, intersection/union/difference, all-zero and all-one values, `$zero` destination suppression, destination/source aliasing and distinct destinations. It executes 24 PCs and stops at the return sentinel. The fixture SHA-256 is `c1a37d766bdb6ed11630726339116d5f793239d46dccfc3da8b50ed4ab086863`; the generated C++ SHA-256 is `a23bb334efdf437d2b852f12746be1b15ce50f0c46d8a84101a7e16475f86ad7`.
 - The NOR fixture has 16 instructions (`0x40` bytes) and composes `NOR` with `LUI` and `ADDIU`. It covers all-zero and all-one results, upper-bit patterns, `rs == rt`, `$zero` destination suppression, destination/source aliasing and the two distinct alias directions. It executes 16 PCs and stops at the return sentinel. The fixture SHA-256 is `21e8eb8c01844341374857cd0d866f26e476bc280c8070161f7d7c42756064f6`; the generated C++ SHA-256 is `96aeeef878ee7ec523cdf21d6ecd6f6c7022bfbda02d8329bc01be20a0eb0572`.
 - The SLT fixture has 20 instructions (`0x50` bytes) and composes `SLT` with `ADDIU`, `LUI`, `JR $ra` and a NOP delay slot. It covers negative/zero, positive/negative, equality, `$zero` destination and source, both source/destination alias directions and high-bit sign patterns. It executes 20 PCs and stops at the return sentinel. The fixture SHA-256 is `9bb286bc242c7822fe8af36e25a8245d1fba75fda2cc21a94c4eee0a6b196fa3`; the generated C++ SHA-256 is `fba70199d9448267f13a95ab03e1216858dbe8f7a3a77b9858d5f7963db2b2da`.
+- The SLTU fixture has 26 instructions (`0x68` bytes) and composes `SLTU` with `ADDIU`, `LUI`, `JR $ra` and a NOP delay slot. It covers equality, zero/nonzero and all-ones operands, `$zero` destination and source, both source/destination alias directions, bit-31 and bit-63 values where unsigned and signed ordering diverge. It executes 26 PCs and stops at the return sentinel. The fixture SHA-256 is `d5670163e001a2abaf6e1d7d41f97d836880be3b7af2461f4fd7624d7ea4aa21`; the generated C++ SHA-256 is `6bdeac71496ff490fd889c6315ea4dddcfe9ccfb693e90f7f081c5a02f9b49d6`.
 
-The generated native state is compared with the oracle for registers, memory, stop PC, halt flag and executed-PC trace. The SLT boundary test also emits a generated-source harness and seeds `State` directly at `INT64_MIN`/`INT64_MAX`, because the synthetic encoder cannot materialize arbitrary 64-bit constants; this exercises the generated helper and state machine, while the 20-instruction fixture exercises the encoded path. A separate one-instruction fixture checks the uninitialized-load diagnostic and exit code.
+The generated native state is compared with the oracle for registers, memory, stop PC, halt flag and executed-PC trace. The SLT boundary test also emits a generated-source harness and seeds `State` directly at `INT64_MIN`/`INT64_MAX`; the SLTU oracle helper additionally checks `0`, `1`, `INT64_MIN`, `INT64_MAX` and `UINT64_MAX`, and the generated harness seeds `State` at high-bit and bit-31 divergences because the synthetic encoder cannot materialize arbitrary 64-bit constants; this exercises the generated helpers and state machine, while the encoded fixtures exercise the normal paths. A separate one-instruction fixture checks the uninitialized-load diagnostic and exit code.
 
 The registered Gate 0 fixture and the ORI fixture are not modified. Their fixture and generated-C++ hashes are checked by `tests/test_ir_cfg.py`; the lowering tests use separate synthetic fixtures.
 
 ## Limitations
 
-- The subset is the existing synthetic ten-opcode Gate 0 subset plus `ORI`, `ANDI`, `XORI`, `LUI`, `AND`, `OR`, `XOR`, `NOR` and `SLT`. No other opcode is added by these increments.
+- The subset is the existing synthetic ten-opcode Gate 0 subset plus `ORI`, `ANDI`, `XORI`, `LUI`, `AND`, `OR`, `XOR`, `NOR`, `SLT` and `SLTU`. No other opcode is added by these increments.
 - The CFG is a syntactic partition of the validated code range. Known-edge graph reachability is not runtime reachability, dead-code proof or function discovery.
 - Function entries are candidates only. There are no function extents, symbols, call graphs with return edges, or confident `JR $ra` return-path claims. The direct-call continuation caveat is explicit in the reachability report.
-- The IR is lowered only for the synthetic model. The generated C++ is not optimized, not a product recompiler or runtime, and not a substitute for the Gate 0, ORI, logical-immediate, LUI, register-logical, NOR or SLT differential paths.
+- The IR is lowered only for the synthetic model. The generated C++ is not optimized, not a product recompiler or runtime, and not a substitute for the Gate 0, ORI, logical-immediate, LUI, register-logical, NOR, SLT or SLTU differential paths.
 - A dynamic non-code PC halts the synthetic program. There is no R5900 exception, fault, pipeline, MMIO, kernel, IOP, VU, GS, SPU2, CDVD, controller, memory-card, or timing model.
 - No retail ELF, ISO, BIOS, or game-derived material is used by these tests.
 
 ## References and evidence
 
-- Generic instruction encodings and MIPS naming: `RPTP-REF-001`, `RPTP-REF-002`. These cover the `SLT` function code and signed-comparison name; the modeled 64-bit width and test behavior are RPTP definitions.
+- Generic instruction encodings and MIPS naming: `RPTP-REF-001`, `RPTP-REF-002`. `RPTP-REF-002` covers the `SLT` and `SLTU` function codes and comparison names; the modeled 64-bit widths and test behavior are RPTP definitions. `RPTP-REF-001` was not used for the `SLTU` function-code value because its current SLTU table row conflicts with `RPTP-REF-002`.
 - Generic ELF structure: `RPTP-REF-003`.
 - Delay-slot background: `RPTP-REF-005`, used only as a secondary cross-check for the existing synthetic model.
 - `LUI` shifted-immediate semantics: `RPTP-REF-013`, MIPS64 Revision 5.04 page 225. The Rev 6.03 LUI page was not directly accessible; the limitation is recorded in [REFERENCES.md](REFERENCES.md).
 - The block, immediate, `$zero`, candidate, known-edge reachability and lowering rules are defined by this repository's tests and are not a hardware specification.
 - The generated C++ state machine, JSON shape, failure text and exit code are test-defined behavior, not R5900 or PS2 hardware behavior.
 
-Local verification is recorded in [VERIFICATION_LOG.md](VERIFICATION_LOG.md). The IR/CFG and reachability tests are host-Python tests; the lowering tests add generated C++ and native differential coverage under MSVC. The ORI, lowering, ANDI/XORI, LUI, register-logical AND/OR/XOR/NOR and SLT increments are published through `bbb1738`, which is CI-green in run `40003992195`; the known-edge reachability increment is local until owner publication, so hosted CI for that local commit remains pending.
+Local verification is recorded in [VERIFICATION_LOG.md](VERIFICATION_LOG.md). The IR/CFG and reachability tests are host-Python tests; the lowering tests add generated C++ and native differential coverage under MSVC. The ORI, lowering, ANDI/XORI, LUI, register-logical AND/OR/XOR/NOR, SLT and known-edge reachability increments are published through `e239527`, which is CI-green in run `40007604212`; the SLTU increment is local until owner publication, so hosted CI for that local commit remains pending.
 
 ## Verification commands
 
@@ -185,6 +186,7 @@ python -m unittest tests.test_instruction_lui -v
 python -m unittest tests.test_instruction_register_logic -v
 python -m unittest tests.test_instruction_nor -v
 python -m unittest tests.test_instruction_slt -v
+python -m unittest tests.test_instruction_sltu -v
 python -m unittest tests.test_ir_cfg -v
 python -m unittest tests.test_cfg_reachability -v
 python -m unittest tests.test_ir_lowering -v

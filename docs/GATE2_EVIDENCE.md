@@ -2,8 +2,8 @@
 
 - **Status: NOT PASSED — evidence only.** Only the human owner records a Gate disposition.
 - **Base commit:** `6499b05d710837f3cae4b3f7e06fa5ab0cb9e55a`; CI run `39838955979` passed Windows x64/MSVC and Linux/GCC.
-- **Later published baseline:** `bbb1738` is green in CI run `40003992195`; the local Gate 3 known-edge reachability increment did not modify the ISO inspector or Gate 2 evidence.
-- **Local follow-up:** the 2026-10-24 known-edge reachability increment is local-only and not CI-verified. See `docs/STATE.md` for status.
+- **Later published baseline:** `e239527` is green in CI run `40007604212`; the later Gate 3 SLTU increment did not modify the ISO inspector or Gate 2 evidence.
+- **Local follow-up:** the 2026-10-24 SLTU increment is local-only and not CI-verified. See `docs/STATE.md` for status.
 - **Scope:** read-only ISO inspection and synthetic test evidence, per [ADR-0004](DECISIONS/ADR-0004-gate2-read-only-scope.md). No boot, extraction, recompilation or compatibility claim.
 
 ## Owner prerequisites
@@ -27,7 +27,7 @@
 | Extraction boundary | No extraction or output-directory feature exists; ADR-0004 records read-only scope and defers extraction. | Not a Gate 2 criterion. Future extraction needs a separate ADR and threat model. |
 | Multi-extent and ISO-variant support | Multi-extent layouts are rejected, not supported; Joliet, Rock Ridge and raw-sector variants are unsupported. | **Open by design; fail-closed.** |
 | Interleave field provenance | ECMA-119 5th edition (December 2024), Table 8 (p. 37) and §§10.1.8–10.1.9 (p. 40); independent field tests. | Evidenced. Interleaved file data remains unsupported. |
-| CI on the current evidence | `bbb1738` is green on both jobs (run `40003992195`); the local known-edge reachability increment does not change Gate 2 code and is not CI-verified. | Gate 2 remains open; no Gate 2 code changed. |
+| CI on the current evidence | `e239527` is green on both jobs (run `40007604212`); the local SLTU increment does not change Gate 2 code and is not CI-verified. | Gate 2 remains open; no Gate 2 code changed. |
 
 ## Retail sample limits
 
