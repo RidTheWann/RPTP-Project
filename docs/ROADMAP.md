@@ -31,7 +31,7 @@ The recorded disposition accepts only the synthetic ELF32/EM_MIPS instruction su
 
 ## B1b — Repository/toolchain baseline
 
-**Status: technical baseline verified. CI is green for published `9c4f675`, and the clean-checkout local Windows run passed. The build/CI/doctor layer is `Review required` in `docs/CLEAN_ROOM_AUDIT.md`; its agent-led re-derivation record and contract tests are in [BUILD_PROVENANCE.md](BUILD_PROVENANCE.md) and `tests/test_build_contract.py`, and it must not be described as clean-room certified. The narrow Gate 0 technical pass is recorded; this work does not expand the PS2 instruction/runtime implementation.**
+**Status: technical baseline verified. CI is green for published `83c7c6a`, and the clean-checkout local Windows run passed. The build/CI/doctor layer is `Review required` in `docs/CLEAN_ROOM_AUDIT.md`; its agent-led re-derivation record and contract tests are in [BUILD_PROVENANCE.md](BUILD_PROVENANCE.md) and `tests/test_build_contract.py`, and it must not be described as clean-room certified. The narrow Gate 0 technical pass is recorded; this work does not expand the PS2 instruction/runtime implementation.**
 
 - [x] Add a CMake project baseline and repeatable windows-msvc / host presets.
 - [x] Add rptp doctor environment and artifact-guard diagnostics.
@@ -45,6 +45,7 @@ The recorded disposition accepts only the synthetic ELF32/EM_MIPS instruction su
 - [x] Confirm CI run (`39838955979`) passed on Windows x64/MSVC and Linux/GCC for the later published tip `6499b05`.
 - [x] Confirm CI run (`39852791294`) passed on Windows x64/MSVC and Linux/GCC for the later published tip `9c11917`.
 - [x] Confirm CI run (`39860776782`) passed on Windows x64/MSVC and Linux/GCC for the later published tip `9c4f675`.
+- [x] Confirm CI run (`39908025708`) passed on Windows x64/MSVC and Linux/GCC for the later published tip `83c7c6a`.
 - [x] Confirm dependency/license inventory remains complete before introducing any dependency; no third-party code is currently vendored or linked.
 - [x] Re-run the full Windows CMake preset from a clean checkout (local run at pre-push commit `83459c1` (now `b4d6fa7`; content unchanged); not a substitute for CI).
 
@@ -54,7 +55,7 @@ A clean checkout can configure/build/test using documented commands; CI is green
 
 ## B1c — Read-only ISO inspection prototype
 
-**Prototype expanded with metadata, explicit validation and deterministic malformed-input tests. The ISO inspector suite and the full Python suite pass locally; CI is green for published `9c4f675`. The current owner-authorized retail sample has been inspected read-only; broad compatibility remains unverified.**
+**Prototype expanded with metadata, explicit validation and deterministic malformed-input tests. The ISO inspector suite and the full Python suite pass locally; CI is green for published `83c7c6a`. The current owner-authorized retail sample has been inspected read-only; broad compatibility remains unverified.**
 
 - [x] Parse ISO 9660 primary volume descriptor and validate dual-endian fields.
 - [x] Enforce single-volume PVD and directory volume sequences.
@@ -93,7 +94,7 @@ This phase is an inspector only. It does not launch a game, implement the PS2 ru
 
 ## Gate 3 — Recompiler MVP
 
-**Status: not passed. The synthetic instruction catalog records the tested subset and evidence in [INSTRUCTION_CATALOG.md](INSTRUCTION_CATALOG.md). Separate ORI and ANDI/XORI programs with native differentials were added after the Gate 0 disposition; the accepted Gate 0 fixture and its scope are unchanged. A documented IR, fail-closed CFG/function-entry-candidate analysis and deterministic C++ lowering for the same synthetic subset are recorded in [IR_CFG.md](IR_CFG.md), `tests/test_ir_cfg.py`, `tools/rptp_lower.py`, `tests/test_ir_lowering.py` and `tests/test_instruction_logical.py`. The lowerer does not prove reachability or recover function extents. No product recompiler or real-game code generation exists yet.**
+**Status: not passed. The synthetic instruction catalog records the tested subset and evidence in [INSTRUCTION_CATALOG.md](INSTRUCTION_CATALOG.md). Separate ORI, ANDI/XORI and LUI programs with native differentials were added after the Gate 0 disposition; the LUI increment is local until publication, and the accepted Gate 0 fixture and its scope are unchanged. A documented IR, fail-closed CFG/function-entry-candidate analysis and deterministic C++ lowering for the same synthetic subset are recorded in [IR_CFG.md](IR_CFG.md), `tests/test_ir_cfg.py`, `tools/rptp_lower.py`, `tests/test_ir_lowering.py`, `tests/test_instruction_logical.py` and `tests/test_instruction_lui.py`. The lowerer does not prove reachability or recover function extents. No product recompiler or real-game code generation exists yet.**
 
 - Maintain an instruction catalog with explicit verification status and permitted references.
 - Expand the oracle interpreter before adding corresponding native lowering.
@@ -102,7 +103,7 @@ This phase is an inspector only. It does not launch a game, implement the PS2 ru
 - [x] Add differential tests for each supported instruction family and edge cases in the current synthetic subset.
 - [x] Fail explicitly on unsupported instructions rather than silently producing incorrect output.
 
-**Verified locally:** the 29-instruction lowering fixture executes 26 PCs and matches the oracle for registers, memory, stop PC and trace; a 13-instruction dynamic-JR fixture executes 13 PCs and also matches. An 18-instruction fixture covers zero-extended `ANDI`/`XORI` masking, toggling, `$zero`, overlap and boundary behavior and also matches. Uninitialized loads exit 2 with `LOWER_RUNTIME_ERROR: read from uninitialized guest memory`. The generated C++ is deterministic and independent of the raw word value. MSVC native tests pass; the full wrapper, CMake/CTest and the unchanged Gate 0/ORI hashes are recorded in `docs/VERIFICATION_LOG.md`.
+**Verified locally:** the 29-instruction lowering fixture executes 26 PCs and matches the oracle for registers, memory, stop PC and trace; a 13-instruction dynamic-JR fixture executes 13 PCs and also matches. An 18-instruction fixture covers zero-extended `ANDI`/`XORI` masking, toggling, `$zero`, overlap and boundary behavior and also matches. A 9-instruction `LUI` fixture covers all immediate boundaries, shifted/sign-extended results, `$zero` and malformed metadata and also matches. Uninitialized loads exit 2 with `LOWER_RUNTIME_ERROR: read from uninitialized guest memory`. The generated C++ is deterministic and independent of the raw word value. MSVC native tests pass; the full wrapper, CMake/CTest and the unchanged Gate 0/ORI hashes are recorded in `docs/VERIFICATION_LOG.md`.
 
 **Pass criteria:** per-instruction differential coverage, deterministic generated source, useful diagnostics and measured correctness on synthetic programs. A larger opcode count alone is not acceptance.
 

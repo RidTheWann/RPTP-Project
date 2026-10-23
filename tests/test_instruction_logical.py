@@ -108,8 +108,8 @@ class LogicalDecodeTests(unittest.TestCase):
         self.assertEqual(xori["op"], "xori")
         self.assertEqual((xori["rs"], xori["rt"], xori["imm"]), (T2, T3, 0xFFFF))
 
-    def test_unknown_logical_opcode_is_still_rejected(self):
-        with self.assertRaisesRegex(ValueError, "Unsupported opcode 0x0F"):
+    def test_lui_opcode_is_not_treated_as_a_logical_immediate(self):
+        with self.assertRaisesRegex(ValueError, "LUI requires rs=0"):
             spike.decode_instruction(BASE, spike.encode_i(0x0F, T0, T1, 0))
 
 

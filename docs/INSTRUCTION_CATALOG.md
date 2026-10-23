@@ -3,12 +3,12 @@
 - **Status date:** 2026-10-23
 - **Scope:** narrow synthetic ELF32/EM_MIPS differential spike, not a complete R5900 implementation and not a compatibility list.
 - **Provenance:** [ADR-0003](DECISIONS/ADR-0003-sealed-source-clean-room-policy.md), [PROVENANCE_PLAN.md](PROVENANCE_PLAN.md) and [REFERENCES.md](REFERENCES.md).
-- **Gate status:** Gate 3 is not passed. This catalog records what the current synthetic tests actually exercise. A documented IR, candidate-only CFG analysis and deterministic C++ lowering now exist for the same subset, including the `ANDI` and `XORI` logical immediates; see [IR_CFG.md](IR_CFG.md).
+- **Gate status:** Gate 3 is not passed. This catalog records what the current synthetic tests actually exercise. A documented IR, candidate-only CFG analysis and deterministic C++ lowering now exist for the same subset, including the `ANDI` and `XORI` logical immediates and the `LUI` shifted immediate; see [IR_CFG.md](IR_CFG.md).
 
 ## Verification levels
 
 - **Native differential:** the decoder, oracle and emitted C++ are exercised by a synthetic program; the generated native state equals the oracle state under a supported host compiler. The Windows/MSVC run is recorded in [VERIFICATION_LOG.md](VERIFICATION_LOG.md).
-- **Native IR-lowering differential:** the validated IR is passed to a separate lowering module, the generated C++ state machine is compiled, and its native state equals the oracle state. This proves the synthetic-generated path only. The current tests are in `tests/test_ir_lowering.py` and `tests/test_instruction_logical.py`.
+- **Native IR-lowering differential:** the validated IR is passed to a separate lowering module, the generated C++ state machine is compiled, and its native state equals the oracle state. This proves the synthetic-generated path only. The current tests are in `tests/test_ir_lowering.py`, `tests/test_instruction_logical.py` and `tests/test_instruction_lui.py`.
 - **Static IR/CFG:** the decoder feeds a host-Python IR and fail-closed block analysis. This does not by itself prove native lowering or runtime behavior. The current tests are in `tests/test_ir_cfg.py`.
 - **Decode only:** the decoder recognizes the encoding but no native differential exists. No instruction currently has this status.
 - **Unsupported:** the decoder rejects the encoding explicitly. Unsupported instructions are never silently skipped or lowered to an approximation.
@@ -22,6 +22,7 @@
 | `ANDI` | I-type opcode `0x0C` | Zero-extend the 16-bit immediate; AND the low 32 bits of `rs`; zero-extend the 32-bit result to 64 bits. A write to `$zero` is discarded. | Separate synthetic logical-immediate program, oracle checks and native IR-lowering differential in `tests/test_instruction_logical.py`. | Added after the Gate 0 disposition; it is not part of the accepted Gate 0 fixture scope. The zero-extended 32-bit model is synthetic. |
 | `ORI` | I-type opcode `0x0D` | Zero-extend the 16-bit immediate; OR the low 32 bits of `rs`; zero-extend the 32-bit result to 64 bits. A write to `$zero` is discarded. | Separate synthetic ORI program and native differential in `tests/test_instruction_ori.py`; also exercised by the IR-lowering fixture and the logical-immediate fixture. | Added after the Gate 0 disposition; it is not part of the accepted Gate 0 fixture scope. The mixed sign/zero-extension model is synthetic. |
 | `XORI` | I-type opcode `0x0E` | Zero-extend the 16-bit immediate; XOR the low 32 bits of `rs`; zero-extend the 32-bit result to 64 bits. A write to `$zero` is discarded. | Separate synthetic logical-immediate program, oracle checks and native IR-lowering differential in `tests/test_instruction_logical.py`. | Added after the Gate 0 disposition; it is not part of the accepted Gate 0 fixture scope. The zero-extended 32-bit model is synthetic. |
+| `LUI` | I-type opcode `0x0F`, with `rs=0` | Shift the raw 16-bit immediate left 16 bits, concatenate 16 zero bits, and sign-extend the 32-bit result to 64 bits. A write to `$zero` is discarded; nonzero `rs` is rejected. | Separate synthetic LUI program, oracle checks, IR metadata checks, malformed IR rejection and native IR-lowering differential in `tests/test_instruction_lui.py`. | Added after the Gate 0 disposition; it is not part of the accepted Gate 0 fixture scope. The shifted/sign-extended model is synthetic and limited to the listed reference. |
 | `LW` | I-type opcode `0x23` | Sign-extend the 16-bit offset; form a 32-bit effective address; require initialized guest memory; sign-extend the loaded word to 64 bits. | Gate 0 fixture and native differential. | No MMIO, TLB, cache, alignment exception or timing behavior. |
 | `SW` | I-type opcode `0x2B` | Sign-extend the 16-bit offset; form a 32-bit effective address; store the low 32 bits of `rt`. | Gate 0 fixture and native differential. | No MMIO, TLB, cache, alignment exception or timing behavior. |
 | `BEQ` | I-type opcode `0x04` | Compare the 64-bit register values; target is `pc + 4 + (sign_extend(imm) << 2)` masked to 32 bits. The delay slot executes. | Gate 0 fixture and native differential. | The static target must be inside the spike's code model. Full R5900 branch behavior is not claimed. |
@@ -33,9 +34,9 @@
 
 ## Minimal IR, CFG and lowering coverage
 
-[IR_CFG.md](IR_CFG.md) defines the additional contract for the same subset. It records raw words, normalized operands, explicit signed/zero-extended immediates, `$zero` destination handling, control-flow classes, direct targets, delay-slot ownership, deterministic basic blocks, and candidate-only function entries. `tools/rptp_lower.py` consumes the validated IR and emits deterministic C++20 for the same synthetic model, with native differential coverage in `tests/test_ir_lowering.py` and `tests/test_instruction_logical.py`.
+[IR_CFG.md](IR_CFG.md) defines the additional contract for the same subset. It records raw words, normalized operands, explicit signed/zero-extended immediates, `$zero` destination handling, control-flow classes, direct targets, delay-slot ownership, deterministic basic blocks, and candidate-only function entries. `tools/rptp_lower.py` consumes the validated IR and emits deterministic C++20 for the same synthetic model, with native differential coverage in `tests/test_ir_lowering.py`, `tests/test_instruction_logical.py` and `tests/test_instruction_lui.py`.
 
-The lowering tests cover the supported operations, both branch outcomes, direct and indirect control flow, delay slots, `$zero` writes, 32-bit wraparound, zero-extended logical immediates and memory load/store. A separate one-instruction fixture covers uninitialized-memory failure. These tests do not add product runtime behavior, reachability, function extents or a complete R5900 model. Gate 3 remains in progress.
+The lowering tests cover the supported operations, both branch outcomes, direct and indirect control flow, delay slots, `$zero` writes, 32-bit wraparound, zero-extended logical immediates, the shifted/sign-extended LUI immediate and memory load/store. A separate one-instruction fixture covers uninitialized-memory failure. These tests do not add product runtime behavior, reachability, function extents or a complete R5900 model. Gate 3 remains in progress.
 
 ## Explicitly unsupported
 
@@ -49,6 +50,7 @@ Through a Visual Studio developer environment for the MSVC path:
 
 ```powershell
 python -m unittest tests.test_instruction_logical -v
+python -m unittest tests.test_instruction_lui -v
 python -m unittest tests.test_instruction_ori -v
 python -m unittest tests.test_ir_cfg -v
 python -m unittest tests.test_ir_lowering -v

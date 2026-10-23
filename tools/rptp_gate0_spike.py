@@ -231,6 +231,10 @@ def decode_instruction(pc: int, word: int) -> dict[str, Any]:
     if op in (0x0C, 0x0D, 0x0E):
         name = {0x0C: "andi", 0x0D: "ori", 0x0E: "xori"}[op]
         return {"pc": pc, "word": word, "op": name, "rs": rs, "rt": rt, "imm": imm}
+    if op == 0x0F:
+        if rs != 0:
+            raise ValueError(f"LUI requires rs=0 (word 0x{word:08X}) at 0x{pc:08X}")
+        return {"pc": pc, "word": word, "op": "lui", "rs": rs, "rt": rt, "imm": imm}
     if op == 0x23:
         return {"pc": pc, "word": word, "op": "lw", "rs": rs, "rt": rt, "imm": simm}
     if op == 0x2B:
@@ -306,6 +310,11 @@ def execute_oracle(entry: int, words: dict[int, int]) -> dict[str, Any]:
             value = ((r[ins["rs"]] & 0xFFFFFFFF) ^ ins["imm"]) & 0xFFFFFFFF
             if ins["rt"]:
                 r[ins["rt"]] = value
+        elif op == "lui":
+            value = (ins["imm"] << 16) & 0xFFFFFFFF
+            result = sign_extend_32(value)
+            if ins["rt"]:
+                r[ins["rt"]] = result & 0xFFFFFFFFFFFFFFFF
         elif op == "lw":
             address = ((r[ins["rs"]] & 0xFFFFFFFF) + ins["imm"]) & 0xFFFFFFFF
             if address not in s["memory"]:

@@ -2,8 +2,8 @@
 
 - **Status: NOT PASSED — evidence only.** Only the human owner records a Gate disposition.
 - **Base commit:** `6499b05d710837f3cae4b3f7e06fa5ab0cb9e55a`; CI run `39838955979` passed Windows x64/MSVC and Linux/GCC.
-- **Later published baseline:** `9c4f675` is green in CI run `39860776782`; the local Gate 3 ANDI/XORI logical-immediate increment did not modify the ISO inspector or Gate 2 evidence.
-- **Local follow-up:** the 2026-10-23 ANDI/XORI logical-immediate increment is local-only and not CI-verified. See `docs/STATE.md` for status.
+- **Later published baseline:** `83c7c6a` is green in CI run `39908025708`; the local Gate 3 LUI increment did not modify the ISO inspector or Gate 2 evidence.
+- **Local follow-up:** the 2026-10-23 LUI increment is local-only and not CI-verified. See `docs/STATE.md` for status.
 - **Scope:** read-only ISO inspection and synthetic test evidence, per [ADR-0004](DECISIONS/ADR-0004-gate2-read-only-scope.md). No boot, extraction, recompilation or compatibility claim.
 
 ## Owner prerequisites
@@ -27,7 +27,7 @@
 | Extraction boundary | No extraction or output-directory feature exists; ADR-0004 records read-only scope and defers extraction. | Not a Gate 2 criterion. Future extraction needs a separate ADR and threat model. |
 | Multi-extent and ISO-variant support | Multi-extent layouts are rejected, not supported; Joliet, Rock Ridge and raw-sector variants are unsupported. | **Open by design; fail-closed.** |
 | Interleave field provenance | ECMA-119 5th edition (December 2024), Table 8 (p. 37) and §§10.1.8–10.1.9 (p. 40); independent field tests. | Evidenced. Interleaved file data remains unsupported. |
-| CI on the current evidence | `9c4f675` is green on both jobs; the local ANDI/XORI increment does not change Gate 2 code and is not CI-verified. | Gate 2 remains open; no Gate 2 code changed. |
+| CI on the current evidence | `83c7c6a` is green on both jobs; the local LUI increment does not change Gate 2 code and is not CI-verified. | Gate 2 remains open; no Gate 2 code changed. |
 
 ## Retail sample limits
 
