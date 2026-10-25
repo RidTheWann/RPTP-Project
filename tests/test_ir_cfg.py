@@ -374,7 +374,7 @@ class IrCfgRegressionTests(unittest.TestCase):
         )
         self.assertEqual(
             hashlib.sha256(ori_source.encode("utf-8")).hexdigest(),
-            "2aefb52babdd9e355fd3d12f3339c5c05ee60421be8bef0f17ae8f78d848c684",
+            "9d0d9fe3af4f1198cab447e802d364cf6b38dc00137f3583d0d6361ad2a50672",
         )
 
 

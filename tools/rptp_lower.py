@@ -577,7 +577,7 @@ def lower_to_cpp(
         if any(instruction.op == op_name for instruction in instructions):
             logical_helpers.append(
                 f"std::uint64_t {op_name}32(std::uint64_t lhs, std::uint32_t immediate) {{\n"
-                f"    return static_cast<std::uint64_t>(static_cast<std::uint32_t>(lhs) {operator} immediate);\n"
+                f"    return lhs {operator} static_cast<std::uint64_t>(immediate);\n"
                 "}\n\n"
             )
     logical_helper = "".join(logical_helpers)

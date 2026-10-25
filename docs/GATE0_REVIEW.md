@@ -73,3 +73,8 @@ An execution plan for traceability, re-derivation and independent review is reco
 The owner's 2026-10-23 instruction delegated and selected the first option: **record a formal technical pass for the narrow synthetic scope**, accepting the stated limits and keeping provenance follow-up separate.
 
 The other options were not selected: the disposition is not being held pending independent provenance review, and the technical evidence was not rejected or required to be reworked. The owner has not recorded a clean-room disposition, a Gate 2 disposition or any commercial-compatibility claim.
+
+
+### Correction note: Post-Gate-0 ORI C++ emission
+
+On 2026-10-26, the `ori32` helper in `tools/rptp_gate0_spike.py` was corrected from `static_cast<uint64_t>(static_cast<uint32_t>(lhs) | immediate)` to `lhs | static_cast<uint64_t>(immediate)` to preserve the upper bits of `lhs` under the 64-bit register model (audit finding F1). The registered Gate 0 fixture does not contain `ORI` and its SHA-256 (`b21f1f7793236d1ccba7308cc82f42d9f89915c87c0b037c46d8170f28349ca9`) and generated C++ SHA-256 (`5316e0f51ba8b1fa1252e409f38cb9ac7db7606fee17b28ef0dcf1be162ae795`) remain unchanged. The separate post-Gate-0 ORI fixture C++ hash changed from `2aefb52babdd9e355fd3d12f3339c5c05ee60421be8bef0f17ae8f78d848c684` to `9d0d9fe3af4f1198cab447e802d364cf6b38dc00137f3583d0d6361ad2a50672`; this is updated in `tests/test_ir_cfg.py`.

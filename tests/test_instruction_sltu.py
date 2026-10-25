@@ -186,7 +186,8 @@ class SltuOracleTests(unittest.TestCase):
         self.assertEqual(registers[T2], 1)
         self.assertEqual(registers[T3], SIGN_EXTENDED_HIGH)
         self.assertEqual(registers[T4], 0x000000007FFFFFFF)
-        self.assertEqual(registers[T5], 0x0000000080000000)
+        # lui sign-extends 0x80000000 to 64 bits; 64-bit ORI preserves upper bits rather than truncating.
+        self.assertEqual(registers[T5], SIGN_EXTENDED_HIGH)
         self.assertEqual(registers[T6], 1)
         self.assertEqual(registers[S0], 1)
         self.assertEqual(registers[S1], 0)
