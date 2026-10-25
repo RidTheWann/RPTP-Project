@@ -28,6 +28,7 @@ No build behavior in this layer was derived from a sealed project's build files 
 - **Configure:** `CMakeLists.txt` requires CMake 3.25, declares a C++ project, finds Python 3.10 or newer, and includes CTest. `CMakePresets.json` defines the `windows-msvc` and `host` configure presets with Ninja and Debug builds, and matching build presets that target `rptp-ci`.
 - **Doctor:** the `rptp-doctor` target invokes the Python doctor against the project source root. The doctor checks the required layout, Python version, available compiler, CMake, Ninja, git and the artifact guard.
 - **Tests:** `artifact_guard`, `python_unit_tests` and `gate0_differential_spike` are registered through one helper so every test runs with the source root as its working directory. The differential test writes only to the CMake binary directory.
+- **CI run history:** the Windows job runs as `Windows x64 / MSVC` and the Linux job as `Linux / GCC`. Listed CI run IDs, the ones that reported a green run, are recorded in [ROADMAP.md](ROADMAP.md) and [COMPATIBILITY.md](COMPATIBILITY.md).
 - **Aggregate target:** `rptp-ci` depends on `rptp-doctor` and runs `ctest --output-on-failure`.
 - **CI:** both jobs check out the source, install Python 3.13 and run the doctor plus the matching configure/build preset. The Windows job resolves Visual Studio through `vswhere.exe` and enters the x64 developer environment. The workflow has read-only repository permissions and no secrets.
 - **Wrapper:** `scripts/run-msvc.ps1` resolves the repository from its own location, checks Python and `cl.exe`, runs the artifact guard, the differential spike and the unit suite, and restores the previous directory in a `finally` block.
@@ -41,6 +42,12 @@ No build behavior in this layer was derived from a sealed project's build files 
 - The doctor and workflow are not proven correct for every Visual Studio edition, runner image, shell, locale or filesystem.
 - No dependency was added, and no third-party action or CMake module was vendored.
 - The exposure record remains accurate. If a reviewer finds structural or expressive similarity to sealed material, the affected files must be quarantined and re-derived rather than defended.
+
+## Local verification environment
+
+- **Recorded 2026-10-24 (moved from docs/HANDOFF.md during the P2 documentation budget pass):** the work laptop is aligned to Visual Studio 2026 Community, MSVC toolset 14.51.36231 and Python 3.13.16. At that time the doctor, CMake configure, CTest and the Gate 0 spike passed locally. The ISO inspector hardening and survey work of 2026-10-22 also passed the full Python suite and the artifact guard locally; CTest results are recorded in [VERIFICATION_LOG.md](VERIFICATION_LOG.md).
+- A plain shell has no MSVC `cl.exe`; the MSVC checks are run through `VsDevCmd.bat` or the repository wrapper. That 2026-10-22 integrity pass ran doctor, the Windows preset, CTest (3/3) and `scripts/run-msvc.ps1` successfully.
+- This is local environment context, not CI evidence and not a clean-machine guarantee. The canonical software/version reference remains the home-PC record at commit `371cec8`; per-run results are in [VERIFICATION_LOG.md](VERIFICATION_LOG.md).
 
 ## What would change the status
 
