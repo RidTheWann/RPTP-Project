@@ -53,6 +53,8 @@ Applies to every coding agent working in this repository. Read it fully at the s
 - Never disable warnings (`/W4 /WX`), sanitizers, or the artifact guard to get a build through.
 - No scope creep. Record out-of-scope findings in `docs/RISKS.md`; do not fix them silently.
 - Keep `docs/STATE.md` a single, current status. Do not append per-run narratives; ROADMAP boxes are ticked only with evidence. Dated per-run evidence goes to docs/VERIFICATION_LOG.md. Do not hard-code counts that change per commit (tests, checklist items) in prose or tools; point to the generator or the log.
+- Every recompiler/runtime increment commit must have a body naming the behavior, RPTP-REF IDs and test paths (see docs/PROVENANCE_PLAN.md).
+- Gate and ADR dispositions: agents write status Proposed only; the owner changes it to Accepted or Passed.
 
 Verification commands (Developer PowerShell x64):
 
