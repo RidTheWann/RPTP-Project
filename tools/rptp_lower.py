@@ -47,7 +47,7 @@ _CONTROLS = {
 }
 _DIRECT_CONTROLS = {CONDITIONAL_BRANCH, DIRECT_JUMP, DIRECT_CALL}
 _REGISTER_DEST_OPS = {"addu", "and", "or", "xor", "nor", "slt", "sltu"}
-_SUPPORTED_OPS = {"nop", "addu", "and", "or", "xor", "nor", "slt", "sltu", "addiu", "slti", "sltiu", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne", "j", "jal", "jr"}
+_SUPPORTED_OPS = {"nop", "addu", "and", "or", "xor", "nor", "slt", "sltu", "addiu", "daddiu", "slti", "sltiu", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne", "j", "jal", "jr"}
 _FIXED_CONTROLS = {
     "nop": FALLTHROUGH,
     "addu": FALLTHROUGH,
@@ -58,6 +58,7 @@ _FIXED_CONTROLS = {
     "slt": FALLTHROUGH,
     "sltu": FALLTHROUGH,
     "addiu": FALLTHROUGH,
+    "daddiu": FALLTHROUGH,
     "slti": FALLTHROUGH,
     "sltiu": FALLTHROUGH,
     "andi": FALLTHROUGH,
@@ -210,12 +211,12 @@ def _validate_instruction(instruction: Any, expected_pc: int) -> tuple[str, str,
     if not isinstance(control, str) or control not in _CONTROLS:
         raise LoweringError(LOWER_INVALID_CONTROL, "Unknown control-flow classification", pc=pc)
 
-    if op in {"addu", "and", "or", "xor", "nor", "slt", "sltu", "addiu", "slti", "sltiu", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne", "jr"}:
+    if op in {"addu", "and", "or", "xor", "nor", "slt", "sltu", "addiu", "daddiu", "slti", "sltiu", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne", "jr"}:
         rs = _register(instruction, "rs", required=True)
     else:
         _expect_none(instruction, "rs")
         rs = None
-    if op in {"addu", "and", "or", "xor", "nor", "slt", "sltu", "addiu", "slti", "sltiu", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne"}:
+    if op in {"addu", "and", "or", "xor", "nor", "slt", "sltu", "addiu", "daddiu", "slti", "sltiu", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne"}:
         rt = _register(instruction, "rt", required=True)
     else:
         _expect_none(instruction, "rt")
@@ -235,7 +236,7 @@ def _validate_instruction(instruction: Any, expected_pc: int) -> tuple[str, str,
     if control != expected_control:
         raise LoweringError(LOWER_INVALID_CONTROL, "Control-flow classification does not match the operation", pc=pc)
 
-    if op in {"addiu", "slti", "sltiu", "lw", "sw", "beq", "bne"}:
+    if op in {"addiu", "daddiu", "slti", "sltiu", "lw", "sw", "beq", "bne"}:
         immediate_kind = SIGNED16
         minimum, maximum = -0x8000, 0x7FFF
     elif op in {"andi", "ori", "xori"}:
@@ -265,7 +266,7 @@ def _validate_instruction(instruction: Any, expected_pc: int) -> tuple[str, str,
             maximum=maximum,
         )
 
-    if op in {"addiu", "slti", "sltiu", "andi", "ori", "xori", "lui", "lw"}:
+    if op in {"addiu", "daddiu", "slti", "sltiu", "andi", "ori", "xori", "lui", "lw"}:
         expected_destination = None if rt == 0 else rt
     elif op in _REGISTER_DEST_OPS:
         expected_destination = None if rd == 0 else rd
@@ -486,6 +487,12 @@ def _instruction_case(instruction: Any) -> list[str]:
             f"addiu32(s.registers[{_register_literal(instruction.rs)}], {instruction.immediate}));"
         )
         lines.append("            break;")
+    elif op == "daddiu":
+        lines.append(
+            f"            write_register(s, {_register_literal(instruction.rt)}, "
+            f"daddiu64(s.registers[{_register_literal(instruction.rs)}], {instruction.immediate}));"
+        )
+        lines.append("            break;")
     elif op == "addu":
         lines.append(
             f"            write_register(s, {_register_literal(instruction.rd)}, "
@@ -597,6 +604,11 @@ def lower_to_cpp(
                 "}\n\n"
             )
     logical_helper = "".join(logical_helpers)
+    daddiu_helper = (
+        "std::uint64_t daddiu64(std::uint64_t lhs, std::int32_t immediate) {\n"
+        "    return lhs + static_cast<std::uint64_t>(static_cast<std::int64_t>(immediate));\n"
+        "}\n\n"
+    ) if any(instruction.op == "daddiu" for instruction in instructions) else ""
     lui_helper = (
         "std::uint64_t lui32(std::uint32_t immediate) {\n"
         "    return sign_extend_32(static_cast<std::uint32_t>(immediate << 16));\n"
@@ -655,7 +667,7 @@ std::uint64_t addu32(std::uint64_t lhs, std::uint64_t rhs) {{
     return sign_extend_32(value);
 }}
 
-{logical_helper}{lui_helper}{comparison_helper}std::uint32_t effective_address(std::uint64_t base, std::int32_t offset) {{
+{daddiu_helper}{logical_helper}{lui_helper}{comparison_helper}std::uint32_t effective_address(std::uint64_t base, std::int32_t offset) {{
     return static_cast<std::uint32_t>(static_cast<std::uint32_t>(base) + static_cast<std::uint32_t>(offset));
 }}
 
