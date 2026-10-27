@@ -27,7 +27,7 @@ The accepted Gate 0 scope is the synthetic ELF32/EM_MIPS fixture and only ADDIU,
 
 1. **Provenance reviews (open):** independent review of the ISO inspector before Gate 2 closure, and of the Gate 0 and build/CI/doctor components before product release.
 2. **Gate 2 (open):** multi-extent and ISO-variant review, plus the owner's Gate 2 disposition. Interleaved layouts are rejected even though the BP 27/28 field mapping is spec-checked.
-3. **Clean-room/source exposure (policy resolved):** prior exposure is documented in [REFERENCES.md](REFERENCES.md) and ADR-0001; ADR-0003 seals the affected projects and is not a legal guarantee.
+3. **Clean-room/source exposure:** historical exposure is documented in [REFERENCES.md](REFERENCES.md) and ADR-0001. ADR-0003 remains the accepted policy. The owner-directed concept-level reference amendment is proposed in [ADR-0005](DECISIONS/ADR-0005-concept-level-references-and-independent-implementation.md); until the owner accepts it, ADR-0003 remains operative. No clean-room certification is claimed.
 4. **License (resolved):** GPL-3.0-or-later confirmed 2026-10-21; SPDX headers cover project source, build and workflow files.
 5. **Renderer (open):** none selected or tested; ADR-0002 remains a plan.
 6. **Dependencies:** no runtime dependency is vendored or linked; record license, version and notices before adding one.
@@ -35,7 +35,7 @@ The accepted Gate 0 scope is the synthetic ELF32/EM_MIPS fixture and only ADDIU,
 ## Next steps
 <!-- P2 2026-10-25: the former CI/publication and clean-checkout statements about specific commits are superseded; query git log origin/main and the GitHub Actions tab instead, and see VERIFICATION_LOG.md for local runs. -->
 
-1. Continue Gate 3 only through the next narrow, tested step under [PROVENANCE_PLAN.md](PROVENANCE_PLAN.md), with permitted references, independent tests, fail-closed diagnostics and an informative commit body.
+1. Complete review of the proposed reference-policy/branch-workflow PR before using it as the operative policy. Until ADR-0005 is accepted, follow ADR-0003 strictly. Then continue Gate 3 only through narrow, independently tested steps under [PROVENANCE_PLAN.md](PROVENANCE_PLAN.md).
 2. Commission or perform the independent ISO inspector provenance review before Gate 2 closure, and the Gate 0 and build/CI/doctor reviews before product release; do not claim clean-room certification before the evidence exists.
 3. Review ISO variants and multi-extent handling, and validate the inspector only against owner-authorized discs while keeping per-game records current.
 4. Do not infer game compatibility or boot support from the synthetic spike, a read-only inspection or generated test artifacts.
