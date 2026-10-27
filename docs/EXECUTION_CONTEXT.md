@@ -1,6 +1,6 @@
 # Execution context
 
-Snapshot date: 2026-10-24.
+Snapshot date: 2026-10-27.
 
 ## Human-approved project decisions
 
@@ -15,7 +15,7 @@ Snapshot date: 2026-10-24.
 
 ## Current repository state
 
-- Public repository: RidTheWann/RPTP-Project. Published tip: `e239527`; CI run `40007604212` passed Windows x64/MSVC and Linux/GCC. The local SLTU increment is not published.
+- Public repository: RidTheWann/RPTP-Project. Latest code increment: `25267b6` (`SLTIU`); CI run #45 passed Windows x64/MSVC and Linux/GCC. The preceding `SLTI` increment passed in run #44.
 - Published commits include the licensing/documentation baseline, the synthetic Gate 0 implementation/evidence, README cover, the minimal IR/CFG increment, and subsequent README/roadmap/status corrections.
 - The cover file is docs/assets/rptp-cover.png; README should contain exactly one reference to it.
 - Gate 0 was run locally with Windows x64 MSVC; the recorded result is PASS_LOCAL_DIFFERENTIAL_SPIKE, with native_matches_oracle true and windows_msvc_verified true. Gate 0 test and CTest results are recorded in `docs/VERIFICATION_LOG.md`.
@@ -25,7 +25,7 @@ Snapshot date: 2026-10-24.
 
 ## Current work
 
-The repository baseline includes CMake presets, an environment doctor, unit tests for diagnostic behavior, and CI for Windows/MSVC plus Linux/host compiler. PR #1 merged as `5bf62b2`; the current published tip is `e239527`, and CI run `40007604212` passed on both jobs. The 2026-10-24 SLTU increment is local until the owner publishes it and is not CI-verified; see `git log origin/main..main`. This infrastructure must be authored independently and must not use previously viewed PS2 Web Recomp build files as templates; the agent-led re-derivation record and contract tests are in `docs/BUILD_PROVENANCE.md` and `tests/test_build_contract.py`, and the audit status remains `Review required`. The ISO inspector has been exercised against eight owner-authorized retail ISO images read-only (Black, Bully, Downhill Domination, God of War II, the owner-described original and Indonesian-language mod San Andreas samples, Need for Speed - Most Wanted and Resident Evil 4); the results are metadata records, not boots or ports. Gate 2 is read-only under ADR-0004; extraction is deferred future work. Gate 3 now includes a synthetic IR, logical-immediate coverage, `LUI` shifted-immediate coverage, register-logical `AND`/`OR`/`XOR`/`NOR` coverage, `SLT` signed-comparison coverage, local `SLTU` unsigned-comparison coverage, conservative known-edge CFG graph reachability and deterministic C++ lowering, but remains in progress without function discovery, real-game generation or a product recompiler. The reachability report follows only stored successor edges and is not a runtime, dead-code or function-extent claim. The next permitted increment must follow `docs/PROVENANCE_PLAN.md`.
+The repository baseline includes CMake presets, an environment doctor, unit tests for diagnostic behavior, and CI for Windows/MSVC plus Linux/host compiler. The historical tip `e239527` passed CI run `40007604212`; the latest synthetic instruction increment `25267b6` is published on `main` and passed run #45. The build/CI/doctor layer remains `Review required` and has not received an independent clean-room review. This infrastructure must be authored independently and must not use previously viewed PS2 Web Recomp build files as templates; the agent-led re-derivation record and contract tests are in `docs/BUILD_PROVENANCE.md` and `tests/test_build_contract.py`, and the audit status remains `Review required`. The ISO inspector has been exercised against eight owner-authorized retail ISO images read-only (Black, Bully, Downhill Domination, God of War II, the owner-described original and Indonesian-language mod San Andreas samples, Need for Speed - Most Wanted and Resident Evil 4); the results are metadata records, not boots or ports. Gate 2 is read-only under ADR-0004; extraction is deferred future work. Gate 3 now includes a synthetic IR, logical-immediate coverage, `LUI` shifted-immediate coverage, register-logical `AND`/`OR`/`XOR`/`NOR` coverage, `SLT` signed-comparison coverage, `SLTU` unsigned-comparison coverage, signed `SLTI` and unsigned `SLTIU` immediate-comparison coverage, conservative known-edge CFG graph reachability and deterministic C++ lowering, but remains in progress without function discovery, real-game generation or a product recompiler. The reachability report follows only stored successor edges and is not a runtime, dead-code or function-extent claim. The next permitted increment must follow `docs/PROVENANCE_PLAN.md`.
 
 ## Open owner review
 

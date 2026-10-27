@@ -176,7 +176,7 @@ The registered Gate 0 fixture and the ORI fixture are not modified. Their fixtur
 - The block, immediate, `$zero`, candidate, known-edge reachability and lowering rules are defined by this repository's tests and are not a hardware specification.
 - The generated C++ state machine, JSON shape, failure text and exit code are test-defined behavior, not R5900 or PS2 hardware behavior.
 
-Local verification is recorded in [VERIFICATION_LOG.md](VERIFICATION_LOG.md). The IR/CFG and reachability tests are host-Python tests; the lowering tests add generated C++ and native differential coverage under MSVC. The ORI, lowering, ANDI/XORI, LUI, register-logical AND/OR/XOR/NOR, SLT and known-edge reachability increments are published through `e239527`, which is CI-green in run `40007604212`; the SLTU increment is local until owner publication, so hosted CI for that local commit remains pending.
+Local and hosted verification evidence is recorded in [VERIFICATION_LOG.md](VERIFICATION_LOG.md). The SLTI increment (`69d7c11`) passed CI run #44; SLTIU (`25267b6`) passed run #45 on Windows x64/MSVC and Linux/GCC. Both are synthetic signed/unsigned comparisons against sign-extended immediates only; Gate 3 remains in progress and not passed.
 
 ## Verification commands
 

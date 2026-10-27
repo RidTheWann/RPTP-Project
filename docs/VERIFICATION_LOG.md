@@ -586,3 +586,24 @@ Base commit: 1d5575d; environment: Windows 11 x64, Python 3.13.16, Visual Studio
   - powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-msvc.ps1 - PASS (PASS_LOCAL_DIFFERENTIAL_SPIKE, windows_msvc_verified: true, native_matches_oracle: true, 202 tests passed).
 - Modeled instruction width audit: all 20 modeled opcodes (nop, addu, addiu, and, or, xor, nor, slt, sltu, andi, ori, xori, lui, lw, sw, beq, bne, j, jal, jr) audited; no other width defect found.
 - Gate status: Gate 2 remains open and read-only; Gate 3 remains not passed.
+
+
+## 2026-10-27 — Gate 3 synthetic SLTI signed-immediate increment (CI run #44)
+
+Commit: `69d7c1160e0a7ebcd2b8efa151b67f0da7fcd27b`. Scope: synthetic I-type `SLTI` opcode `0x0A`, signed 16-bit immediate and signed comparison against the project-defined 64-bit register model. Reference: `RPTP-REF-014`. No retail ISO, game binary, BIOS or sealed implementation material was accessed. Gate 0 fixture and its accepted scope were unchanged.
+
+- Tests: `tests/test_instruction_slti.py` covers decoder, IR, literal-oracle, signed-64/immediate-boundary, deterministic output, malformed-input and native C++ differential cases. Native differential tests ran in both supported hosted compiler jobs.
+- GitHub Actions run [#44](https://github.com/RidTheWann/RPTP-Project/actions/runs/40470003967): Windows x64/MSVC job `122074563032` and Linux/GCC job `122074563423` both completed successfully.
+- On both runners, the artifact guard, full Python unit suite and Gate 0 differential target passed; CTest reported `100% tests passed, 0 tests failed out of 3`.
+- A separate pre-fix failure run was not captured in this session; this procedural gap is recorded as `R-023` in [RISKS.md](RISKS.md).
+- Gate 3 remains not passed. This is a synthetic test model, not a product recompiler, runtime, boot or compatibility result. No Gate or ADR disposition changed.
+
+## 2026-10-27 — Gate 3 synthetic SLTIU unsigned-immediate increment (CI run #45)
+
+Commit: `25267b6911ec438479d346d0c68cea5679c34dcb`. Scope: synthetic I-type `SLTIU` opcode `0x0B`; sign-extend the 16-bit immediate first, then compare as unsigned against the project-defined 64-bit register model. Generic instruction semantics are cross-checked against `RPTP-REF-014`. Gate 0 fixture and its accepted scope were unchanged.
+
+- Tests: `tests/test_instruction_sltiu.py` covers literal oracle results, sign-extension and `UINT64_MAX` boundaries, `$zero`, aliases, IR metadata, malformed lowering metadata, deterministic source and native C++ execution. The existing `tests/test_instruction_slti.py` rejects unrelated unsupported opcodes rather than treating SLTIU as unsupported. Native tests ran in both supported hosted compiler jobs.
+- GitHub Actions run [#45](https://github.com/RidTheWann/RPTP-Project/actions/runs/40470558441): Windows x64/MSVC job `122076404638` and Linux/GCC job `122076404168` both completed successfully.
+- On both runners, the artifact guard, full Python unit suite and Gate 0 differential target passed; CTest reported `100% tests passed, 0 tests failed out of 3`.
+- A separate pre-fix failure run was not captured in this session; this procedural gap is recorded as `R-023` in [RISKS.md](RISKS.md).
+- Gate 3 remains not passed. This is a synthetic test model, not a product recompiler, runtime, boot or compatibility result. No Gate or ADR disposition changed.
