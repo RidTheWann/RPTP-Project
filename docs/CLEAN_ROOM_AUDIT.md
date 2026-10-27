@@ -1,7 +1,7 @@
 # Clean-room provenance audit
 
 - **Audit date:** 2026-10-21
-- **Last evidence update:** 2026-10-24 — narrow Gate 0 technical disposition, provenance execution plan, Gate 3 instruction catalog, separate ORI, ANDI/XORI, LUI, register-logical AND/OR/XOR/NOR, SLT and SLTU differentials, minimal IR/CFG analysis, conservative known-edge graph reachability and deterministic synthetic IR-to-C++ lowering recorded; no component certified.
+- **Last evidence update:** 2026-10-27 — narrow Gate 0 technical disposition, provenance execution plan, Gate 3 instruction catalog, separate ORI, ANDI/XORI, LUI, register-logical AND/OR/XOR/NOR, SLT, SLTU and SLTI differentials, minimal IR/CFG analysis, conservative known-edge graph reachability and deterministic synthetic IR-to-C++ lowering recorded; no component certified.
 - **Policy:** [ADR-0003](DECISIONS/ADR-0003-sealed-source-clean-room-policy.md)
 - **Execution plan:** [PROVENANCE_PLAN.md](PROVENANCE_PLAN.md)
 - **Exposure record:** [docs/REFERENCES.md](REFERENCES.md)

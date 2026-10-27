@@ -47,7 +47,7 @@ _CONTROLS = {
 }
 _DIRECT_CONTROLS = {CONDITIONAL_BRANCH, DIRECT_JUMP, DIRECT_CALL}
 _REGISTER_DEST_OPS = {"addu", "and", "or", "xor", "nor", "slt", "sltu"}
-_SUPPORTED_OPS = {"nop", "addu", "and", "or", "xor", "nor", "slt", "sltu", "addiu", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne", "j", "jal", "jr"}
+_SUPPORTED_OPS = {"nop", "addu", "and", "or", "xor", "nor", "slt", "sltu", "addiu", "slti", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne", "j", "jal", "jr"}
 _FIXED_CONTROLS = {
     "nop": FALLTHROUGH,
     "addu": FALLTHROUGH,
@@ -58,6 +58,7 @@ _FIXED_CONTROLS = {
     "slt": FALLTHROUGH,
     "sltu": FALLTHROUGH,
     "addiu": FALLTHROUGH,
+    "slti": FALLTHROUGH,
     "andi": FALLTHROUGH,
     "ori": FALLTHROUGH,
     "xori": FALLTHROUGH,
@@ -208,12 +209,12 @@ def _validate_instruction(instruction: Any, expected_pc: int) -> tuple[str, str,
     if not isinstance(control, str) or control not in _CONTROLS:
         raise LoweringError(LOWER_INVALID_CONTROL, "Unknown control-flow classification", pc=pc)
 
-    if op in {"addu", "and", "or", "xor", "nor", "slt", "sltu", "addiu", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne", "jr"}:
+    if op in {"addu", "and", "or", "xor", "nor", "slt", "sltu", "addiu", "slti", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne", "jr"}:
         rs = _register(instruction, "rs", required=True)
     else:
         _expect_none(instruction, "rs")
         rs = None
-    if op in {"addu", "and", "or", "xor", "nor", "slt", "sltu", "addiu", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne"}:
+    if op in {"addu", "and", "or", "xor", "nor", "slt", "sltu", "addiu", "slti", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne"}:
         rt = _register(instruction, "rt", required=True)
     else:
         _expect_none(instruction, "rt")
@@ -233,7 +234,7 @@ def _validate_instruction(instruction: Any, expected_pc: int) -> tuple[str, str,
     if control != expected_control:
         raise LoweringError(LOWER_INVALID_CONTROL, "Control-flow classification does not match the operation", pc=pc)
 
-    if op in {"addiu", "lw", "sw", "beq", "bne"}:
+    if op in {"addiu", "slti", "lw", "sw", "beq", "bne"}:
         immediate_kind = SIGNED16
         minimum, maximum = -0x8000, 0x7FFF
     elif op in {"andi", "ori", "xori"}:
@@ -263,7 +264,7 @@ def _validate_instruction(instruction: Any, expected_pc: int) -> tuple[str, str,
             maximum=maximum,
         )
 
-    if op in {"addiu", "andi", "ori", "xori", "lui", "lw"}:
+    if op in {"addiu", "slti", "andi", "ori", "xori", "lui", "lw"}:
         expected_destination = None if rt == 0 else rt
     elif op in _REGISTER_DEST_OPS:
         expected_destination = None if rd == 0 else rd
@@ -509,6 +510,13 @@ def _instruction_case(instruction: Any) -> list[str]:
             f"{op}64(s.registers[{_register_literal(instruction.rs)}], s.registers[{_register_literal(instruction.rt)}]));"
         )
         lines.append("            break;")
+    elif op == "slti":
+        lines.append(
+            f"            write_register(s, {_register_literal(instruction.rt)}, "
+            f"slt64(s.registers[{_register_literal(instruction.rs)}], "
+            f"static_cast<std::uint64_t>(static_cast<std::int64_t>({instruction.immediate}))));"
+        )
+        lines.append("            break;")
     elif op in {"andi", "ori", "xori"}:
         lines.append(
             f"            write_register(s, {_register_literal(instruction.rt)}, "
@@ -587,7 +595,7 @@ def lower_to_cpp(
         "}\n\n"
     ) if any(instruction.op == "lui" for instruction in instructions) else ""
     comparison_helpers = []
-    if any(instruction.op == "slt" for instruction in instructions):
+    if any(instruction.op in {"slt", "slti"} for instruction in instructions):
         comparison_helpers.append(
             "std::uint64_t slt64(std::uint64_t lhs, std::uint64_t rhs) {\n"
             "    const bool lhs_negative = (lhs & 0x8000000000000000ull) != 0ull;\n"
