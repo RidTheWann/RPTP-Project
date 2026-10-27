@@ -46,11 +46,12 @@ _CONTROLS = {
     RETURN_CANDIDATE,
 }
 _DIRECT_CONTROLS = {CONDITIONAL_BRANCH, DIRECT_JUMP, DIRECT_CALL}
-_REGISTER_DEST_OPS = {"addu", "and", "or", "xor", "nor", "slt", "sltu"}
-_SUPPORTED_OPS = {"nop", "addu", "and", "or", "xor", "nor", "slt", "sltu", "addiu", "daddiu", "slti", "sltiu", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne", "j", "jal", "jr"}
+_REGISTER_DEST_OPS = {"addu", "subu", "and", "or", "xor", "nor", "slt", "sltu"}
+_SUPPORTED_OPS = {"nop", "addu", "subu", "and", "or", "xor", "nor", "slt", "sltu", "addiu", "daddiu", "slti", "sltiu", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne", "j", "jal", "jr"}
 _FIXED_CONTROLS = {
     "nop": FALLTHROUGH,
     "addu": FALLTHROUGH,
+    "subu": FALLTHROUGH,
     "and": FALLTHROUGH,
     "or": FALLTHROUGH,
     "xor": FALLTHROUGH,
@@ -211,12 +212,12 @@ def _validate_instruction(instruction: Any, expected_pc: int) -> tuple[str, str,
     if not isinstance(control, str) or control not in _CONTROLS:
         raise LoweringError(LOWER_INVALID_CONTROL, "Unknown control-flow classification", pc=pc)
 
-    if op in {"addu", "and", "or", "xor", "nor", "slt", "sltu", "addiu", "daddiu", "slti", "sltiu", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne", "jr"}:
+    if op in {"addu", "subu", "and", "or", "xor", "nor", "slt", "sltu", "addiu", "daddiu", "slti", "sltiu", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne", "jr"}:
         rs = _register(instruction, "rs", required=True)
     else:
         _expect_none(instruction, "rs")
         rs = None
-    if op in {"addu", "and", "or", "xor", "nor", "slt", "sltu", "addiu", "daddiu", "slti", "sltiu", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne"}:
+    if op in {"addu", "subu", "and", "or", "xor", "nor", "slt", "sltu", "addiu", "daddiu", "slti", "sltiu", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne"}:
         rt = _register(instruction, "rt", required=True)
     else:
         _expect_none(instruction, "rt")
@@ -493,10 +494,10 @@ def _instruction_case(instruction: Any) -> list[str]:
             f"daddiu64(s.registers[{_register_literal(instruction.rs)}], {instruction.immediate}));"
         )
         lines.append("            break;")
-    elif op == "addu":
+    elif op in {"addu", "subu"}:
         lines.append(
             f"            write_register(s, {_register_literal(instruction.rd)}, "
-            f"addu32(s.registers[{_register_literal(instruction.rs)}], s.registers[{_register_literal(instruction.rt)}]));"
+            f"{op}32(s.registers[{_register_literal(instruction.rs)}], s.registers[{_register_literal(instruction.rt)}]));"
         )
         lines.append("            break;")
     elif op in {"and", "or", "xor"}:
@@ -664,6 +665,11 @@ std::uint64_t addiu32(std::uint64_t lhs, std::int32_t immediate) {{
 
 std::uint64_t addu32(std::uint64_t lhs, std::uint64_t rhs) {{
     const auto value = static_cast<std::uint32_t>(lhs) + static_cast<std::uint32_t>(rhs);
+    return sign_extend_32(value);
+}}
+
+std::uint64_t subu32(std::uint64_t lhs, std::uint64_t rhs) {{
+    const auto value = static_cast<std::uint32_t>(lhs) - static_cast<std::uint32_t>(rhs);
     return sign_extend_32(value);
 }}
 
