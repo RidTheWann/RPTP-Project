@@ -48,7 +48,7 @@ Applies to every coding agent working in this repository. Read it fully at the s
 
 ## 5. Working protocol
 
-- One logical change per commit, Conventional Commits, small and atomic. main is the only branch for now: commit there directly. Never push (the owner pushes), never create other branches or PRs, never force-push or rewrite pushed history.
+- One logical change per commit, Conventional Commits, small and atomic. main is the only branch for now: commit there directly. Agents must not push unless the owner explicitly authorizes agent pushes in the conversation; after that authorization, agents may push directly to main. Never create other branches or PRs, never force-push or rewrite pushed history.
 - Tests first when possible. Never weaken or delete a test to make it pass, unless you prove the test is wrong and explain why.
 - Never disable warnings (`/W4 /WX`), sanitizers, or the artifact guard to get a build through.
 - No scope creep. Record out-of-scope findings in `docs/RISKS.md`; do not fix them silently.
