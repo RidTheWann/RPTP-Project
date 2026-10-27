@@ -234,6 +234,8 @@ def decode_instruction(pc: int, word: int) -> dict[str, Any]:
     if op == 0x00:
         if funct == 0x21 and shamt == 0:
             return {"pc": pc, "word": word, "op": "addu", "rs": rs, "rt": rt, "rd": rd}
+        if funct == 0x23 and shamt == 0:
+            return {"pc": pc, "word": word, "op": "subu", "rs": rs, "rt": rt, "rd": rd}
         if funct in (0x24, 0x25, 0x26, 0x27) and shamt == 0:
             name = {0x24: "and", 0x25: "or", 0x26: "xor", 0x27: "nor"}[funct]
             return {"pc": pc, "word": word, "op": name, "rs": rs, "rt": rt, "rd": rd}
@@ -325,6 +327,11 @@ def execute_oracle(entry: int, words: dict[int, int]) -> dict[str, Any]:
                 r[ins["rt"]] = value
         elif op == "addu":
             value = ((r[ins["rs"]] & 0xFFFFFFFF) + (r[ins["rt"]] & 0xFFFFFFFF)) & 0xFFFFFFFF
+            result = sign_extend_32(value)
+            if ins["rd"]:
+                r[ins["rd"]] = result & 0xFFFFFFFFFFFFFFFF
+        elif op == "subu":
+            value = ((r[ins["rs"]] & 0xFFFFFFFF) - (r[ins["rt"]] & 0xFFFFFFFF)) & 0xFFFFFFFF
             result = sign_extend_32(value)
             if ins["rd"]:
                 r[ins["rd"]] = result & 0xFFFFFFFFFFFFFFFF
