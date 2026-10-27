@@ -260,7 +260,7 @@ int main() {{
 
     def test_sltiu_lowering_rejects_unsupported_operation(self):
         _, result = sltiu_fixture()
-        malformed = replace_instruction(result, BASE + 4, op="daddiu")
+        malformed = replace_instruction(result, BASE + 4, op="daddi")
         with self.assertRaises(lower.LoweringError) as caught:
             lower.lower_to_cpp(malformed)
         self.assertEqual(caught.exception.code, lower.LOWER_UNSUPPORTED_OP)
