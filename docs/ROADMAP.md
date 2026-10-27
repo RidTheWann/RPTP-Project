@@ -13,7 +13,7 @@
 - [x] Write a renderer comparison plan; renderer selection remains open.
 - [x] Run the generated program under MSVC on Windows x64 and record actual output.
 - [x] Owner delegated and the agent recorded the narrow Gate 0 technical pass on 2026-10-23; independent provenance review remains a release prerequisite.
-- [x] Human owner adopted the ADR-0003 sealed-source clean-room policy on 2026-10-21; prior exposure remains documented and affected work must be independently derived.
+- [x] Human owner adopted the ADR-0003 sealed-source policy on 2026-10-21; prior exposure remains documented. On 2026-10-27 the owner requested bounded concept-level inspiration with independent implementation; proposed ADR-0005 describes the amendment, which is not operative until accepted.
 
 ### Gate 0 evidence and limits
 
@@ -27,7 +27,7 @@ The recorded disposition accepts only the synthetic ELF32/EM_MIPS instruction su
 - [x] Select GPL-3.0-or-later for original project material and publish the license text.
 - [x] Record architecture, fixture, artifact and third-party-license boundaries.
 - [x] Owner confirmed GPL-3.0-or-later on 2026-10-21.
-- [x] Owner selected the ADR-0003 sealed-source policy: do not access sealed projects; preserve provenance and quarantine any work that cannot demonstrate independent derivation. Component status is tracked in `docs/CLEAN_ROOM_AUDIT.md`.
+- [x] Owner selected the ADR-0003 sealed-source policy: preserve provenance and quarantine work that cannot demonstrate independent derivation. Proposed ADR-0005 would permit only concept-level references after owner acceptance; implementation details, code and tests remain excluded. Component status is tracked in `docs/CLEAN_ROOM_AUDIT.md`.
 
 ## B1b — Repository/toolchain baseline
 
