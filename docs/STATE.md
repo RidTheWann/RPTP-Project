@@ -1,8 +1,10 @@
 # RPTP project state — Gate 0 narrow technical pass recorded; Gate 2 open
 
-- **Snapshot date:** 2026-10-27
+- **Snapshot date:** 2026-10-28
 - **Remote repository:** RidTheWann/RPTP-Project, public.
-- **Publication and CI status:** see git log origin/main and the GitHub Actions tab.
+- **Publication and CI status:** this increment publishes only the owner-approved Git workflow and its evidence from a separate branch. Local Windows/MSVC verification passed; hosted CI is pending. Prior local inspection/DADDIU/game-record work is not included or made CI-verified. Query Git/GitHub for the exact PR head, merge state and runs; local checks are not hosted CI.
+- **Git workflow:** `main` is the integration branch; use isolated increment worktrees, explicit staging, local verification/review, both exact-head compiler jobs, pinned-head merges and actual merge-commit CI. Owner authorization is recorded in [AGENTS.md](../AGENTS.md); no direct main push, force-push, history rewrite or administrative override.
+- **Manual automation:** user-profile `/rptp-develop` and its read-only guards remain outside the repository. GitHub CLI authentication/write access is verified. Before merge, require exact-head CI; after merge, monitor CI for the actual merge commit. Accepted clean-room/Gate boundaries are unchanged.
 - **Architecture:** from-scratch static ahead-of-time recompilation of supported Emotion Engine code to C++, plus a native Windows x64 runtime planned.
 - **License:** GPL-3.0-or-later was confirmed by the owner on 2026-10-21; the decision is recorded in ADR-0001. **CLI/log/error language:** English.
 - **Build outputs:** local only; never commit build directories, Python caches or generated binaries.

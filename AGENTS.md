@@ -48,7 +48,9 @@ Applies to every coding agent working in this repository. Read it fully at the s
 
 ## 5. Working protocol
 
-- One logical change per commit, Conventional Commits, small and atomic. main is the only branch for now: commit there directly. Agents must not push unless the owner explicitly authorizes agent pushes in the conversation; after that authorization, agents may push directly to main. Never create other branches or PRs, never force-push or rewrite pushed history.
+- One logical change per commit, Conventional Commits, small and atomic. Keep `main` as the integration branch; implement each increment on a dedicated branch based on freshly fetched `origin/main`, not directly on main.
+- On 2026-10-28 the owner authorized agents to create/push increment branches, create/update PRs, monitor/fix CI and merge into main after local verification, correctness review and successful Windows x64/MSVC plus Linux/GCC jobs for the exact current PR head. Recheck head/mergeability/review state immediately before merging and require the expected head commit in the merge command. Monitor CI for the actual merge commit as well; respect required reviews and merge queues.
+- Preserve pre-existing local work. Use an isolated worktree for automation, inspect diffs and stage explicit task-owned files only. Never force-push, rewrite published history, direct-push main, bypass hooks/signing or use administrative merge overrides. Do not change repository permissions or protections without separate owner authorization.
 - Tests first when possible. Never weaken or delete a test to make it pass, unless you prove the test is wrong and explain why.
 - Never disable warnings (`/W4 /WX`), sanitizers, or the artifact guard to get a build through.
 - No scope creep. Record out-of-scope findings in `docs/RISKS.md`; do not fix them silently.
