@@ -4,11 +4,11 @@ Applies to every coding agent working in this repository. Read it fully at the s
 
 **Language.** Talk to the owner in Indonesian. Write code, comments, commit messages, docs, and all CLI/log/error text in English.
 
-**Priority when rules conflict:** (1) legal, license and clean-room rules (sections 2–3) → (2) honesty and evidence (section 4) → (3) fixed decisions (section 1) → (4) the owner's session instructions → (5) style. A session instruction may not loosen items 1–3. If one tries, explain the conflict and stop.
+**Priority when rules conflict:** (1) legal, license and the currently Accepted ADRs → (2) honesty and evidence (section 4) → (3) fixed project decisions (section 1) → (4) the owner's session instructions → (5) style. A session instruction does not silently amend an Accepted ADR; record a policy change in an ADR and have the owner accept it before treating that change as operative.
 
 ## 0. Session start (mandatory)
 
-1. Read `docs/STATE.md`, `docs/ROADMAP.md`, `docs/HANDOFF.md`, `docs/CLEAN_ROOM_AUDIT.md`, `docs/DECISIONS/ADR-0001-*.md`, `docs/DECISIONS/ADR-0003-*.md`. Do not read docs/VERIFICATION_LOG.md here: it is an append-only evidence log. Open it only when a task needs older evidence.
+1. Read `docs/STATE.md`, `docs/ROADMAP.md`, `docs/HANDOFF.md`, `docs/CLEAN_ROOM_AUDIT.md`, `docs/DECISIONS/ADR-0001-*.md`, `docs/DECISIONS/ADR-0003-*.md`, `docs/DECISIONS/ADR-0004-*.md`, and `docs/DECISIONS/ADR-0005-*.md`. Do not read docs/VERIFICATION_LOG.md here: it is an append-only evidence log. Open it only when a task needs older evidence.
 2. Run `git status` and `git log --oneline -10`.
 3. Summarize the project position in at most 10 lines.
 4. Pick ONE task. Write a short plan (goal, files, tests, done criteria) before changing code.
@@ -23,14 +23,16 @@ Applies to every coding agent working in this repository. Read it fully at the s
 - Unsupported instructions, syscalls or features must **fail loudly and explicitly**. Never skip them silently or produce a build that looks valid.
 - ISOs are opened read-only and never modified. Build outputs stay local.
 
-## 2. Clean-room rules (ADR-0003: sealed-source policy)
+## 2. Provenance and reference boundaries (ADR-0003; proposed amendment ADR-0005)
 
-- **Sealed:** PS2Recomp, PS2 Web Recomp, PCSX2, Play!, and any other emulator or recompiler implementation. Do NOT open, clone, browse, search for, fetch, or summarize their source, build files, scripts, tests, issues, PRs, release notes, or implementation docs. This includes web search, MCP tools, and "just checking".
-- **Permitted references:** neutral public specs (MIPS ISA, ELF, ECMA-119/ISO 9660), official docs of tools (CMake, MSVC, GitHub Actions), and independent experiments and tests.
-- Every non-trivial behavior claim cites a permitted reference or an independent test in `docs/REFERENCES.md`. An unsupported claim is not a supported feature. Do not write hardware facts from memory; cite or mark them unverified.
-- Components marked `Review required` in `docs/CLEAN_ROOM_AUDIT.md` (CMake/CI/doctor layer) must never be called clean-room certified. Do not "fix" provenance by consulting sealed material. Re-derivation happens only when the owner approves it.
-- **Runtime and recompiler expansion is `Blocked`** until the owner records the formal Gate 0 disposition and a provenance plan. Do not add R5900 semantics, kernel, IOP, DMA, VU, GS, SPU2 or similar work before that.
-- If you encounter sealed material by accident: stop, do not use it, disclose it in your report, propose an entry for the exposure record in `docs/REFERENCES.md`, and wait for the owner.
+- **Current rule:** ADR-0003 remains the operative policy until the owner changes ADR-0005 to `Accepted`. The proposed amendment is not permission to access or use additional material before acceptance.
+- **If ADR-0005 is Accepted:** public, high-level product references may be consulted for concept inspiration only: feature summaries, user-facing documentation, public UI/workflow descriptions, screenshots, release announcements and broad problem statements. Record source, access date, the concept considered, intended RPTP use and limitations in `docs/REFERENCES.md`.
+- **Never use as an implementation source:** source code, patches, code snippets, build configuration, scripts, tests, internal APIs, implementation-focused design docs, disassembly, internal algorithm descriptions, or issue/PR discussions that reveal implementation details. Do not consult material in those categories for RPTP implementation. Do not use exact code, tests, naming, structures, control flow, test values, or a line-by-line translation from another implementation.
+- A conceptual source describes *what might be useful*, not technical correctness. Derive ISA, file-format, platform and runtime behavior from neutral authoritative specifications and independent experiments/tests. Write RPTP tests independently; a superficial rewrite or changed identifiers do not establish independent implementation.
+- Every non-trivial behavior claim cites a permitted technical reference or an independent test in `docs/REFERENCES.md`. Unsupported claims remain unsupported. Do not write hardware facts from memory; cite them or mark them unverified.
+- Components marked `Review required` in `docs/CLEAN_ROOM_AUDIT.md` must never be called clean-room certified. Do not "fix" provenance by consulting implementation material. Re-derivation and status changes require recorded evidence and owner review.
+- Runtime/recompiler scope and Gate limitations remain unchanged. The conceptual-reference proposal does not change technical Gate dispositions, licensing requirements, synthetic-fixture restrictions, or independent provenance-review requirements.
+- If implementation-level material is encountered accidentally: stop work in the affected area, do not use it, disclose the exposure in `docs/REFERENCES.md`, identify possibly affected files, and wait for owner review before continuing. A high-level reference intentionally consulted under an Accepted ADR must also be logged, but is not treated as a technical authority.
 
 ## 3. Repository hygiene
 
@@ -48,7 +50,7 @@ Applies to every coding agent working in this repository. Read it fully at the s
 
 ## 5. Working protocol
 
-- One logical change per commit, Conventional Commits, small and atomic. main is the only branch for now: commit there directly. Agents must not push unless the owner explicitly authorizes agent pushes in the conversation; after that authorization, agents may push directly to main. Never create other branches or PRs, never force-push or rewrite pushed history.
+- `main` is the integration/release branch. Create one feature branch per feature or coherent change batch from the latest `main`; use names such as `feat/<short-name>`, `fix/<short-name>`, `test/<short-name>`, `docs/<short-name>`, or `policy/<short-name>`. Use small Conventional Commits, one logical change per commit. Push changes to the branch and open/update a PR; do not push commits directly to `main`. Keep PRs focused and independently reviewable. Merge to `main` only when the changes form a meaningful update batch, required CI is green on the latest PR head, conflicts are resolved, and there is no owner-requested hold. The owner has authorized agents in this conversation to create branches, push feature branches, open PRs, and merge completed batches. Never force-push or rewrite published history.
 - Tests first when possible. Never weaken or delete a test to make it pass, unless you prove the test is wrong and explain why.
 - Never disable warnings (`/W4 /WX`), sanitizers, or the artifact guard to get a build through.
 - No scope creep. Record out-of-scope findings in `docs/RISKS.md`; do not fix them silently.
@@ -74,7 +76,7 @@ Verification commands (Developer PowerShell x64):
 
 ## 7. End of session
 
-Update `docs/STATE.md` and `docs/HANDOFF.md`, commit, then report in Indonesian:
+Update `docs/STATE.md` and `docs/HANDOFF.md` on the working branch, commit, open/update the PR, then report in Indonesian. Merge to `main` only under section 5:
 
 1. Goal and result (done / partial / failed)
 2. Changes (files, commits)
