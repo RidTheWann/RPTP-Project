@@ -607,3 +607,17 @@ Commit: `25267b6911ec438479d346d0c68cea5679c34dcb`. Scope: synthetic I-type `SLT
 - On both runners, the artifact guard, full Python unit suite and Gate 0 differential target passed; CTest reported `100% tests passed, 0 tests failed out of 3`.
 - A separate pre-fix failure run was not captured in this session; this procedural gap is recorded as `R-023` in [RISKS.md](RISKS.md).
 - Gate 3 remains not passed. This is a synthetic test model, not a product recompiler, runtime, boot or compatibility result. No Gate or ADR disposition changed.
+
+
+## 2026-10-27 — Gate 3 synthetic DADDIU 64-bit immediate addition (CI run #50)
+
+Test-first commit: `e5a2127aaafe4083d2491998ad6fe085dfa63bae`. Implementation commit: `f83dd8156973cde38c1185c9817e9f96a5073f33`. Regression-test correction: `f8b31d21c3e1ac3c5ca2a8f30618c95e68e66ef8`. No retail ISO, BIOS, game executable or sealed implementation material was accessed.
+
+- Behavior: decode `DADDIU` (I-type opcode `0x19`), sign-extend its 16-bit immediate, add it to the modeled 64-bit source modulo 2^64, and suppress writes to `$zero`. The trapping `DADDI` (opcode `0x18`) remains unsupported. The model is limited to this synthetic IR/lowering path and does not claim complete R5900 behavior.
+- Reference: `RPTP-REF-015`, the neutral MIPS64 instruction-set manual entry for DADDIU. The source record explicitly notes that the PDF could not be visually opened by the web renderer; the behavior is constrained by the repository's literal-oracle and native tests rather than represented as a full visual reference review.
+- Test-first evidence: CI run #47 on the test-only commit failed because opcode `0x19` was still unsupported; seven DADDIU-dependent tests errored while attempting to decode/build the synthetic fixture. This was the intended pre-implementation failure.
+- Implementation and regression correction: commit `f83dd81` added the decoder, oracle behavior, IR signed-immediate and destination metadata, lowerer validation, deterministic C++ helper, and fail-closed test. CI run #49 then isolated one stale test assumption: `tests/test_instruction_sltiu.py` used the newly supported name `daddiu` as its unsupported-operation example. Commit `f8b31d2` corrected that negative test to use `daddi`, which remains unsupported; no expected DADDIU result or assertion was removed.
+- Hosted verification: GitHub Actions run [#50](https://github.com/RidTheWann/RPTP-Project/actions/runs/40474315598), commit `f8b31d21c3e1ac3c5ca2a8f30618c95e68e66ef8`, completed successfully. Linux/GCC job `122088657620` and Windows x64/MSVC job `122088658043` both passed. Each CTest invocation reported 3/3 targets passed: artifact guard, Python unit tests, and Gate 0 differential spike.
+- Isolated helper check in this session: GCC compiled the equivalent C++20 modulo-64-bit helper with `-Wall -Wextra -Werror -pedantic`; output was `0 8000000000000000 8000000000000001 ffffffffffffffff` for `UINT64_MAX+1`, `INT64_MAX+1`, `INT64_MIN+1`, and `0+(-1)`. This is a focused helper check, not a local full-repository run.
+- No repository checkout was available in this execution environment, so local doctor, CMake/MSVC wrapper and full local unittest commands were not run. The hosted CI results are the verification evidence for this increment.
+- No registered fixture, `tests/fixtures/MANIFEST`, dependency, Gate/ADR disposition or product path changed. Gate 2 remains open and read-only; Gate 3 remains not passed. No product recompiler, runtime, boot or game-compatibility claim is made.
