@@ -250,6 +250,8 @@ def decode_instruction(pc: int, word: int) -> dict[str, Any]:
         return {"pc": pc, "word": word, "op": "addiu", "rs": rs, "rt": rt, "imm": simm}
     if op == 0x0A:
         return {"pc": pc, "word": word, "op": "slti", "rs": rs, "rt": rt, "imm": simm}
+    if op == 0x0B:
+        return {"pc": pc, "word": word, "op": "sltiu", "rs": rs, "rt": rt, "imm": simm}
     if op in (0x0C, 0x0D, 0x0E):
         name = {0x0C: "andi", 0x0D: "ori", 0x0E: "xori"}[op]
         return {"pc": pc, "word": word, "op": name, "rs": rs, "rt": rt, "imm": imm}
@@ -346,6 +348,10 @@ def execute_oracle(entry: int, words: dict[int, int]) -> dict[str, Any]:
                 r[ins["rd"]] = result
         elif op == "slti":
             result = slt64(r[ins["rs"]], ins["imm"])
+            if ins["rt"]:
+                r[ins["rt"]] = result
+        elif op == "sltiu":
+            result = sltu64(r[ins["rs"]], ins["imm"])
             if ins["rt"]:
                 r[ins["rt"]] = result
         elif op == "ori":

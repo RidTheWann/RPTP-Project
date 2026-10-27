@@ -4,7 +4,7 @@
 - **Scope:** synthetic ELF32/EM_MIPS input and the currently supported instruction subset only.
 - **Status:** Gate 3 remains in progress. This is not a product recompiler, a complete R5900 model, a function-boundary recovery pass, a runtime, or a compatibility claim.
 - **Implementation:** `tools/rptp_ir.py`; generated-code lowering: `tools/rptp_lower.py`
-- **Tests:** `tests/test_ir_cfg.py`; `tests/test_cfg_reachability.py`; `tests/test_ir_lowering.py`; `tests/test_instruction_logical.py`; `tests/test_instruction_logical_width.py`; `tests/test_instruction_lui.py`; `tests/test_instruction_register_logic.py`; `tests/test_instruction_nor.py`; `tests/test_instruction_slt.py`; `tests/test_instruction_sltu.py`; `tests/test_instruction_slti.py`
+- **Tests:** `tests/test_ir_cfg.py`; `tests/test_cfg_reachability.py`; `tests/test_ir_lowering.py`; `tests/test_instruction_logical.py`; `tests/test_instruction_logical_width.py`; `tests/test_instruction_lui.py`; `tests/test_instruction_register_logic.py`; `tests/test_instruction_nor.py`; `tests/test_instruction_slt.py`; `tests/test_instruction_sltu.py`; `tests/test_instruction_slti.py`; `tests/test_instruction_sltiu.py`
 
 ## Purpose
 
@@ -37,7 +37,7 @@ Immediate semantics are explicit:
 
 | Kind | Instructions | Meaning |
 |---|---|---|
-| `signed16` | `ADDIU`, `SLTI`, `LW`, `SW`, `BEQ`, `BNE` | The 16-bit field is sign-extended for the existing synthetic semantic model. `SLTI` compares the modeled 64-bit source as signed against the sign-extended immediate. |
+| `signed16` | `ADDIU`, `SLTI`, `SLTIU`, `LW`, `SW`, `BEQ`, `BNE` | The 16-bit field is sign-extended for the existing synthetic semantic model. `SLTI` compares the modeled 64-bit source as signed against the sign-extended immediate; `SLTIU` compares it as unsigned against the same sign-extended immediate. |
 | `zero16` | `ANDI`, `ORI`, `XORI` | The 16-bit field is zero-extended. |
 | `shifted16` | `LUI` | The raw 16-bit field is shifted left 16 bits, the low 16 bits are zero, and the 32-bit result is sign-extended to the modeled 64-bit value. |
 

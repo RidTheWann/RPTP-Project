@@ -104,9 +104,9 @@ class SltiDecodeTests(unittest.TestCase):
         self.assertEqual((instruction["rs"], instruction["rt"]), (T0, T1))
         self.assertEqual(instruction["imm"], -32768)
 
-    def test_sltiu_remains_unsupported(self):
-        with self.assertRaisesRegex(ValueError, "Unsupported opcode 0x0B"):
-            spike.decode_instruction(BASE, spike.encode_i(0x0B, T0, T1, 1))
+    def test_unrelated_opcode_remains_unsupported(self):
+        with self.assertRaisesRegex(ValueError, "Unsupported opcode 0x10"):
+            spike.decode_instruction(BASE, spike.encode_i(0x10, T0, T1, 1))
 
 
 class SltiIrTests(unittest.TestCase):
@@ -122,7 +122,7 @@ class SltiIrTests(unittest.TestCase):
 
     def test_ir_rejects_out_of_scope_instruction_fail_closed(self):
         with self.assertRaises(ir.AnalysisError) as caught:
-            ir.analyze_words(BASE, {BASE: spike.encode_i(0x0B, T0, T1, 1)})
+            ir.analyze_words(BASE, {BASE: spike.encode_i(0x10, T0, T1, 1)})
         self.assertEqual(caught.exception.code, ir.IR_UNSUPPORTED_INSTRUCTION)
 
 
@@ -288,7 +288,7 @@ int main() {{
 
     def test_slti_lowering_rejects_unsupported_operation(self):
         _, result = slti_fixture()
-        malformed = replace_instruction(result, BASE + 4, op="sltiu")
+        malformed = replace_instruction(result, BASE + 4, op="dadd")
         with self.assertRaises(lower.LoweringError) as caught:
             lower.lower_to_cpp(malformed)
         self.assertEqual(caught.exception.code, lower.LOWER_UNSUPPORTED_OP)
