@@ -1,8 +1,8 @@
 # Bully (USA)
 
 - **Status:** Inspected (read-only)
-- **Last updated:** 2026-10-23
-- **RPTP inspector:** `tools/rptp_inspect.py` at `d51f0e7`
+- **Last updated:** 2026-10-28
+- **RPTP inspector:** `tools/rptp_inspect.py`, uncommitted working tree based on `3fdc19c`; source SHA-256 verification and full fingerprint: [verification log](../../VERIFICATION_LOG.md)
 - **Source:** owner-provided local ISO; not committed
 - **Filename:** `Bully (USA).iso`
 - **Product code (from boot filename):** `SLUS_212.69`
@@ -27,15 +27,31 @@
 - **Highest file extent end:** 4,636,833,792 bytes; 2,048 bytes below the volume-space end and file end
 - **Largest file size:** 818,270,208 bytes
 - **ELF:** ELF32, little-endian, EM_MIPS (8), ET_EXEC (2), entry `0x00100008`, 19 PT_LOAD
-- **Warnings:** none
-- **Outcome:** `INSPECTED`
+- **Warnings:** `BOOT ELF PT_LOAD memory ranges overlap; loading precedence is not evaluated.`
+- **Outcome:** `INSPECTED_WITH_WARNINGS`
 
 ## What was tested
+
+### Historical run — 2026-10-22
+
+Historical outcome: `INSPECTED`, no warnings reported by `d51f0e7`.
 
 - Read-only inspection and metadata-only directory survey on 2026-10-22 with the inspector at `d51f0e7`.
 - The inspector resolved `SYSTEM.CNF`, the `BOOT2` target, boot extent and ELF metadata.
 - Input size and last-write timestamp were unchanged before and after the survey and inspection runs.
 - No files were extracted or modified; no executable was run.
+
+### 2026-10-28 — repeated read-only CLI and ELF metadata checks
+
+Recorded owner-authorized local evidence from main; documentation checked against the reports below without reopening the ISO. Not CI verification.
+
+- CLI inspect ran twice: exit 0, `INSPECTED_WITH_WARNINGS`, byte-identical JSON. Survey ran twice: exit 0, `SURVEYED`, no warnings, byte-identical JSON.
+- Whole-image SHA-256 was recomputed before and after these runs, unchanged and matching the previous hash above; size and mtime were unchanged.
+- Read-only ELF load map: 19 PT_LOAD; file/virtual ranges and zero-fill metadata were reported, including zero-file-size segments with overlapping memory ranges. PH0 zero-fill is 1,515,648 bytes. No loading or zero-fill execution was tested ([RPTP-REF-003](../../REFERENCES.md)).
+- Entry `0x00100008` maps uniquely to PF_X file-backed bytes in program header 0 at ELF-relative file offset 776 bytes. Independent sparse ELF-header/entry/overlap cross-check agrees.
+- The overlap warning is metadata only; loading precedence remains undefined and is not evaluated. It is not evidence of corruption, an unsupported disc or compatibility.
+- Evidence: local `build/elf-retail-summary.json`, `build/elf-retail-bully.inspect.json`, `build/elf-retail-bully.survey.json` and `build/elf-retail-independent-check.json`.
+- No extraction, content analysis, function discovery, boot, runtime, recompilation or compatibility testing was performed.
 
 ## What is not tested
 
