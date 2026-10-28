@@ -3,7 +3,7 @@
 - **Status:** Inspected (read-only)
 - **Last updated:** 2026-10-28
 - **Sample provenance:** Owner-provided: a USA San Andreas sample modified with Indonesian-language changes. This classification is declarative owner information, not a result derived from the filename or metadata; the modified file set and method are not audited.
-- **RPTP inspector:** `tools/rptp_inspect.py`, uncommitted working tree based on `3fdc19c`; source SHA-256 verification and full fingerprint: [verification log](../../VERIFICATION_LOG.md)
+- **RPTP inspector:** `tools/rptp_inspect.py`, hardened revision `0c2264e`; source SHA-256 verification and full fingerprint: [verification log](../../VERIFICATION_LOG.md)
 - **Source:** owner-provided local ISO; not committed
 - **Filename:** `Grand Theft Auto - San Andreas (Indonesian v6).iso`
 - **Product code (from boot filename):** `SLUS_209.46`

@@ -2,7 +2,7 @@
 
 - **Status:** Inspected (read-only)
 - **Last updated:** 2026-10-28
-- **RPTP inspector:** `tools/rptp_inspect.py`, uncommitted working tree based on `3fdc19c`; source SHA-256 verification and full fingerprint: [verification log](../../VERIFICATION_LOG.md)
+- **RPTP inspector:** `tools/rptp_inspect.py`, hardened revision `0c2264e`; source SHA-256 verification and full fingerprint: [verification log](../../VERIFICATION_LOG.md)
 - **Source:** owner-provided local ISO; not committed
 - **Filename:** `God of War II (USA).iso`
 - **Product code:** `SCUS_974.81`
