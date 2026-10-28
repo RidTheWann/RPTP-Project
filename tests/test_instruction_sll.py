@@ -113,6 +113,13 @@ class SllIrTests(unittest.TestCase):
         self.assertEqual((instruction.immediate, instruction.immediate_kind), (31, ir.SHIFT5))
         self.assertEqual(instruction.destination_register, T2)
 
+    def test_ir_rejects_nonzero_rs_sll_fail_closed(self):
+        with self.assertRaises(ir.AnalysisError) as caught:
+            ir.analyze_words(BASE, {BASE: spike.encode_r(T0, T1, T2, 4, SLL)})
+
+        self.assertEqual(caught.exception.code, ir.IR_UNSUPPORTED_INSTRUCTION)
+        self.assertIn("SLL requires rs=0", str(caught.exception))
+
     def test_ir_records_zero_destination_for_zero_rd(self):
         result = ir.analyze_words(BASE, {BASE: spike.encode_r(ZERO, T1, ZERO, 3, SLL)})
         self.assertIsNone(result.instructions[0].destination_register)
@@ -181,7 +188,9 @@ int main() {{
     std::cout << std::hex << sll32(0x0000000000000001ull, 31u) << ' '
               << sll32(0x0000000000000001ull, 0u) << ' '
               << sll32(0x00000000FFFFFFFFull, 4u) << ' '
-              << sll32(0xFFFFFFFF00000001ull, 1u) << '\\n';
+              << sll32(0xFFFFFFFF00000001ull, 1u) << ' '
+              << sll32(0x0000000000000001ull, 16u) << ' '
+              << sll32(0x00000000FFFFFFFFull, 30u) << '\\n';
     return 0;
 }}
 '''
@@ -198,7 +207,7 @@ int main() {{
         self.assertEqual(proc.stderr, "")
         self.assertEqual(
             proc.stdout.split(),
-            ["ffffffff80000000", "1", "fffffffffffffff0", "2"],
+            ["ffffffff80000000", "1", "fffffffffffffff0", "2", "10000", "ffffffffc0000000"],
         )
 
     def test_lowering_is_deterministic_and_ignores_raw_words(self):

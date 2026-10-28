@@ -278,6 +278,8 @@ def _decode_word(pc: int, word: int) -> IRInstruction:
 
     if op == "lui" and decoded["rs"] != spike.ZERO:
         raise AnalysisError(IR_UNSUPPORTED_INSTRUCTION, "LUI requires rs=0", pc=pc)
+    if op == "sll" and decoded["rs"] != spike.ZERO:
+        raise AnalysisError(IR_UNSUPPORTED_INSTRUCTION, "SLL requires rs=0", pc=pc)
 
     if op in {"addiu", "daddiu", "slti", "sltiu", "lw", "sw", "beq", "bne"}:
         immediate = decoded["imm"]
