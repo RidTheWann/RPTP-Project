@@ -57,7 +57,7 @@ def _record(
 
 def _elf(machine: int = 8, phnum: int = 1, elf_type: int = 2, entry_point: int = 0x00100000,
          load_offset: int = 84, load_filesz: int = 44, load_memsz: int | None = None,
-         load_align: int = 0x1000, load_vaddr: int | None = None, data_size: int = 128) -> bytes:
+         load_align: int = 4, load_vaddr: int | None = None, data_size: int = 128) -> bytes:
     if load_memsz is None:
         load_memsz = load_filesz
     if load_vaddr is None:
@@ -98,6 +98,7 @@ def _iso(config: bytes | None = DEFAULT_CONFIG,
     pvd[120:124] = _both16(1)
     pvd[124:128] = _both16(1)
     pvd[128:132] = _both16(block_size)
+    pvd[881] = 1
     root_record = _record(19, BLOCK, b"\x00", 0x02)
     pvd[156:156 + len(root_record)] = root_record
     image[16 * BLOCK:17 * BLOCK] = pvd
@@ -155,9 +156,11 @@ class RecordingStream(BytesIO):
     def __init__(self, data: bytes):
         super().__init__(data)
         self.read_sizes: list[int] = []
+        self.read_offsets: list[int] = []
 
     def read(self, size: int = -1) -> bytes:
         self.read_sizes.append(size)
+        self.read_offsets.append(self.tell())
         return super().read(size)
 
 
@@ -428,7 +431,7 @@ class IsoInspectorTests(unittest.TestCase):
         cases = (
             ("depth", "MAX_SURVEY_DEPTH", 2, 1, "SURVEY_DEPTH_LIMIT"),
             ("directories", "MAX_SURVEY_DIRECTORIES", 3, 2, "SURVEY_DIRECTORY_LIMIT"),
-            ("records", "MAX_SURVEY_RECORDS", 5, 4, "SURVEY_RECORD_LIMIT"),
+            ("records", "MAX_SURVEY_RECORDS", 11, 10, "SURVEY_RECORD_LIMIT"),
         )
         for label, constant, exact, over, code in cases:
             with self.subTest(limit=label):
@@ -740,6 +743,688 @@ class IsoInspectorTests(unittest.TestCase):
                 else:
                     self.assertIn(report["status"], ("INSPECTED", "INSPECTED_WITH_WARNINGS"))
                 self.assertEqual(before, hashlib.sha256(path.read_bytes()).hexdigest())
+
+
+class IsoInputBoundaryTests(unittest.TestCase):
+    def test_duplicate_config_keys_are_rejected_independently_of_order(self):
+        values = (b"cdrom0:\\SLUS_123.45;1", b"cdrom0:\\MISSING.ELF;1")
+        for first, second in ((values[0], values[1]), (values[1], values[0]), (values[0], values[0])):
+            with self.subTest(first=first, second=second):
+                config = b"BOOT2 = " + first + b"\nboot2 = " + second + b"\n"
+                with self.assertRaises(inspector.InspectError) as ctx:
+                    inspector.inspect_bytes(bytes(_iso(config=config)))
+                self.assertEqual(ctx.exception.code, "SYSTEM_CNF_DUPLICATE_KEY")
+
+    def test_embedded_nuls_and_non_ascii_config_are_not_silently_repaired(self):
+        for config, code in (
+            (b"BO\x00OT2 = cdrom0:\\SLUS_123.45;1\n", "SYSTEM_CNF_ENCODING_INVALID"),
+            (b"BOOT2 = cdrom0:\\SLUS_123.\x0045;1\n", "SYSTEM_CNF_ENCODING_INVALID"),
+            (b"BOOT2 = cdrom0:\\SLUS_123.45;1\nVER = \xff\n", "SYSTEM_CNF_ENCODING_INVALID"),
+        ):
+            with self.subTest(config=config):
+                with self.assertRaises(inspector.InspectError) as ctx:
+                    inspector.inspect_bytes(bytes(_iso(config=config)))
+                self.assertEqual(ctx.exception.code, code)
+
+    def test_supports_terminal_nul_padding_and_balanced_boot_quotes(self):
+        for quote in (b"", b"'", b'"'):
+            config = b"BOOT2 = " + quote + b"cdrom0:\\SLUS_123.45;1" + quote + b"\n\x00\x00"
+            with self.subTest(quote=quote):
+                report = inspector.inspect_bytes(bytes(_iso(config=config)))
+                self.assertEqual(report["status"], "INSPECTED")
+                self.assertEqual(report["boot_executable"]["path"], "SLUS_123.45;1")
+
+    def test_rejects_unbalanced_or_embedded_boot_quotes(self):
+        for value in (b'"cdrom0:\\SLUS_123.45;1', b"cdrom0:\\SLUS_123.45;1'",
+                      b"'cdrom0:\\SLUS_123.45;1\"", b'cdrom0:\\SLUS_123."45;1'):
+            with self.subTest(value=value):
+                with self.assertRaises(inspector.InspectError) as ctx:
+                    inspector.inspect_bytes(bytes(_iso(config=b"BOOT2 = " + value + b"\n")))
+                self.assertEqual(ctx.exception.code, "BOOT_PATH_INVALID")
+
+    def test_boot2_still_takes_precedence_over_distinct_legacy_boot(self):
+        config = DEFAULT_CONFIG + b"BOOT = cdrom0:\\MISSING.ELF;1\n"
+        report = inspector.inspect_bytes(bytes(_iso(config=config)))
+        self.assertEqual(report["system_cnf"]["boot_key"], "BOOT2")
+
+    def test_special_directory_records_count_toward_safety_limits(self):
+        data = bytes(_iso())
+        for method, constant, code in (("list_dir", "MAX_DIRECTORY_ENTRIES", "DIRECTORY_ENTRY_LIMIT"),
+                                       ("survey", "MAX_SURVEY_RECORDS", "SURVEY_RECORD_LIMIT")):
+            with self.subTest(method=method):
+                stream = RecordingStream(data)
+                reader = inspector.IsoReader(stream, len(data), "special.iso")
+                reader.parse_pvd(reader.scan_pvd())
+                stream.read_sizes.clear()
+                stream.read_offsets.clear()
+                with mock.patch.object(inspector, constant, 1):
+                    with self.assertRaises(inspector.InspectError) as ctx:
+                        if method == "list_dir":
+                            reader.list_dir(reader.root)
+                        else:
+                            reader.survey()
+                self.assertEqual(ctx.exception.code, code)
+                directory_reads = [offset for offset in stream.read_offsets if offset >= 19 * BLOCK]
+                self.assertLessEqual(len(directory_reads), 4)
+
+    def test_directory_byte_limits_include_zero_padding(self):
+        data = bytes(_iso(tree=True))
+        reader = inspector.IsoReader(BytesIO(data), len(data), "padding.iso")
+        reader.parse_pvd(reader.scan_pvd())
+        with mock.patch.object(inspector, "MAX_DIRECTORY_BYTES", BLOCK):
+            self.assertEqual(len(reader.list_dir(reader.root)), 3)
+        with mock.patch.object(inspector, "MAX_DIRECTORY_BYTES", BLOCK - 1):
+            with self.assertRaises(inspector.InspectError) as ctx:
+                reader.list_dir(reader.root)
+            self.assertEqual(ctx.exception.code, "DIRECTORY_SIZE_LIMIT")
+        with mock.patch.object(inspector, "MAX_SURVEY_BYTES", 3 * BLOCK):
+            self.assertEqual(reader.survey()["directory_count"], 3)
+        with mock.patch.object(inspector, "MAX_SURVEY_BYTES", 3 * BLOCK - 1):
+            with self.assertRaises(inspector.InspectError) as ctx:
+                reader.survey()
+            self.assertEqual(ctx.exception.code, "SURVEY_BYTE_LIMIT")
+
+    def test_read_range_validates_negative_and_empty_bounds(self):
+        reader = inspector.IsoReader(BytesIO(b"abc"), 3, "bounds.iso")
+        for start, size in ((0, -1), (-1, 0), (4, 0)):
+            with self.subTest(start=start, size=size):
+                with self.assertRaises(inspector.InspectError) as ctx:
+                    reader.read_range(start, size)
+                self.assertEqual(ctx.exception.code, "IMAGE_BOUNDS")
+        self.assertEqual(reader.read_range(3, 0), b"")
+
+    def test_large_boot_executable_is_streamed_without_materialization(self):
+        executable = _elf(data_size=inspector.MAX_READ_BYTES + BLOCK)
+        image = _iso(executable=executable)
+        end = 21 * BLOCK + len(executable)
+        volume_size = ((end + BLOCK - 1) // BLOCK) * BLOCK
+        image.extend(bytes(volume_size - len(image)))
+        image[21 * BLOCK:end] = executable
+        image[16 * BLOCK + 80:16 * BLOCK + 88] = _both32(volume_size // BLOCK)
+        stream = RecordingStream(bytes(image))
+        report = inspector.inspect_stream(stream, len(image), chunk_size=64 * 1024)
+        self.assertEqual(report["status"], "INSPECTED")
+        self.assertEqual(report["boot_executable"]["sha256"], hashlib.sha256(executable).hexdigest())
+        self.assertLessEqual(max(stream.read_sizes), 64 * 1024)
+        reader = inspector.IsoReader(stream, len(image), "large.iso")
+        with self.assertRaises(inspector.InspectError) as ctx:
+            reader.read_range(21 * BLOCK, len(executable))
+        self.assertEqual(ctx.exception.code, "FILE_SIZE_LIMIT")
+
+
+class IsoFormatContractTests(unittest.TestCase):
+    @staticmethod
+    def descriptor(kind: int, version: int = 1) -> bytes:
+        data = bytearray(BLOCK)
+        data[0], data[1:6], data[6] = kind, b"CD001", version
+        return bytes(data)
+
+    @staticmethod
+    def descriptor_image(*descriptors: bytes) -> bytes:
+        image = _iso()
+        for index, descriptor in enumerate(descriptors):
+            image[(16 + index) * BLOCK:(17 + index) * BLOCK] = descriptor
+        return bytes(image)
+
+    def test_reports_actual_primary_descriptor_lba_after_boot_record(self):
+        pvd = bytes(_iso()[16 * BLOCK:17 * BLOCK])
+        data = self.descriptor_image(self.descriptor(0), pvd, self.descriptor(255))
+        report = inspector.inspect_bytes(data)
+        self.assertEqual(report["iso9660"]["primary_volume_descriptor_lba"], 17)
+        self.assertEqual(report["iso9660"]["volume_descriptors"], [
+            {"lba": 16, "type": 0, "version": 1},
+            {"lba": 17, "type": 1, "version": 1},
+            {"lba": 18, "type": 255, "version": 1},
+        ])
+        self.assertEqual(report["status"], "INSPECTED_WITH_WARNINGS")
+        self.assertTrue(any("type 0 at block 16" in warning for warning in report["warnings"]))
+        self.assertEqual(report["boot_executable"]["sha256"], hashlib.sha256(_elf()).hexdigest())
+
+    def test_auxiliary_namespaces_are_reported_but_never_followed(self):
+        pvd = bytes(_iso()[16 * BLOCK:17 * BLOCK])
+        for kind, version in ((2, 1), (2, 2), (3, 1)):
+            with self.subTest(kind=kind, version=version):
+                auxiliary = bytearray(self.descriptor(kind, version))
+                auxiliary[156:190] = _record(0xFFFFFFFF, BLOCK, b"\x00", 0x02)
+                data = self.descriptor_image(pvd, bytes(auxiliary), self.descriptor(255))
+                report = inspector.inspect_bytes(data)
+                self.assertEqual(report["status"], "INSPECTED_WITH_WARNINGS")
+                self.assertEqual(report["iso9660"]["volume_descriptors"][1],
+                                 {"lba": 17, "type": kind, "version": version})
+                self.assertEqual(report["boot_executable"]["sha256"], hashlib.sha256(_elf()).hexdigest())
+                survey = inspector.IsoReader(BytesIO(data), len(data), "auxiliary.iso").survey()
+                self.assertEqual(survey["status"], "SURVEYED_WITH_WARNINGS")
+                self.assertEqual(survey["volume_descriptors"], report["iso9660"]["volume_descriptors"])
+                self.assertEqual(survey["warnings"], report["warnings"])
+                self.assertEqual(survey["directory_count"], 1)
+
+    def test_rejects_reserved_descriptor_types(self):
+        pvd = bytes(_iso()[16 * BLOCK:17 * BLOCK])
+        for kind in (4, 254):
+            data = self.descriptor_image(pvd, self.descriptor(kind), self.descriptor(255))
+            for method in ("inspect", "survey"):
+                with self.subTest(kind=kind, method=method):
+                    reader = inspector.IsoReader(BytesIO(data), len(data), "reserved.iso")
+                    with self.assertRaises(inspector.InspectError) as ctx:
+                        getattr(reader, method)()
+                    self.assertEqual(ctx.exception.code, "UNSUPPORTED_VOLUME_DESCRIPTOR_TYPE")
+
+    def test_rejects_invalid_versions_for_each_descriptor_type(self):
+        pvd = bytes(_iso()[16 * BLOCK:17 * BLOCK])
+        for kind, version in ((0, 2), (1, 2), (2, 0), (2, 3), (3, 2), (255, 2)):
+            with self.subTest(kind=kind, version=version):
+                data = self.descriptor_image(pvd, self.descriptor(kind, version), self.descriptor(255))
+                with self.assertRaises(inspector.InspectError) as ctx:
+                    inspector.inspect_bytes(data)
+                self.assertEqual(ctx.exception.code, "VOLUME_DESCRIPTOR_VERSION")
+
+    def test_accepts_identical_repeated_primary_descriptors(self):
+        pvd = bytes(_iso()[16 * BLOCK:17 * BLOCK])
+        data = self.descriptor_image(pvd, pvd, self.descriptor(255))
+        report = inspector.inspect_bytes(data)
+        self.assertEqual(report["status"], "INSPECTED")
+        self.assertEqual(report["iso9660"]["primary_volume_descriptor_lba"], 16)
+        self.assertEqual(len(report["iso9660"]["volume_descriptors"]), 3)
+
+    def test_rejects_conflicting_primary_descriptor_copies(self):
+        pvd = bytes(_iso()[16 * BLOCK:17 * BLOCK])
+        conflicting = bytearray(pvd)
+        conflicting[40] = ord("X")
+        data = self.descriptor_image(pvd, bytes(conflicting), self.descriptor(255))
+        with self.assertRaises(inspector.InspectError) as ctx:
+            inspector.inspect_bytes(data)
+        self.assertEqual(ctx.exception.code, "PRIMARY_VOLUME_DESCRIPTOR_CONFLICT")
+
+    def test_rejects_unsupported_primary_file_structure_version(self):
+        for version in (0, 2, 255):
+            with self.subTest(version=version):
+                image = _iso()
+                image[16 * BLOCK + 881] = version
+                with self.assertRaises(inspector.InspectError) as ctx:
+                    inspector.inspect_bytes(bytes(image))
+                self.assertEqual(ctx.exception.code, "UNSUPPORTED_FILE_STRUCTURE_VERSION")
+
+    def test_descriptor_reads_stop_at_declared_volume_boundary(self):
+        image = _iso()
+        image[16 * BLOCK + 80:16 * BLOCK + 88] = _both32(17)
+        stream = RecordingStream(bytes(image))
+        with self.assertRaises(inspector.InspectError) as ctx:
+            inspector.inspect_stream(stream, len(image))
+        self.assertEqual(ctx.exception.code, "VOLUME_DESCRIPTOR_OUT_OF_BOUNDS")
+        self.assertEqual(stream.read_offsets, [16 * BLOCK])
+        self.assertEqual(stream.read_sizes, [BLOCK])
+
+    def test_rejects_primary_descriptor_outside_its_declared_volume(self):
+        pvd = bytearray(_iso()[16 * BLOCK:17 * BLOCK])
+        pvd[80:88] = _both32(17)
+        data = self.descriptor_image(self.descriptor(0), bytes(pvd), self.descriptor(255))
+        with self.assertRaises(inspector.InspectError) as ctx:
+            inspector.inspect_bytes(data)
+        self.assertEqual(ctx.exception.code, "VOLUME_DESCRIPTOR_OUT_OF_BOUNDS")
+
+    def test_descriptor_scan_limit_includes_terminator_at_exact_boundary(self):
+        pvd = bytes(_iso()[16 * BLOCK:17 * BLOCK])
+        data = self.descriptor_image(pvd, self.descriptor(0), self.descriptor(255))
+        with mock.patch.object(inspector, "MAX_DESCRIPTORS", 3):
+            self.assertEqual(inspector.inspect_bytes(data)["status"], "INSPECTED_WITH_WARNINGS")
+        stream = RecordingStream(data)
+        with mock.patch.object(inspector, "MAX_DESCRIPTORS", 2):
+            with self.assertRaises(inspector.InspectError) as ctx:
+                inspector.inspect_stream(stream, len(data))
+        self.assertEqual(ctx.exception.code, "VOLUME_DESCRIPTOR_TERMINATOR_MISSING")
+        self.assertEqual(stream.read_offsets, [16 * BLOCK, 17 * BLOCK])
+
+    def test_multi_extent_chains_are_rejected_before_ambiguous_lookup(self):
+        for target in ("SYSTEM.CNF", "SLUS_123.45", "ASSET.BIN"):
+            with self.subTest(target=target):
+                config = DEFAULT_CONFIG
+                records = [
+                    _record(19, BLOCK, b"\x00", 0x02),
+                    _record(19, BLOCK, b"\x01", 0x02),
+                    _record(20, len(config), b"SYSTEM.CNF;1", 0x80 if target == "SYSTEM.CNF" else 0),
+                    _record(21, len(_elf()), b"SLUS_123.45;1", 0x80 if target == "SLUS_123.45" else 0),
+                ]
+                if target == "ASSET.BIN":
+                    records.append(_record(23, BLOCK, b"ASSET.BIN;1", 0x80))
+                records.append(_record(24, 1, target.encode("ascii") + b";1"))
+                image = _iso()
+                directory = b"".join(records)
+                image[19 * BLOCK:20 * BLOCK] = directory.ljust(BLOCK, b"\x00")
+                data = bytes(image)
+                with self.assertRaises(inspector.InspectError) as ctx:
+                    inspector.inspect_bytes(data)
+                self.assertEqual(ctx.exception.code, "MULTI_EXTENT_UNSUPPORTED")
+                survey = inspector.IsoReader(BytesIO(data), len(data), "sections.iso").survey()
+                self.assertEqual(survey["multi_extent_records"], 1)
+                self.assertEqual(survey["file_count"], len(records) - 2)
+
+    def test_rejects_nonzero_identifier_padding(self):
+        record = bytearray(_record(20, len(DEFAULT_CONFIG), b"SYSTEM.CNF;1"))
+        self.assertEqual(len(b"SYSTEM.CNF;1") % 2, 0)
+        record[-1] = 1
+        image = _iso()
+        offset = 19 * BLOCK + 68
+        image[offset:offset + len(record)] = record
+        with self.assertRaises(inspector.InspectError) as ctx:
+            inspector.inspect_bytes(bytes(image))
+        self.assertEqual(ctx.exception.code, "DIRECTORY_PADDING_INVALID")
+
+    def test_rejects_nonstandard_root_record_length(self):
+        image = _iso()
+        image[16 * BLOCK + 156] = 36
+        with self.assertRaises(inspector.InspectError) as ctx:
+            inspector.inspect_bytes(bytes(image))
+        self.assertEqual(ctx.exception.code, "ROOT_RECORD_INVALID")
+
+    def test_rejects_reserved_directory_flags_in_inspection_and_survey(self):
+        for flag in (0x20, 0x40):
+            data = bytes(_iso(boot_flags=flag))
+            for method in ("inspect", "survey"):
+                with self.subTest(flag=flag, method=method):
+                    reader = inspector.IsoReader(BytesIO(data), len(data), "flags.iso")
+                    with self.assertRaises(inspector.InspectError) as ctx:
+                        getattr(reader, method)()
+                    self.assertEqual(ctx.exception.code, "DIRECTORY_FLAGS_INVALID")
+
+    def test_rejects_associated_and_record_formatted_files(self):
+        for flag, code in ((0x04, "ASSOCIATED_FILE_UNSUPPORTED"), (0x08, "RECORD_FORMAT_UNSUPPORTED")):
+            for target in ("system_flags", "boot_flags"):
+                with self.subTest(flag=flag, target=target):
+                    data = bytes(_iso(**{target: flag}))
+                    with self.assertRaises(inspector.InspectError) as ctx:
+                        inspector.inspect_bytes(data)
+                    self.assertEqual(ctx.exception.code, code)
+                    survey = inspector.IsoReader(BytesIO(data), len(data), "opaque.iso").survey()
+                    self.assertEqual(survey["file_count"], 2)
+
+    def test_opaque_system_use_bytes_do_not_replace_primary_names(self):
+        image = _iso()
+        record = bytearray(_record(21, len(_elf()), b"SLUS_123.45;1"))
+        record.extend(b"OPAQUE SYSTEM USE")
+        record[0] = len(record)
+        offset = 19 * BLOCK + 68 + len(_record(20, len(DEFAULT_CONFIG), b"SYSTEM.CNF;1"))
+        image[offset:offset + len(record)] = record
+        data = bytes(image)
+        report = inspector.inspect_bytes(data)
+        self.assertEqual(report["boot_executable"]["path"], "SLUS_123.45;1")
+        self.assertEqual(report["boot_executable"]["sha256"], hashlib.sha256(_elf()).hexdigest())
+        self.assertIn("system-use", " ".join(report["limitations"]))
+
+    def test_format_contract_cli_is_deterministic_and_read_only(self):
+        pvd = bytes(_iso()[16 * BLOCK:17 * BLOCK])
+        invalid_padding = _iso()
+        invalid_padding[19 * BLOCK + 512] = 1
+        invalid_identifier = _iso()
+        invalid_identifier[19 * BLOCK + 68 + 33] = 0xFF
+        cases = (
+            (self.descriptor_image(pvd, self.descriptor(2, 2), self.descriptor(255)),
+             0, "INSPECTED_WITH_WARNINGS", "SURVEYED_WITH_WARNINGS", None),
+            (bytes(_iso(boot_flags=0x80)), 2, "ERROR", "SURVEYED", "MULTI_EXTENT_UNSUPPORTED"),
+            (self.descriptor_image(pvd, self.descriptor(254), self.descriptor(255)),
+             2, "ERROR", "ERROR", "UNSUPPORTED_VOLUME_DESCRIPTOR_TYPE"),
+            (bytes(invalid_padding), 2, "ERROR", "ERROR", "DIRECTORY_PADDING_INVALID"),
+            (bytes(invalid_identifier), 2, "ERROR", "ERROR", "DIRECTORY_IDENTIFIER_INVALID"),
+            (bytes(_iso(config=b"BOOT2 = cdrom0:\\SLUS_123.45;2\n")),
+             2, "ERROR", "SURVEYED", "BOOT_EXECUTABLE_NOT_FOUND"),
+            (bytes(_iso(executable=_elf(load_align=0x1000))),
+             2, "ERROR", "SURVEYED", "ELF_LOAD_SEGMENT_ALIGNMENT_INVALID"),
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "contract.iso"
+            for data, code, inspect_status, survey_status, error_code in cases:
+                path.write_bytes(data)
+                for survey in (False, True):
+                    with self.subTest(code=code, survey=survey):
+                        expected_status = survey_status if survey else inspect_status
+                        expected_code = 0 if expected_status != "ERROR" else code
+                        command = [sys.executable, str(ROOT / "tools/rptp_inspect.py"), str(path), "--json"]
+                        if survey:
+                            command.append("--survey")
+                        outputs = []
+                        for _ in range(2):
+                            result = subprocess.run(command, capture_output=True, text=True, check=False)
+                            self.assertEqual(result.returncode, expected_code, result.stderr)
+                            self.assertEqual(result.stderr, "")
+                            payload = json.loads(result.stdout)
+                            self.assertEqual(payload["status"], expected_status)
+                            if expected_status == "ERROR":
+                                self.assertEqual(payload["error_code"], error_code)
+                            outputs.append(result.stdout)
+                            self.assertEqual(path.read_bytes(), data)
+                            self.assertEqual(list(Path(directory).iterdir()), [path])
+                        self.assertEqual(outputs[0], outputs[1])
+
+
+class IsoReviewRegressionTests(unittest.TestCase):
+    def test_rejects_nonzero_directory_sector_tail_in_both_modes(self):
+        for payload in (b"\x01", _record(23, 1, b"HIDDEN.BIN;1", 0x80)):
+            image = _iso()
+            image[19 * BLOCK + 512:19 * BLOCK + 512 + len(payload)] = payload
+            data = bytes(image)
+            for method in ("inspect", "survey"):
+                with self.subTest(payload=payload, method=method):
+                    reader = inspector.IsoReader(BytesIO(data), len(data), "tail.iso")
+                    with self.assertRaises(inspector.InspectError) as ctx:
+                        getattr(reader, method)()
+                    self.assertEqual(ctx.exception.code, "DIRECTORY_PADDING_INVALID")
+
+    def test_accepts_zero_padding_before_next_directory_sector(self):
+        image = _iso()
+        root = _record(26, 2 * BLOCK, b"\x00", 0x02)
+        image[16 * BLOCK + 156:16 * BLOCK + 190] = root
+        first = root + _record(26, 2 * BLOCK, b"\x01", 0x02)
+        second = (_record(20, len(DEFAULT_CONFIG), b"SYSTEM.CNF;1")
+                  + _record(21, len(_elf()), b"SLUS_123.45;1"))
+        image[26 * BLOCK:27 * BLOCK] = first.ljust(BLOCK, b"\x00")
+        image[27 * BLOCK:28 * BLOCK] = second.ljust(BLOCK, b"\x00")
+        data = bytes(image)
+        self.assertEqual(inspector.inspect_bytes(data)["status"], "INSPECTED")
+        self.assertEqual(inspector.IsoReader(BytesIO(data), len(data), "padding.iso").survey()["file_count"], 2)
+
+    def test_rejects_non_printable_primary_identifiers_in_both_modes(self):
+        for name in (b"SYSTEM.CNF;1\x00", b"SYSTEM.CNF;1\xff", b"SYSTEM.CNF;1\t"):
+            image = _iso(config=None)
+            records = (_record(19, BLOCK, b"\x00", 0x02) + _record(19, BLOCK, b"\x01", 0x02)
+                       + _record(20, len(DEFAULT_CONFIG), name) + _record(21, len(_elf()), b"SLUS_123.45;1"))
+            image[19 * BLOCK:20 * BLOCK] = records.ljust(BLOCK, b"\x00")
+            image[20 * BLOCK:20 * BLOCK + len(DEFAULT_CONFIG)] = DEFAULT_CONFIG
+            data = bytes(image)
+            for method in ("inspect", "survey"):
+                with self.subTest(name=name, method=method):
+                    reader = inspector.IsoReader(BytesIO(data), len(data), "identifier.iso")
+                    with self.assertRaises(inspector.InspectError) as ctx:
+                        getattr(reader, method)()
+                    self.assertEqual(ctx.exception.code, "DIRECTORY_IDENTIFIER_INVALID")
+
+    def test_special_identifiers_require_directory_flag(self):
+        for name in (b"\x00", b"\x01"):
+            image = _iso()
+            record = _record(19, BLOCK, name)
+            image[19 * BLOCK:19 * BLOCK + len(record)] = record
+            data = bytes(image)
+            for method in ("inspect", "survey"):
+                with self.subTest(name=name, method=method):
+                    reader = inspector.IsoReader(BytesIO(data), len(data), "special.iso")
+                    with self.assertRaises(inspector.InspectError) as ctx:
+                        getattr(reader, method)()
+                    self.assertEqual(ctx.exception.code, "DIRECTORY_IDENTIFIER_INVALID")
+
+    def test_explicit_boot_version_does_not_select_another_version(self):
+        for version in (b"2", b"1extra", b"1;2"):
+            with self.subTest(version=version):
+                config = b"BOOT2 = cdrom0:\\SLUS_123.45;" + version + b"\n"
+                with self.assertRaises(inspector.InspectError) as ctx:
+                    inspector.inspect_bytes(bytes(_iso(config=config)))
+                self.assertEqual(ctx.exception.code, "BOOT_EXECUTABLE_NOT_FOUND")
+
+    def test_coexisting_boot_versions_are_resolved_exactly(self):
+        first, second = _elf(), _elf(machine=3)
+        for version, expected in ((b"1", first), (b"2", second)):
+            with self.subTest(version=version):
+                config = b"BOOT2 = cdrom0:\\slus_123.45;" + version + b"\n"
+                image = _iso(config=config, executable=first)
+                records = (_record(19, BLOCK, b"\x00", 0x02) + _record(19, BLOCK, b"\x01", 0x02)
+                           + _record(20, len(config), b"SYSTEM.CNF;1")
+                           + _record(21, len(first), b"SLUS_123.45;1")
+                           + _record(23, len(second), b"SLUS_123.45;2"))
+                image[19 * BLOCK:20 * BLOCK] = records.ljust(BLOCK, b"\x00")
+                image[23 * BLOCK:23 * BLOCK + len(second)] = second
+                report = inspector.inspect_bytes(bytes(image))
+                self.assertEqual(report["boot_executable"]["path"], "SLUS_123.45;" + version.decode("ascii"))
+                self.assertEqual(report["boot_executable"]["sha256"], hashlib.sha256(expected).hexdigest())
+                unversioned = b"BOOT2 = cdrom0:\\SLUS_123.45\n"
+                image[20 * BLOCK:20 * BLOCK + len(config)] = unversioned.ljust(len(config), b"\x00")
+                with self.assertRaises(inspector.InspectError) as ctx:
+                    inspector.inspect_bytes(bytes(image))
+                self.assertEqual(ctx.exception.code, "AMBIGUOUS_PATH")
+        report = inspector.inspect_bytes(bytes(_iso(config=b"BOOT2 = cdrom0:\\SLUS_123.45\n")))
+        self.assertEqual(report["boot_executable"]["path"], "SLUS_123.45;1")
+
+    def test_survey_directory_budget_is_enforced_while_scheduling(self):
+        image = _iso()
+        records = [_record(19, BLOCK, b"\x00", 0x02), _record(19, BLOCK, b"\x01", 0x02)]
+        records.extend(_record(lba, BLOCK, f"D{lba}".encode("ascii"), 0x02) for lba in (22, 23, 24, 25))
+        image[19 * BLOCK:20 * BLOCK] = b"".join(records).ljust(BLOCK, b"\x00")
+        stream = RecordingStream(bytes(image))
+        with mock.patch.object(inspector, "MAX_SURVEY_DIRECTORIES", 3):
+            with self.assertRaises(inspector.InspectError) as ctx:
+                inspector.IsoReader(stream, len(image), "wide.iso").survey()
+        self.assertEqual(ctx.exception.code, "SURVEY_DIRECTORY_LIMIT")
+        self.assertLess(max(stream.read_offsets), 19 * BLOCK + sum(map(len, records[:5])))
+
+    def test_survey_deduplicates_aliases_and_cycles(self):
+        image = _iso()
+        records = [_record(19, BLOCK, b"\x00", 0x02), _record(19, BLOCK, b"\x01", 0x02)]
+        records.extend(_record(22, BLOCK, f"ALIAS{index}".encode("ascii"), 0x02) for index in range(30))
+        image[19 * BLOCK:20 * BLOCK] = b"".join(records).ljust(BLOCK, b"\x00")
+        child = (_record(22, BLOCK, b"\x00", 0x02) + _record(19, BLOCK, b"\x01", 0x02)
+                 + _record(19, BLOCK, b"ROOT", 0x02))
+        image[22 * BLOCK:23 * BLOCK] = child.ljust(BLOCK, b"\x00")
+        with mock.patch.object(inspector, "MAX_SURVEY_DIRECTORIES", 2):
+            report = inspector.IsoReader(BytesIO(bytes(image)), len(image), "aliases.iso").survey()
+        self.assertEqual(report["directory_count"], 2)
+        self.assertEqual(report["directory_record_count"], 31)
+        self.assertEqual(report["max_depth"], 1)
+
+    def test_rejects_incongruent_elf_load_alignment(self):
+        executable = _elf(load_align=0x1000, load_offset=84, load_vaddr=0x00100000)
+        with self.assertRaises(inspector.InspectError) as ctx:
+            inspector.inspect_bytes(bytes(_iso(executable=executable)))
+        self.assertEqual(ctx.exception.code, "ELF_LOAD_SEGMENT_ALIGNMENT_INVALID")
+
+    def test_accepts_elf_load_alignment_boundaries(self):
+        for alignment, address in ((0, 0x00100000), (1, 0x00100000), (4, 0x00100000), (0x1000, 0x00100054)):
+            with self.subTest(alignment=alignment):
+                executable = _elf(load_align=alignment, load_vaddr=address, entry_point=address)
+                report = inspector.inspect_bytes(bytes(_iso(executable=executable)))
+                self.assertEqual(report["status"], "INSPECTED")
+                self.assertEqual(report["boot_executable"]["elf"]["load_segments"][0]["alignment"], alignment)
+
+
+class ElfLoadMapTests(unittest.TestCase):
+    @staticmethod
+    def executable(headers: list[tuple[int, int, int, int, int, int]], entry: int = 0x1000) -> bytes:
+        data = bytearray(_elf(phnum=len(headers), entry_point=entry, data_size=256))
+        for index, (kind, offset, address, file_size, memory_size, flags) in enumerate(headers):
+            values = (kind, offset, address, address, file_size, memory_size, flags, 1)
+            start = 52 + index * 32
+            data[start:start + 32] = b"".join(value.to_bytes(4, "little") for value in values)
+        return bytes(data)
+
+    def test_rejects_virtual_range_overflow_for_any_load_segment(self):
+        for flags in (0, 5, 6):
+            for memory_size in (0x11, 0x100):
+                with self.subTest(flags=flags, memory_size=memory_size):
+                    executable = self.executable([(1, 192, 0xFFFFFFF0, 8, memory_size, flags)], 0xFFFFFFF0)
+                    with self.assertRaises(inspector.InspectError) as ctx:
+                        inspector.inspect_bytes(bytes(_iso(executable=executable)))
+                    self.assertEqual(ctx.exception.code, "ELF_LOAD_SEGMENT_ADDRESS_INVALID")
+
+    def test_accepts_exact_elf32_end_and_empty_ranges(self):
+        for address, file_size, memory_size, entry in (
+            (0xFFFFFFF0, 8, 0x10, 0xFFFFFFF0),
+            (0xFFFFFFFF, 1, 1, 0xFFFFFFFF),
+            (0xFFFFFFFF, 0, 0, 0xFFFFFFFF),
+            (0, 0, 0, 0),
+        ):
+            with self.subTest(address=address, memory_size=memory_size):
+                executable = self.executable([(1, 192, address, file_size, memory_size, 5)], entry)
+                report = inspector.inspect_bytes(bytes(_iso(executable=executable)))
+                segment = report["boot_executable"]["elf"]["load_segments"][0]
+                self.assertEqual(segment["virtual_memory_end"], address + memory_size)
+                self.assertEqual(segment["virtual_file_end"], address + file_size)
+                self.assertEqual(segment["zero_fill_size"], memory_size - file_size)
+                self.assertEqual(len(report["boot_executable"]["elf"]["entry_point_mappings"]), bool(memory_size))
+
+    def test_rejects_decreasing_load_addresses_without_sorting_input(self):
+        executable = self.executable([
+            (1, 192, 0x2000, 8, 16, 5),
+            (4, 0, 0, 0, 0, 0),
+            (1, 200, 0x1000, 8, 16, 6),
+        ], 0x2000)
+        with self.assertRaises(inspector.InspectError) as ctx:
+            inspector.inspect_bytes(bytes(_iso(executable=executable)))
+        self.assertEqual(ctx.exception.code, "ELF_LOAD_SEGMENT_ORDER_INVALID")
+
+    def test_reports_original_header_indexes_and_distinct_memory_ranges(self):
+        executable = self.executable([
+            (4, 0, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0),
+            (1, 192, 0x1000, 8, 16, 5),
+            (1, 200, 0x2000, 4, 32, 6),
+        ], 0x1004)
+        report = inspector.inspect_bytes(bytes(_iso(executable=executable)))
+        elf = report["boot_executable"]["elf"]
+        self.assertEqual(report["status"], "INSPECTED")
+        self.assertEqual([segment["program_header_index"] for segment in elf["load_segments"]], [1, 2])
+        self.assertEqual([segment["virtual_file_end"] for segment in elf["load_segments"]], [0x1008, 0x2004])
+        self.assertEqual([segment["virtual_memory_end"] for segment in elf["load_segments"]], [0x1010, 0x2020])
+        self.assertEqual([segment["zero_fill_size"] for segment in elf["load_segments"]], [8, 28])
+        self.assertEqual(elf["entry_point_mappings"], [
+            {"program_header_index": 1, "file_offset": 196, "executable": True, "file_backed": True},
+        ])
+        self.assertFalse(elf["load_segments_overlap"])
+
+    def test_entry_mapping_uses_half_open_file_and_memory_ranges(self):
+        for entry, file_backed, expected_offset in ((0x1000, True, 192), (0x1007, True, 199),
+                                                    (0x1008, False, None), (0x100F, False, None)):
+            with self.subTest(entry=entry):
+                executable = self.executable([(1, 192, 0x1000, 8, 16, 5)], entry)
+                report = inspector.inspect_bytes(bytes(_iso(executable=executable)))
+                elf = report["boot_executable"]["elf"]
+                self.assertEqual(elf["entry_point_mappings"], [
+                    {"program_header_index": 0, "file_offset": expected_offset,
+                     "executable": True, "file_backed": file_backed},
+                ])
+                self.assertEqual(report["status"], "INSPECTED" if file_backed else "INSPECTED_WITH_WARNINGS")
+                self.assertEqual(any("not in file-backed executable" in warning for warning in report["warnings"]),
+                                 not file_backed)
+        executable = self.executable([(1, 192, 0x1000, 8, 16, 5)], 0x1010)
+        report = inspector.inspect_bytes(bytes(_iso(executable=executable)))
+        self.assertEqual(report["boot_executable"]["elf"]["entry_point_mappings"], [])
+        self.assertTrue(any("outside all PT_LOAD" in warning for warning in report["warnings"]))
+
+    def test_warns_for_file_backed_entry_without_execute_permission(self):
+        executable = self.executable([(1, 192, 0x1000, 8, 16, 6)])
+        report = inspector.inspect_bytes(bytes(_iso(executable=executable)))
+        self.assertEqual(report["boot_executable"]["elf"]["entry_point_mappings"], [
+            {"program_header_index": 0, "file_offset": 192, "executable": False, "file_backed": True},
+        ])
+        self.assertEqual(report["status"], "INSPECTED_WITH_WARNINGS")
+        self.assertTrue(any("not in file-backed executable" in warning for warning in report["warnings"]))
+
+    def test_warns_for_memory_only_entry_without_reading_or_allocating_memory(self):
+        executable = self.executable([(1, 256, 0x100, 0, 0xFFFFFF00, 5)], 0x100)
+        data = bytes(_iso(executable=executable))
+        stream = RecordingStream(data)
+        reader = inspector.IsoReader(stream, len(data), "memory-only.iso")
+        reader.parse_pvd(reader.scan_pvd())
+        boot = reader.find_child(reader.root, "SLUS_123.45;1")
+        stream.read_sizes.clear()
+        stream.read_offsets.clear()
+        elf = reader.parse_elf(boot)
+        self.assertEqual(elf["load_segments"][0]["virtual_memory_end"], 0x100000000)
+        self.assertEqual(elf["load_segments"][0]["zero_fill_size"], 0xFFFFFF00)
+        self.assertEqual(stream.read_sizes, [64, 32])
+        self.assertEqual(stream.read_offsets, [21 * BLOCK, 21 * BLOCK + 52])
+        self.assertEqual(elf["entry_point_mappings"][0]["file_offset"], None)
+        report = inspector.inspect_bytes(data)
+        self.assertEqual(report["status"], "INSPECTED_WITH_WARNINGS")
+
+    def test_reports_overlap_without_selecting_a_loading_precedence(self):
+        executable = self.executable([
+            (1, 192, 0x1000, 16, 32, 5),
+            (1, 208, 0x1008, 8, 16, 6),
+        ], 0x100C)
+        report = inspector.inspect_bytes(bytes(_iso(executable=executable)))
+        elf = report["boot_executable"]["elf"]
+        self.assertTrue(elf["load_segments_overlap"])
+        self.assertEqual(elf["entry_point_mappings"], [
+            {"program_header_index": 0, "file_offset": 204, "executable": True, "file_backed": True},
+            {"program_header_index": 1, "file_offset": 212, "executable": False, "file_backed": True},
+        ])
+        self.assertTrue(any("memory ranges overlap" in warning for warning in report["warnings"]))
+        self.assertTrue(any("maps to multiple" in warning for warning in report["warnings"]))
+
+    def test_overlap_sweep_handles_nested_and_empty_segments(self):
+        for headers, overlaps in (
+            ([(1, 192, 0x1000, 0, 0x100, 5), (1, 192, 0x1010, 0, 0, 5),
+              (1, 192, 0x1020, 0, 8, 5)], True),
+            ([(1, 192, 0x1000, 0, 0, 5), (1, 192, 0x1000, 0, 16, 5)], False),
+            ([(1, 192, 0x1000, 8, 32, 5), (1, 200, 0x1008, 0, 0, 5)], False),
+            ([(1, 192, 0x1000, 8, 16, 5), (1, 200, 0x1010, 8, 16, 5)], False),
+            ([(1, 192, 0x1000, 8, 16, 5), (1, 200, 0x1000, 8, 16, 5)], True),
+        ):
+            with self.subTest(headers=headers):
+                report = inspector.inspect_bytes(bytes(_iso(executable=self.executable(headers))))
+                self.assertEqual(report["boot_executable"]["elf"]["load_segments_overlap"], overlaps)
+
+    def test_no_load_segments_have_no_entry_mappings(self):
+        report = inspector.inspect_bytes(bytes(_iso(executable=self.executable([]))))
+        elf = report["boot_executable"]["elf"]
+        self.assertEqual(elf["entry_point_mappings"], [])
+        self.assertFalse(elf["load_segments_overlap"])
+
+    def test_entry_permissions_and_file_backing_are_not_combined_across_mappings(self):
+        executable = self.executable([
+            (1, 192, 0x1000, 8, 32, 5), (1, 200, 0x1008, 8, 16, 6),
+        ], 0x100C)
+        report = inspector.inspect_bytes(bytes(_iso(executable=executable)))
+        self.assertEqual(report["boot_executable"]["elf"]["entry_point_mappings"], [
+            {"program_header_index": 0, "file_offset": None, "executable": True, "file_backed": False},
+            {"program_header_index": 1, "file_offset": 204, "executable": False, "file_backed": True},
+        ])
+        self.assertTrue(any("not in file-backed executable" in warning for warning in report["warnings"]))
+
+    def test_load_map_cli_success_warnings_and_errors_are_read_only(self):
+        cases = (
+            (self.executable([(1, 192, 0x1000, 8, 16, 5)]), 0, "INSPECTED", None),
+            (self.executable([(1, 192, 0x1000, 8, 16, 6)]), 0, "INSPECTED_WITH_WARNINGS", None),
+            (self.executable([(1, 192, 0xFFFFFFF0, 8, 0x100, 5)], 0xFFFFFFF0),
+             2, "ERROR", "ELF_LOAD_SEGMENT_ADDRESS_INVALID"),
+            (self.executable([(1, 192, 0x2000, 8, 16, 5), (1, 200, 0x1000, 8, 16, 6)], 0x2000),
+             2, "ERROR", "ELF_LOAD_SEGMENT_ORDER_INVALID"),
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "load-map.iso"
+            for executable, expected_code, expected_status, error_code in cases:
+                data = bytes(_iso(executable=executable))
+                path.write_bytes(data)
+                for json_mode in (True, False):
+                    with self.subTest(expected_status=expected_status, json_mode=json_mode):
+                        command = [sys.executable, str(ROOT / "tools/rptp_inspect.py"), str(path)]
+                        if json_mode:
+                            command.append("--json")
+                        runs = [subprocess.run(command, capture_output=True, text=True, check=False) for _ in range(2)]
+                        for run in runs:
+                            self.assertEqual(run.returncode, expected_code)
+                            if json_mode:
+                                self.assertEqual(run.stderr, "")
+                                payload = json.loads(run.stdout)
+                                self.assertEqual(payload["status"], expected_status)
+                                if error_code:
+                                    self.assertEqual(payload["error_code"], error_code)
+                                else:
+                                    self.assertIn("entry_point_mappings", payload["boot_executable"]["elf"])
+                            elif error_code:
+                                self.assertEqual(run.stdout, "")
+                                self.assertIn(error_code, run.stderr)
+                            else:
+                                self.assertEqual(run.stderr, "")
+                                self.assertIn(expected_status, run.stdout)
+                        self.assertEqual(runs[0].stdout, runs[1].stdout)
+                        self.assertEqual(runs[0].stderr, runs[1].stderr)
+                        self.assertEqual(path.read_bytes(), data)
+                        self.assertEqual(list(Path(directory).iterdir()), [path])
+
+    def test_load_map_is_deterministic_and_does_not_mutate_input(self):
+        data = bytes(_iso(executable=self.executable([
+            (1, 192, 0x1000, 8, 32, 5), (1, 200, 0x1008, 8, 16, 6),
+        ], 0x100C)))
+        before = hashlib.sha256(data).hexdigest()
+        reports = [inspector.inspect_bytes(data) for _ in range(2)]
+        self.assertEqual(json.dumps(reports[0], sort_keys=True), json.dumps(reports[1], sort_keys=True))
+        self.assertEqual(hashlib.sha256(data).hexdigest(), before)
+        self.assertNotIn("<memory>", json.dumps(reports[0]["boot_executable"]["elf"]))
 
 
 if __name__ == "__main__":
