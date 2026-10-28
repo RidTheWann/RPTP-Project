@@ -32,6 +32,7 @@ BASE = spike.BASE
 ZERO, V0 = spike.ZERO, spike.V0
 T0, T1, T2, T3, T4, T5, T6 = 8, 9, 10, 11, 12, 13, 14
 S0 = spike.S0
+S1, S2, S3, S4 = 17, 18, 19, 20
 RA = spike.RA
 DADDIU = 0x19
 DADDI = 0x18
@@ -60,6 +61,11 @@ def daddiu_fixture_rows() -> list[tuple[int, str, int]]:
         ("negative_ten_plus_five_copy", spike.encode_i(DADDIU, T5, S0, 5)),
         ("destination_aliases_source", spike.encode_i(DADDIU, T6, T6, 5)),
         ("zero_destination_is_discarded", spike.encode_i(DADDIU, T2, ZERO, -1)),
+        ("set_signed_32_max_upper", spike.encode_i(0x0F, ZERO, S1, 0x7FFF)),
+        ("set_signed_32_max_lower", spike.encode_i(0x0D, S1, S1, 0xFFFF)),
+        ("cross_positive_32_bit_boundary", spike.encode_i(DADDIU, S1, S2, 1)),
+        ("set_signed_32_min", spike.encode_i(0x0F, ZERO, S3, 0x8000)),
+        ("cross_negative_32_bit_boundary", spike.encode_i(DADDIU, S3, S4, -1)),
         ("return_value", spike.encode_i(0x09, ZERO, V0, 42)),
         ("return_from_main", jr_ra_word()),
         ("return_delay_slot", nop_word()),
@@ -120,7 +126,7 @@ class DaddiuOracleTests(unittest.TestCase):
         entry, words, info = spike.parse_elf(data)
         state = spike.normalize_state(spike.execute_oracle(entry, words))
         regs = state["registers"]
-        self.assertEqual(info["instruction_count"], 13)
+        self.assertEqual(info["instruction_count"], 18)
         self.assertEqual(regs[ZERO], 0)
         self.assertEqual(regs[T0], 0)
         self.assertEqual(regs[T1], 32767)
@@ -130,10 +136,14 @@ class DaddiuOracleTests(unittest.TestCase):
         self.assertEqual(regs[T5], UINT64_MAX - 9)
         self.assertEqual(regs[T6], 0)
         self.assertEqual(regs[S0], UINT64_MAX - 4)
+        self.assertEqual(regs[S1], 0x000000007FFFFFFF)
+        self.assertEqual(regs[S2], 0x0000000080000000)
+        self.assertEqual(regs[S3], 0xFFFFFFFF80000000)
+        self.assertEqual(regs[S4], 0xFFFFFFFF7FFFFFFF)
         self.assertEqual(regs[V0], 42)
         self.assertEqual(state["memory"], [])
         self.assertEqual(state["pc"], spike.RETURN_SENTINEL)
-        self.assertEqual(state["trace"], [BASE + index * 4 for index in range(13)])
+        self.assertEqual(state["trace"], [BASE + index * 4 for index in range(18)])
 
 
 class DaddiuLoweringTests(unittest.TestCase):
@@ -158,6 +168,8 @@ class DaddiuLoweringTests(unittest.TestCase):
         self.assertEqual(native["registers"][T3], 0)
         self.assertEqual(native["registers"][T4], UINT64_MAX)
         self.assertEqual(native["registers"][S0], UINT64_MAX - 4)
+        self.assertEqual(native["registers"][S2], 0x0000000080000000)
+        self.assertEqual(native["registers"][S4], 0xFFFFFFFF7FFFFFFF)
         self.assertEqual(native["registers"][ZERO], 0)
 
     def test_native_helper_wraps_full_64_bit_values(self):

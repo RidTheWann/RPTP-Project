@@ -1,6 +1,6 @@
 # RPTP minimal IR, CFG and lowering contract
 
-- **Status date:** 2026-10-27
+- **Status date:** 2026-10-28
 - **Scope:** synthetic ELF32/EM_MIPS input and the currently supported instruction subset only.
 - **Status:** Gate 3 remains in progress. This is not a product recompiler, a complete R5900 model, a function-boundary recovery pass, a runtime, or a compatibility claim.
 - **Implementation:** `tools/rptp_ir.py`; generated-code lowering: `tools/rptp_lower.py`
@@ -158,12 +158,14 @@ The generated native state is compared with the oracle for registers, memory, st
 
 The registered Gate 0 fixture and the ORI fixture are not modified. Their fixture and generated-C++ hashes are checked by `tests/test_ir_cfg.py`; the lowering tests use separate synthetic fixtures.
 
+The DADDIU fixture in `tests/test_instruction_daddiu.py` checks positive and negative signed-32-bit boundary crossings against literal oracle and native results. It expects `0x0000000080000000` from `0x000000007FFFFFFF + 1` and `0xFFFFFFFF7FFFFFFF` from `0xFFFFFFFF80000000 - 1`. An in-memory oracle mutation using ADDIU dispatch is rejected by the strengthened fixture; production semantics remain unchanged. The separate native harness still covers full 64-bit wraparound boundaries.
+
 ## Limitations
 
-- The subset is the existing synthetic ten-opcode Gate 0 subset plus `ORI`, `ANDI`, `XORI`, `LUI`, `AND`, `OR`, `XOR`, `NOR`, `SLT` and `SLTU`. No other opcode is added by these increments.
+- The subset is the existing synthetic ten-opcode Gate 0 subset plus `ORI`, `ANDI`, `XORI`, `LUI`, `AND`, `OR`, `XOR`, `NOR`, `SLT`, `SLTU`, `SLTI`, `SLTIU` and `DADDIU`. No other opcode is added by these increments.
 - The CFG is a syntactic partition of the validated code range. Known-edge graph reachability is not runtime reachability, dead-code proof or function discovery.
 - Function entries are candidates only. There are no function extents, symbols, call graphs with return edges, or confident `JR $ra` return-path claims. The direct-call continuation caveat is explicit in the reachability report.
-- The IR is lowered only for the synthetic model. The generated C++ is not optimized, not a product recompiler or runtime, and not a substitute for the Gate 0, ORI, logical-immediate, LUI, register-logical, NOR, SLT or SLTU differential paths.
+- The IR is lowered only for the synthetic model. The generated C++ is not optimized, not a product recompiler or runtime, and not a substitute for the separate instruction differential tests.
 - A dynamic non-code PC halts the synthetic program. There is no R5900 exception, fault, pipeline, MMIO, kernel, IOP, VU, GS, SPU2, CDVD, controller, memory-card, or timing model.
 - No retail ELF, ISO, BIOS, or game-derived material is used by these tests.
 
