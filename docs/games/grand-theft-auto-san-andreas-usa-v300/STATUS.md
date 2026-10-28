@@ -1,9 +1,9 @@
 # Grand Theft Auto - San Andreas (USA) — owner-described original
 
 - **Status:** Inspected (read-only)
-- **Last updated:** 2026-10-23
+- **Last updated:** 2026-10-28
 - **Sample provenance:** Owner-provided: original (unmodified) USA sample. This classification is declarative owner information, not a result derived from the filename or metadata.
-- **RPTP inspector:** `tools/rptp_inspect.py` at `d51f0e7`
+- **RPTP inspector:** `tools/rptp_inspect.py`, hardened revision `0c2264e`; source SHA-256 verification and full fingerprint: [verification log](../../VERIFICATION_LOG.md)
 - **Source:** owner-provided local ISO; not committed
 - **Filename:** `Grand Theft Auto - San Andreas (USA) (v3.00).iso`
 - **Product code (from boot filename):** `SLUS_209.46`
@@ -31,15 +31,31 @@
 - **Highest file extent end:** 4,496,060,416 bytes; 20,975,616 bytes below the volume-space end and file end
 - **Largest file size:** 478,615,552 bytes
 - **ELF:** ELF32, little-endian, EM_MIPS (8), ET_EXEC (2), entry `0x00100008`, 10 PT_LOAD
-- **Warnings:** none
-- **Outcome:** `INSPECTED`
+- **Warnings:** `BOOT ELF PT_LOAD memory ranges overlap; loading precedence is not evaluated.`
+- **Outcome:** `INSPECTED_WITH_WARNINGS`
 
 ## What was tested
+
+### Historical run — 2026-10-22
+
+Historical outcome: `INSPECTED`, no warnings reported by `d51f0e7`.
 
 - Read-only inspection and metadata-only directory survey on 2026-10-22 with the inspector at `d51f0e7`.
 - The inspector resolved `SYSTEM.CNF`, the `BOOT2` target, boot extent and ELF metadata.
 - Input size and last-write timestamp were unchanged before and after the survey and inspection runs.
 - No files were extracted or modified; no executable was run.
+
+### 2026-10-28 — repeated read-only CLI and ELF metadata checks
+
+Recorded owner-authorized local evidence from main; documentation checked against the reports below without reopening the ISO. Not CI verification.
+
+- CLI inspect ran twice: exit 0, `INSPECTED_WITH_WARNINGS`, byte-identical JSON. Survey ran twice: exit 0, `SURVEYED`, no warnings, byte-identical JSON.
+- Whole-image SHA-256 was recomputed before and after these runs, unchanged and matching the previous hash above; size and mtime were unchanged.
+- Read-only ELF load map: 10 PT_LOAD; file/virtual ranges and zero-fill metadata were reported, including zero-file-size segments with overlapping memory ranges. PH0 zero-fill is 2,239,232 bytes. No loading or zero-fill execution was tested ([RPTP-REF-003](../../REFERENCES.md)).
+- Entry `0x00100008` maps uniquely to PF_X file-backed bytes in program header 0 at ELF-relative file offset 392 bytes. Independent sparse ELF-header/entry/overlap cross-check agrees.
+- The overlap warning is metadata only; loading precedence remains undefined and is not evaluated. It is not evidence of corruption, an unsupported disc or compatibility.
+- Evidence: local `build/elf-retail-summary.json`, `build/elf-retail-grand-theft-auto-san-andreas-usa-v300.inspect.json`, `build/elf-retail-grand-theft-auto-san-andreas-usa-v300.survey.json` and `build/elf-retail-independent-check.json`.
+- No extraction, content analysis, function discovery, boot, runtime, recompilation or compatibility testing was performed; owner-provided original provenance remains unaudited.
 
 ## What is not tested
 

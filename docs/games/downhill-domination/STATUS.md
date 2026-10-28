@@ -1,8 +1,8 @@
 # Downhill Domination (USA)
 
 - **Status:** Inspected (read-only)
-- **Last updated:** 2026-10-23
-- **RPTP inspector:** `tools/rptp_inspect.py` at `25b4ab8` (initial record at `5d9db90`; pre-push `14e6f02`)
+- **Last updated:** 2026-10-28
+- **RPTP inspector:** `tools/rptp_inspect.py`, hardened revision `0c2264e`; source SHA-256 verification and full fingerprint: [verification log](../../VERIFICATION_LOG.md)
 - **Source:** owner-provided local ISO; not committed
 - **Filename:** `Downhill Domination (USA).iso`
 - **Serial:** SCUS-97177
@@ -32,10 +32,25 @@
 
 ## What was tested
 
+### Historical runs — 2026-10-21/22
+
+Historical inspector: `25b4ab8` (initial record at `5d9db90`; pre-push `14e6f02`).
+
 - Read-only inspection and metadata-only directory survey on 2026-10-22; initial inspection was on 2026-10-21.
 - Result: `INSPECTED`.
 - ISO 9660 primary volume descriptor, root directory, `SYSTEM.CNF`, `BOOT2` path and boot ELF metadata were parsed successfully.
 - No files were extracted or modified; the ELF was not executed.
+
+### 2026-10-28 — repeated read-only CLI and ELF metadata checks
+
+Recorded owner-authorized local evidence from main; documentation checked against the reports below without reopening the ISO. Not CI verification.
+
+- CLI inspect ran twice: exit 0, `INSPECTED`, no warnings, byte-identical JSON. Survey ran twice: exit 0, `SURVEYED`, no warnings, byte-identical JSON.
+- Whole-image SHA-256 was recomputed before and after these runs, unchanged and matching the previous hash above; size and mtime were unchanged.
+- Read-only ELF load map: 1 PT_LOAD; file/virtual ranges and zero-fill metadata were reported, with PH0 zero-fill of 6,301,456 bytes and no memory overlaps. No loading or zero-fill execution was tested ([RPTP-REF-003](../../REFERENCES.md)).
+- Entry `0x0010A008` maps uniquely to PF_X file-backed bytes in program header 0 at ELF-relative file offset 4,104 bytes. Independent sparse ELF-header/entry/overlap cross-check agrees.
+- Evidence: local `build/elf-retail-summary.json`, `build/elf-retail-downhill-domination.inspect.json`, `build/elf-retail-downhill-domination.survey.json` and `build/elf-retail-independent-check.json`.
+- No extraction, content analysis, function discovery, boot, runtime, recompilation or compatibility testing was performed.
 
 ## What is not tested
 

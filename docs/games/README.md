@@ -28,14 +28,18 @@ This is a work log, not a compatibility claim. An inspected ISO is not a bootabl
 
 | Game | Region | Status | Last updated | Record |
 |---|---|---|---|---|
-| Black | USA | Inspected (read-only) | 2026-10-22 | [black](black/STATUS.md) |
-| Bully | USA | Inspected (read-only) | 2026-10-22 | [bully](bully/STATUS.md) |
-| Downhill Domination | USA | Inspected (read-only) | 2026-10-22 | [downhill-domination](downhill-domination/STATUS.md) |
-| God of War II | USA | Inspected (read-only) | 2026-10-22 | [god-of-war-ii](god-of-war-ii/STATUS.md) |
-| Grand Theft Auto - San Andreas (USA) — owner-described original | USA | Inspected (read-only) | 2026-10-22 | [grand-theft-auto-san-andreas-usa-v300](grand-theft-auto-san-andreas-usa-v300/STATUS.md) |
-| Grand Theft Auto - San Andreas (USA) — owner-described Indonesian-language mod | USA | Inspected (read-only) | 2026-10-22 | [grand-theft-auto-san-andreas-indonesian-v6](grand-theft-auto-san-andreas-indonesian-v6/STATUS.md) |
-| Need for Speed - Most Wanted (v2.00) | USA | Inspected (read-only) | 2026-10-22 | [need-for-speed-most-wanted](need-for-speed-most-wanted/STATUS.md) |
-| Resident Evil 4 | USA | Inspected (read-only) | 2026-10-22 | [resident-evil-4](resident-evil-4/STATUS.md) |
+| Black | USA | Inspected (read-only) | 2026-10-28 | [black](black/STATUS.md) |
+| Bully | USA | Inspected (read-only) | 2026-10-28 | [bully](bully/STATUS.md) |
+| Downhill Domination | USA | Inspected (read-only) | 2026-10-28 | [downhill-domination](downhill-domination/STATUS.md) |
+| God of War II | USA | Inspected (read-only) | 2026-10-28 | [god-of-war-ii](god-of-war-ii/STATUS.md) |
+| Grand Theft Auto - San Andreas (USA) — owner-described original | USA | Inspected (read-only) | 2026-10-28 | [grand-theft-auto-san-andreas-usa-v300](grand-theft-auto-san-andreas-usa-v300/STATUS.md) |
+| Grand Theft Auto - San Andreas (USA) — owner-described Indonesian-language mod | USA | Inspected (read-only) | 2026-10-28 | [grand-theft-auto-san-andreas-indonesian-v6](grand-theft-auto-san-andreas-indonesian-v6/STATUS.md) |
+| Need for Speed - Most Wanted (v2.00) | USA | Inspected (read-only) | 2026-10-28 | [need-for-speed-most-wanted](need-for-speed-most-wanted/STATUS.md) |
+| Resident Evil 4 | USA | Inspected (read-only) | 2026-10-28 | [resident-evil-4](resident-evil-4/STATUS.md) |
+
+**Recorded local evidence — 2026-10-28:** Bully and both San Andreas samples returned `INSPECTED_WITH_WARNINGS` for PT_LOAD memory overlaps; the other five returned `INSPECTED` without warnings. All eight surveys returned `SURVEYED` without warnings; every CLI run exited 0. Overlap is metadata, not evidence of corrupt/unsupported discs or compatibility; loading precedence remains undefined and unevaluated. Inspect/survey JSON was byte-identical across two runs per image. Whole-image SHA-256 before/after matched prior records, with size/mtime unchanged; God of War II was rehashed this time.
+
+Inspector: `tools/rptp_inspect.py`, hardened revision `0c2264e`; source verification/full fingerprint: [VERIFICATION_LOG.md](../VERIFICATION_LOG.md). Per-game sections cite the local summary, inspect/survey and independent sparse ELF cross-check reports; documentation was checked without reopening discs. Load maps/zero-fill are metadata only ([RPTP-REF-003](../REFERENCES.md)). No extraction, content analysis, function discovery, boot, runtime, recompilation or compatibility was tested. Not CI verification; statuses remain **Inspected (read-only)**.
 
 **Owner-provided provenance:** the two GTA San Andreas USA records are separate samples. The owner describes one as the original (unmodified) sample and the other as an Indonesian-language mod. This distinction is declarative owner information, not a technical classification. Equal boot or `SYSTEM.CNF` hashes do not establish file equality or identify the modification; whole-image hashes and PVD identifiers are recorded in each record.
 

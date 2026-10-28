@@ -1,8 +1,8 @@
 # God of War II (USA)
 
 - **Status:** Inspected (read-only)
-- **Last updated:** 2026-10-23
-- **RPTP inspector:** `tools/rptp_inspect.py` at `d51f0e7` (re-run at `f8feb27`)
+- **Last updated:** 2026-10-28
+- **RPTP inspector:** `tools/rptp_inspect.py`, hardened revision `0c2264e`; source SHA-256 verification and full fingerprint: [verification log](../../VERIFICATION_LOG.md)
 - **Source:** owner-provided local ISO; not committed
 - **Filename:** `God of War II (USA).iso`
 - **Product code:** `SCUS_974.81`
@@ -10,7 +10,7 @@
 - **ISO size:** 8,533,671,936 bytes
 - **ISO size mod 2048:** 0
 - **Sector count:** 4,166,832
-- **ISO SHA-256:** `266b08b7823c569be205dc9377b0e2212fbcb9080c4d65029f15040ae62d9f98` (recorded at `25b4ab8`; not recomputed in this pass)
+- **ISO SHA-256:** `266b08b7823c569be205dc9377b0e2212fbcb9080c4d65029f15040ae62d9f98` (recomputed before and after the 2026-10-28 runs; matches the earlier record)
 - **Logical block size:** 2048
 - **Volume space blocks:** 2,083,888
 - **Volume space bytes:** 4,267,802,624
@@ -35,12 +35,28 @@
 
 ## What was tested
 
+### Historical runs — 2026-10-22
+
+Historical inspectors: `d51f0e7` (re-run at `f8feb27`); whole-image SHA-256 recorded at `25b4ab8`, not recomputed in that pass.
+
 - Read-only inspection and metadata-only directory survey on 2026-10-22 with inspector `d51f0e7`.
 - A separate in-memory metadata read parsed the PVD and root directory records and reproduced the size/volume relation without using the inspector.
 - The inspector resolved `SYSTEM.CNF`, the `BOOT2` target and the boot executable size.
 - All 15 reported file extents fit inside the declared volume. The largest file, `PART1.PAK;1`, ends 32,768 bytes before the volume-space end.
 - No files were extracted or modified; no executable was run.
 - Input size and last-write time were unchanged before and after the two runs. The whole-image SHA-256 was not recomputed.
+
+### 2026-10-28 — repeated read-only CLI and ELF metadata checks
+
+Recorded owner-authorized local evidence from main; documentation checked against the reports below without reopening the ISO. Not CI verification.
+
+- CLI inspect ran twice: exit 0, `INSPECTED`, no warnings, byte-identical JSON. Survey ran twice: exit 0, `SURVEYED`, no warnings, byte-identical JSON.
+- Whole-image SHA-256 was actually recomputed before and after these runs, unchanged and matching the previous hash above; size and mtime were unchanged. The historical no-rehash statement applies only to the earlier pass.
+- Read-only ELF load map: 1 PT_LOAD; file/virtual ranges and zero-fill metadata were reported, with PH0 zero-fill of 540,760 bytes and no memory overlaps. No loading or zero-fill execution was tested ([RPTP-REF-003](../../REFERENCES.md)).
+- Entry `0x00100008` maps uniquely to PF_X file-backed bytes in program header 0 at ELF-relative file offset 4,104 bytes. Independent sparse ELF-header/entry/overlap cross-check agrees.
+- The PVD/file gap remains 4,265,869,312 bytes; whole-image hashing does not classify those extra bytes or establish a second layer. The survey remains PVD-addressable only.
+- Evidence: local `build/elf-retail-summary.json`, `build/elf-retail-god-of-war-ii.inspect.json`, `build/elf-retail-god-of-war-ii.survey.json` and `build/elf-retail-independent-check.json`.
+- No extraction, content analysis, function discovery, boot, runtime, recompilation or compatibility testing was performed.
 
 ## What is not tested
 
@@ -53,7 +69,7 @@
 ## Known limitations and blockers
 
 - ECMA-119 §9.4.9 (p. 26) defines the PVD volume-space field as the number of logical blocks in which the volume is recorded. This image declares 2,083,888 blocks, ending at byte 4,267,802,624, while the file continues to 8,533,671,936 bytes.
-- **Dugaan:** the image is dual-layer and the PVD describes only the first layer; this is unverified. No inspected metadata establishes the purpose of the extra bytes.
+- The purpose of the extra bytes and any layer structure remain unverified; no inspected metadata establishes a second layer or a layer boundary.
 - The directory survey covers only the PVD-addressable space. Extra image data was not treated as ISO 9660 content or inspected.
 - Current tests cover a synthetic image larger than its PVD volume; no parser defect was reproduced by this sample.
 - This record is one authorized sample, not evidence of broad ISO or game compatibility.

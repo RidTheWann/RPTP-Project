@@ -1,8 +1,8 @@
 # Black (USA)
 
 - **Status:** Inspected (read-only)
-- **Last updated:** 2026-10-23
-- **RPTP inspector:** `tools/rptp_inspect.py` at `25b4ab8`
+- **Last updated:** 2026-10-28
+- **RPTP inspector:** `tools/rptp_inspect.py`, hardened revision `0c2264e`; source SHA-256 verification and full fingerprint: [verification log](../../VERIFICATION_LOG.md)
 - **Source:** owner-provided local ISO; not committed
 - **Filename:** `Black (USA).iso`
 - **Product code:** `SLUS_213.76`
@@ -28,9 +28,24 @@
 
 ## What was tested
 
+### Historical run — 2026-10-22
+
+Historical inspector: `25b4ab8`.
+
 - Read-only inspection and metadata-only directory survey on 2026-10-22.
 - The inspector resolved `SYSTEM.CNF`, the `BOOT2` target and the boot executable size.
 - No files were extracted or modified; no executable was run.
+
+### 2026-10-28 — repeated read-only CLI and ELF metadata checks
+
+Recorded owner-authorized local evidence from main; documentation checked against the reports below without reopening the ISO. Not CI verification.
+
+- CLI inspect ran twice: exit 0, `INSPECTED`, no warnings, byte-identical JSON. Survey ran twice: exit 0, `SURVEYED`, no warnings, byte-identical JSON.
+- Whole-image SHA-256 was recomputed before and after these runs, unchanged and matching the previous hash above; size and mtime were unchanged.
+- Read-only ELF load map: 1 PT_LOAD; file/virtual ranges and zero-fill metadata were reported, with PH0 zero-fill of 580,156 bytes and no memory overlaps. No loading or zero-fill execution was tested ([RPTP-REF-003](../../REFERENCES.md)).
+- Entry `0x00100008` maps uniquely to PF_X file-backed bytes in program header 0 at ELF-relative file offset 4,104 bytes. Independent sparse ELF-header/entry/overlap cross-check agrees.
+- Evidence: local `build/elf-retail-summary.json`, `build/elf-retail-black.inspect.json`, `build/elf-retail-black.survey.json` and `build/elf-retail-independent-check.json`.
+- No extraction, content analysis, function discovery, boot, runtime, recompilation or compatibility testing was performed.
 
 ## What is not tested
 
