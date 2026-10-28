@@ -744,6 +744,21 @@ class IsoInspectorTests(unittest.TestCase):
                     self.assertIn(report["status"], ("INSPECTED", "INSPECTED_WITH_WARNINGS"))
                 self.assertEqual(before, hashlib.sha256(path.read_bytes()).hexdigest())
 
+    def test_input_name_identifies_the_supplied_path(self):
+        data = bytes(_iso())
+        with tempfile.TemporaryDirectory() as directory:
+            first = Path(directory) / "first.iso"
+            second = Path(directory) / "second.iso"
+            first.write_bytes(data)
+            second.write_bytes(data)
+            first_report = inspector.inspect_path(first)
+            second_report = inspector.inspect_path(second)
+        self.assertEqual(first_report["input_name"], str(first))
+        self.assertEqual(second_report["input_name"], str(second))
+        first_report.pop("input_name")
+        second_report.pop("input_name")
+        self.assertEqual(first_report, second_report)
+
 
 class IsoInputBoundaryTests(unittest.TestCase):
     def test_duplicate_config_keys_are_rejected_independently_of_order(self):
@@ -934,6 +949,30 @@ class IsoFormatContractTests(unittest.TestCase):
         with self.assertRaises(inspector.InspectError) as ctx:
             inspector.inspect_bytes(data)
         self.assertEqual(ctx.exception.code, "PRIMARY_VOLUME_DESCRIPTOR_CONFLICT")
+
+    def test_reports_missing_primary_descriptor_after_terminator(self):
+        data = self.descriptor_image(self.descriptor(0), self.descriptor(255))
+        with self.assertRaises(inspector.InspectError) as ctx:
+            inspector.inspect_bytes(data)
+        self.assertEqual(ctx.exception.code, "PRIMARY_VOLUME_DESCRIPTOR_MISSING")
+        reader = inspector.IsoReader(BytesIO(data), len(data), "missing-pvd.iso")
+        with self.assertRaises(inspector.InspectError) as ctx:
+            reader.survey()
+        self.assertEqual(ctx.exception.code, "PRIMARY_VOLUME_DESCRIPTOR_MISSING")
+
+    def test_rejects_declared_volume_that_ends_at_descriptor_start(self):
+        for blocks in (0, 16):
+            with self.subTest(blocks=blocks):
+                image = _iso()
+                image[16 * BLOCK + 80:16 * BLOCK + 88] = _both32(blocks)
+                data = bytes(image)
+                with self.assertRaises(inspector.InspectError) as ctx:
+                    inspector.inspect_bytes(data)
+                self.assertEqual(ctx.exception.code, "INVALID_VOLUME_SIZE")
+                reader = inspector.IsoReader(BytesIO(data), len(data), "invalid-volume.iso")
+                with self.assertRaises(inspector.InspectError) as ctx:
+                    reader.survey()
+                self.assertEqual(ctx.exception.code, "INVALID_VOLUME_SIZE")
 
     def test_rejects_unsupported_primary_file_structure_version(self):
         for version in (0, 2, 255):

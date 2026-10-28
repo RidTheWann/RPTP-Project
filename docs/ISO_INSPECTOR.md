@@ -26,7 +26,7 @@ Exit code is `0` for an inspected image and `2` for an expected inspection error
 - `warnings`: non-fatal observations such as device/machine/type differences, absent loads, overlapping memory, absent or ambiguous entry mappings and entry bytes that are not both file-backed and executable.
 - `limitations`: a short reminder of the intentionally narrow scope.
 
-JSON output is sorted by key and the report is deterministic for the same input bytes. Expected failures are deterministic too: the same input produces the same error code and message.
+JSON output is sorted by key and deterministic for the same supplied path and input bytes; `input_name` echoes the supplied path and is not content-derived. Expected failures are deterministic too: the same input produces the same error code and message.
 
 ## Directory survey
 
