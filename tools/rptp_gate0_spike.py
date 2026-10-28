@@ -243,8 +243,12 @@ def decode_instruction(pc: int, word: int) -> dict[str, Any]:
             return {"pc": pc, "word": word, "op": "sltu", "rs": rs, "rt": rt, "rd": rd}
         if funct == 0x08 and rt == 0 and rd == 0 and shamt == 0:
             return {"pc": pc, "word": word, "op": "jr", "rs": rs}
-        if funct == 0x00 and rs == 0 and rt == 0 and rd == 0 and shamt == 0:
-            return {"pc": pc, "word": word, "op": "nop"}
+        if funct == 0x00:
+            if rs != 0:
+                raise ValueError(f"SLL requires rs=0 (word 0x{word:08X}) at 0x{pc:08X}")
+            if rt == 0 and rd == 0 and shamt == 0:
+                return {"pc": pc, "word": word, "op": "nop"}
+            return {"pc": pc, "word": word, "op": "sll", "rs": rs, "rt": rt, "rd": rd, "shamt": shamt}
         raise ValueError(f"Unsupported SPECIAL instruction 0x{word:08X} at 0x{pc:08X}")
     if op == 0x09:
         return {"pc": pc, "word": word, "op": "addiu", "rs": rs, "rt": rt, "imm": simm}
@@ -325,6 +329,11 @@ def execute_oracle(entry: int, words: dict[int, int]) -> dict[str, Any]:
                 r[ins["rt"]] = value
         elif op == "addu":
             value = ((r[ins["rs"]] & 0xFFFFFFFF) + (r[ins["rt"]] & 0xFFFFFFFF)) & 0xFFFFFFFF
+            result = sign_extend_32(value)
+            if ins["rd"]:
+                r[ins["rd"]] = result & 0xFFFFFFFFFFFFFFFF
+        elif op == "sll":
+            value = ((r[ins["rt"]] & 0xFFFFFFFF) << ins["shamt"]) & 0xFFFFFFFF
             result = sign_extend_32(value)
             if ins["rd"]:
                 r[ins["rd"]] = result & 0xFFFFFFFFFFFFFFFF
