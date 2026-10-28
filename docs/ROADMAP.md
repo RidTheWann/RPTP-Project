@@ -60,14 +60,14 @@ A clean checkout can configure/build/test using documented commands; CI is green
 
 ## B1c — Read-only ISO inspection prototype
 
-**Prototype expanded with metadata, explicit validation and deterministic malformed-input tests. The read-only ISO inspector and its test suite also passed in current Windows/MSVC and Linux/GCC CI (run #45); the owner-authorized retail sample remains inspection-only and broad compatibility remains unverified.
+**Prototype expanded with metadata, explicit validation and deterministic malformed-input tests. Historical CI includes run #45; the primary-only/ELF load-map hardening passed local Windows/MSVC and is included in this increment for exact-head hosted CI. The eight-disc sample was revalidated read-only with preserved hashes and explicit overlap warnings where observed. Broad compatibility remains unverified.**
 
 - [x] Parse ISO 9660 primary volume descriptor and validate dual-endian fields.
 - [x] Enforce single-volume PVD and directory volume sequences.
 - [x] Locate root `SYSTEM.CNF` and resolve `BOOT2` / legacy `BOOT` path safely.
 - [x] Require `SYSTEM.CNF` to be a regular single-extent file; reject multi-extent boot executables.
 - [x] Validate ELF32 little-endian header and program-header table bounds.
-- [x] Validate PT_LOAD file bounds, `p_filesz <= p_memsz` and alignment; report load segments and warnings.
+- [x] Validate PT_LOAD file bounds, `p_filesz <= p_memsz`, alignment, ELF32 virtual-range bounds and load-header order; report file-backed/zero-fill ranges, entry mappings and overlap warnings without choosing loader policy.
 - [x] Report PVD/root, `SYSTEM.CNF` and boot executable metadata with SHA-256 without extracting or modifying files.
 - [x] Define an explicit, stable inspection error taxonomy.
 - [x] Add synthetic-only tests for valid input, malformed-image paths and deterministic mutation smoke.
@@ -76,13 +76,13 @@ A clean checkout can configure/build/test using documented commands; CI is green
 - [x] Record an initial owner-authorized real-ISO inspection (Downhill Domination USA) in `docs/games/downhill-domination/STATUS.md`.
 - [x] Validate against a broader owner-authorized set of real ISO layouts; record exact hashes and test outcomes without committing game images.
 - [x] Check the directory-record file-unit/interleave-gap field mapping against ECMA-119 and add independent synthetic tests for each byte.
-- [ ] Review ISO 9660 variants and multi-extent handling before claiming broad disc compatibility.
+- [x] Review the primary-only ISO 9660 format envelope and multi-extent rejection with neutral specifications and named synthetic tests; extension decoding and broad disc compatibility remain unsupported.
 
 This phase is an inspector only. It does not launch a game, implement the PS2 runtime, or establish clean-room/legal disposition.
 
 ## Gate 2 — ISO Inspector expansion
 
-**Status: synthetic hardening and a read-only retail sample validation are implemented and locally verified; multi-extent/ISO-variant review and the independent ISO inspector provenance review remain open. The narrow Gate 0 technical pass is recorded but does not close Gate 2. Gate 2 is a read-only milestone under [ADR-0004](DECISIONS/ADR-0004-gate2-read-only-scope.md); extraction is deferred future work. Gate 2 is not passed.** The criterion-to-evidence map is maintained in [GATE2_EVIDENCE.md](GATE2_EVIDENCE.md); it is evidence, not a disposition.
+**Status: synthetic hardening, read-only retail sample records and the primary-only multi-extent/ISO-variant technical review are recorded. Local inspection hardening passed Windows/MSVC; the changes are included in this increment, and hosted exact-head CI, the independent ISO inspector provenance review and the owner's disposition remain open. The narrow Gate 0 technical pass is recorded but does not close Gate 2. Gate 2 is a read-only milestone under [ADR-0004](DECISIONS/ADR-0004-gate2-read-only-scope.md); extraction is deferred future work. Gate 2 is not passed.** The criterion-to-evidence map is maintained in [GATE2_EVIDENCE.md](GATE2_EVIDENCE.md); it is evidence, not a disposition.
 
 - Expand the B1c prototype into read-only ISO9660 parsing and SYSTEM.CNF inspection across the documented formats.
 - Identify boot executable metadata and calculate hashes.
@@ -93,7 +93,7 @@ This phase is an inspector only. It does not launch a game, implement the PS2 ru
 
 **Verified locally:** single-volume PVD validation, root `SYSTEM.CNF` inspection, BOOT path resolution, PVD/root/boot metadata, SHA-256, ELF PT_LOAD checks, metadata-only directory survey, explicit error codes, deterministic JSON, CLI JSON success/error, the ISO inspector suite and the full Python suite. CTest results and the retail sample are recorded in `docs/VERIFICATION_LOG.md`.
 
-**Still open:** retail layouts beyond the current sample, interleaved-file support, multi-extent and ISO-variant review, and the independent ISO inspector provenance review. Extraction is outside Gate 2 and requires a separate ADR and threat model. Clean-room handling is recorded in ADR-0003 and the execution steps in [PROVENANCE_PLAN.md](PROVENANCE_PLAN.md).
+**Still open:** independent ISO inspector provenance review, hosted exact-head CI of this increment and owner disposition. Broader retail layouts and decoding interleaved, multi-extent or auxiliary namespaces remain unsupported; the reviewed primary-only format matrix is in [ISO_INSPECTOR.md](ISO_INSPECTOR.md). Extraction is outside Gate 2 and requires a separate ADR and threat model. Clean-room handling is recorded in ADR-0003 and the execution steps in [PROVENANCE_PLAN.md](PROVENANCE_PLAN.md).
 
 **Pass criteria:** deterministic inspection results on synthetic fixtures, robust rejection of malformed inputs, no write path to the input or host, and clear reporting when an image is unsupported.
 
