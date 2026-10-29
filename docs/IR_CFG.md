@@ -222,7 +222,7 @@ The DADDIU fixture in `tests/test_instruction_daddiu.py` checks positive and neg
 - The block, immediate, `$zero`, candidate, known-edge reachability and lowering rules are defined by this repository's tests and are not a hardware specification.
 - The generated C++ state machine, JSON shape, failure text and exit code are test-defined behavior, not R5900 or PS2 hardware behavior.
 
-Local and hosted verification evidence is recorded in [VERIFICATION_LOG.md](VERIFICATION_LOG.md). The SLTI increment (`69d7c11`) passed CI run #44; SLTIU (`25267b6`) passed run #45, DADDIU run #50, DADDU run `40836707828`, SUBU run `40849490715` and the latest merge `f967448` run `40856000777` on Windows x64/MSVC and Linux/GCC. Both are synthetic signed/unsigned comparisons against sign-extended immediates only; Gate 3 remains in progress and not passed.
+Local and hosted verification evidence is recorded in [VERIFICATION_LOG.md](VERIFICATION_LOG.md). The SLTI increment (`69d7c11`) passed CI run #44; SLTIU (`25267b6`) passed run #45, DADDIU run #50, DADDU run `40836707828`, SUBU run `40849490715`, PR #49 merge `be8269e` run `40959803393` and the latest merge `983da0f` (PR #51) run `40969465394` on Windows x64/MSVC and Linux/GCC. Both are synthetic signed/unsigned comparisons against sign-extended immediates only; Gate 3 remains in progress and not passed.
 
 ## Verification commands
 
