@@ -54,7 +54,19 @@ The counts include data, padding and embedded tables, so they are an upper-bound
 
 This refresh uses the current decoder after the `SLL` and `DADDU` increments and supersedes the earlier pre-`DADDU` table. `special_0x2d` no longer appears among the top unsupported labels, and the acceptance range is now 58.3%–69.2%. These remain static coverage figures, not runtime results, and the data/padding caveat above still applies.
 
-These figures were measured with the decoder revision before `SUBU` (`SPECIAL` funct `0x23`) support. Once that increment is merged, words with that encoding become decoder-accepted and the percentages will rise; a read-only refresh is a separate evidence increment, and the numbers above remain dated to the pre-`SUBU` revision.
+These figures were measured with the decoder revision before `SUBU` (`SPECIAL` funct `0x23`) support. The eight-image table above remains dated to that pre-`SUBU` revision; the one-image refresh below is the separate evidence increment for the image available on this machine.
+
+## Post-`SUBU` read-only refresh — 2026-10-29
+
+- **Code revision:** `4c0df867663bf8610acdc2ebc2a9283a6701ae79`, the decoder revision that includes `SUBU` (`SPECIAL` funct `0x23`).
+- **Measurement window:** started 2026-10-29T10:54:49Z; the first report completed at 2026-10-29T10:54:56Z and an identical rerun completed at 2026-10-29T10:55:34Z (UTC).
+- **Input:** `Downhill Domination (USA).iso`, 2,530,869,248 bytes, whole-image SHA-256 `0fe2b77713d3440cc3030741ea0b18f49e3feaa09671a30a421e0d4888a7eb86`; boot executable `SCUS_971.77;1`, 1,691,684 bytes, SHA-256 `adfda7b73a8f05fb20a3f0f318772e9d3797fd4d6c0a6c0078ae392df0f0cf0c`.
+- **Command:** `python tools/rptp_census.py "D:\Game\Downhill Domination (USA).iso" --iso --json`.
+- **Result:** status `CENSUSED`, 1 `PT_LOAD` segment, 413,500 aligned words, 260,641 decoder-accepted (63.03%), 152,859 raw-unsupported, 29,124 zero words, 87,421 unique words, 0 trailing bytes and no warnings.
+- **Change from the pre-`SUBU` row:** 259,646 to 260,641 accepted words (+995), and 62.8% to 63.03%. The difference is the `SUBU` encoding count; it is a decoder-acceptance change, not a runtime result.
+- **Most frequent raw-unsupported labels:** `opcode_0x11` (23,903); `opcode_0x37` (16,726); `opcode_0x3f` (15,142). These labels are encoding identifiers only.
+- **Non-mutation:** whole-image SHA-256, size and mtime were identical before and after both runs; the two JSON reports were byte-identical; no file was extracted or executed. `python -m unittest tests.test_boot_census -v` reported 6 tests, `OK`.
+- **Sample limit:** only this one of the eight owner-authorized images is present on this machine. The other seven rows above were not remeasured and are not superseded, estimated or interpolated. Raw JSON reports remain local artifacts under `build/census/` and are not committed.
 
 ## Commands and tests
 
