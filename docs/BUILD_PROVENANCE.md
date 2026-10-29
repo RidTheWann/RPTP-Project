@@ -20,6 +20,7 @@ This pass does three limited things: it records the official references behind e
 | CI shape | `push`, `pull_request`, `workflow_dispatch`; `contents: read`; Windows and Ubuntu runners; 15-minute timeout; Python 3.13 | RPTP-REF-010 |
 | Python test invocation | `unittest discover -s tests -v`; non-zero exit on failure | RPTP-REF-011 |
 | Wrapper location | `$PSScriptRoot` resolves the script directory; the wrapper changes to the repository root and restores the caller's location | RPTP-REF-012 |
+| Native runtime targets | `add_library(rptp_runtime STATIC ...)` and `add_executable(rptp-load ...)`; `PUBLIC` include directory and `cxx_std_20`; `PRIVATE` `/W4 /WX` or `-Wall -Wextra -Wpedantic -Werror`; CTest passes the built CLI path to the Python suite through `cmake -E env RPTP_LOAD_BINARY=...` | RPTP-REF-017 |
 
 No build behavior in this layer was derived from a sealed project's build files or scripts during this pass. The references above are official tool documentation, not implementation templates.
 
@@ -31,6 +32,7 @@ No build behavior in this layer was derived from a sealed project's build files 
 - **CI run history:** the Windows job runs as `Windows x64 / MSVC` and the Linux job as `Linux / GCC`. Listed CI run IDs, the ones that reported a green run, are recorded in [ROADMAP.md](ROADMAP.md) and [COMPATIBILITY.md](COMPATIBILITY.md).
 - **Aggregate target:** `rptp-ci` depends on `rptp-doctor` and runs `ctest --output-on-failure`.
 - **CI:** both jobs check out the source, install Python 3.13 and run the doctor plus the matching configure/build preset. The Windows job resolves Visual Studio through `vswhere.exe` and enters the x64 developer environment. The workflow has read-only repository permissions and no secrets.
+- **Runtime targets:** `runtime/src/elf_loader.cpp` and `runtime/src/guest_memory.cpp` build into the `rptp_runtime` static library with `runtime/include` as a public include directory; `runtime/tools/rptp_load.cpp` builds the `rptp-load` executable. Both use the project C++20 requirement and strict warnings. When `BUILD_TESTING` is on, `rptp-runtime-tests` and the `runtime_loader_tests` / `runtime_loader_cli` CTest entries are registered; the CLI test sets `RPTP_LOAD_BINARY` with `cmake -E env`. `rptp-ci` depends on the doctor, `rptp-load` and the runtime test target when testing is enabled. Contract tests for this wiring are covered by the build-contract and Python suites; the loader's own behavior is documented in [RUNTIME.md](RUNTIME.md).
 - **Wrapper:** `scripts/run-msvc.ps1` resolves the repository from its own location, checks Python and `cl.exe`, runs the artifact guard, the differential spike and the unit suite, and restores the previous directory in a `finally` block.
 
 `tests/test_build_contract.py` guards these statements against accidental drift. It is a contract test, not a provenance review.

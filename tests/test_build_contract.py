@@ -31,6 +31,22 @@ class BuildContractTests(unittest.TestCase):
         self.assertIn("DEPENDS rptp-doctor", cmake)
         self.assertIn('"${CMAKE_CTEST_COMMAND}" --output-on-failure', cmake)
 
+    def test_runtime_targets_are_built_and_tested(self) -> None:
+        cmake = (ROOT / "CMakeLists.txt").read_text(encoding="utf-8")
+
+        self.assertIn("add_library(\n    rptp_runtime\n    STATIC", cmake)
+        self.assertIn('target_include_directories(rptp_runtime PUBLIC "${PROJECT_SOURCE_DIR}/runtime/include")', cmake)
+        self.assertIn("target_compile_features(rptp_runtime PUBLIC cxx_std_20)", cmake)
+        self.assertIn("add_executable(rptp-load runtime/tools/rptp_load.cpp)", cmake)
+        self.assertIn("add_executable(rptp-runtime-tests runtime/tests/runtime_tests.cpp)", cmake)
+        self.assertIn("add_test(NAME runtime_loader_tests COMMAND rptp-runtime-tests)", cmake)
+        self.assertIn('NAME runtime_loader_cli', cmake)
+        self.assertIn('"RPTP_LOAD_BINARY=$<TARGET_FILE:rptp-load>"', cmake)
+        self.assertIn("-m unittest tests.test_runtime_loader -v", cmake)
+        self.assertIn("DEPENDS rptp-doctor rptp-load ${_rptp_runtime_test_target}", cmake)
+        self.assertIn("/W4 /WX /permissive-", cmake)
+        self.assertIn("-Wall -Wextra -Wpedantic -Werror", cmake)
+
     def test_presets_pair_configure_and_build_targets(self) -> None:
         presets = json.loads((ROOT / "CMakePresets.json").read_text(encoding="utf-8"))
 

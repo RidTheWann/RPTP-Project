@@ -31,7 +31,7 @@ The recorded disposition accepts only the synthetic ELF32/EM_MIPS instruction su
 
 ## B1b — Repository/toolchain baseline
 
-**Status: technical baseline verified. The latest synthetic code increments `69d7c11` (`SLTI`, run #44) and `25267b6` (`SLTIU`, run #45) passed Windows x64/MSVC and Linux/GCC. The build/CI/doctor layer remains `Review required` in `docs/CLEAN_ROOM_AUDIT.md`; CI success is not a clean-room certification. Gate 0 remains a narrow technical pass, Gate 2 remains open, and Gate 3 remains not passed.
+**Status: technical baseline verified. The synthetic instruction increments through `SLL` and the boot-code census merged through PRs #10–#12; PR #11 (`1ee2d4d`, run `40825838439`) and PR #12 (`88d7c68`, run `40828451046`) passed Windows x64/MSVC and Linux/GCC. The build/CI/doctor layer remains `Review required` in `docs/CLEAN_ROOM_AUDIT.md`; CI success is not a clean-room certification. Gate 0 remains a narrow technical pass, Gate 2 remains open, and Gate 3 remains not passed. The native runtime targets use the documented preset without changing the build/CI/doctor provenance status.
 
 - [x] Add a CMake project baseline and repeatable windows-msvc / host presets.
 - [x] Add rptp doctor environment and artifact-guard diagnostics.
@@ -60,7 +60,7 @@ A clean checkout can configure/build/test using documented commands; CI is green
 
 ## B1c — Read-only ISO inspection prototype
 
-**Prototype expanded with metadata, explicit validation and deterministic malformed-input tests. The primary-only/ELF load-map hardening merged through PR #10 (merge commit `a1365b5`, main CI run `40770223526` green), and the eight-disc sample was revalidated read-only with preserved hashes and explicit overlap warnings where observed. A read-only boot-code census now reuses the validated inspector parser to count decoded words and raw encodings in the boot executable of the eight authorized samples; it extracts nothing and makes no compatibility claim. Evidence: [BOOT_CENSUS.md](BOOT_CENSUS.md). Broad compatibility remains unverified.**
+**Prototype expanded with metadata, explicit validation and deterministic malformed-input tests. The primary-only/ELF load-map hardening merged through PR #10 (merge commit `a1365b5`, main CI run `40770223526` green), and the eight-disc sample was revalidated read-only with preserved hashes and explicit overlap warnings where observed. The read-only boot-code census now merged through PR #12 (merge commit `88d7c68`, main CI run `40828451046` green); it reuses the validated inspector parser to count decoded words and raw encodings in the boot executable of the eight authorized samples, extracts nothing and makes no compatibility claim. Evidence: [BOOT_CENSUS.md](BOOT_CENSUS.md). Broad compatibility remains unverified.**
 
 - [x] Parse ISO 9660 primary volume descriptor and validate dual-endian fields.
 - [x] Enforce single-volume PVD and directory volume sequences.
@@ -82,7 +82,7 @@ This phase is an inspector only. It does not launch a game, implement the PS2 ru
 
 ## Gate 2 — ISO Inspector expansion
 
-**Status: synthetic hardening, read-only retail sample records, the primary-only multi-extent/ISO-variant technical review and a read-only boot-code census over the eight authorized samples are recorded ([BOOT_CENSUS.md](BOOT_CENSUS.md)). The inspection hardening merged through PR #10 (merge commit `a1365b5`, main CI run `40770223526` green); the census increment's hosted exact-head CI, the independent ISO inspector provenance review and the owner's disposition remain open. The narrow Gate 0 technical pass is recorded but does not close Gate 2. Gate 2 is a read-only milestone under [ADR-0004](DECISIONS/ADR-0004-gate2-read-only-scope.md); extraction is deferred future work. Gate 2 is not passed.** The criterion-to-evidence map is maintained in [GATE2_EVIDENCE.md](GATE2_EVIDENCE.md); it is evidence, not a disposition.
+**Status: synthetic hardening, read-only retail sample records, the primary-only multi-extent/ISO-variant technical review and a read-only boot-code census over the eight authorized samples are recorded ([BOOT_CENSUS.md](BOOT_CENSUS.md)). The inspection hardening merged through PR #10 (merge commit `a1365b5`, main CI run `40770223526` green) and the census merged through PR #12 (merge commit `88d7c68`, main CI run `40828451046` green). The independent ISO inspector provenance review and the owner's disposition remain open. The narrow Gate 0 technical pass is recorded but does not close Gate 2. Gate 2 is a read-only milestone under [ADR-0004](DECISIONS/ADR-0004-gate2-read-only-scope.md); extraction is deferred future work. Gate 2 is not passed.** The criterion-to-evidence map is maintained in [GATE2_EVIDENCE.md](GATE2_EVIDENCE.md); it is evidence, not a disposition.
 
 - Expand the B1c prototype into read-only ISO9660 parsing and SYSTEM.CNF inspection across the documented formats.
 - Identify boot executable metadata and calculate hashes.
@@ -96,6 +96,19 @@ This phase is an inspector only. It does not launch a game, implement the PS2 ru
 **Still open:** independent ISO inspector provenance review and owner disposition. Broader retail layouts and decoding interleaved, multi-extent or auxiliary namespaces remain unsupported; the reviewed primary-only format matrix is in [ISO_INSPECTOR.md](ISO_INSPECTOR.md). Extraction is outside Gate 2 and requires a separate ADR and threat model. Clean-room handling is recorded in ADR-0003 and the execution steps in [PROVENANCE_PLAN.md](PROVENANCE_PLAN.md).
 
 **Pass criteria:** deterministic inspection results on synthetic fixtures, robust rejection of malformed inputs, no write path to the input or host, and clear reporting when an image is unsupported.
+
+## B2 — Native runtime foundation (in progress)
+
+**Status: first native C++20 runtime layer implemented and locally verified. `rptp_runtime` provides sparse guest memory and a fail-closed ELF32 little-endian `ET_EXEC`/`EM_MIPS` `PT_LOAD` loader; `rptp-load` reports the loaded image as deterministic `rptp.runtime.load.v1` JSON with stable `LOAD_*` errors. The contract is [RUNTIME.md](RUNTIME.md). The layer executes no guest instruction, implements no kernel, syscall, IOP, DMA, VU, GS, SPU2 or ISO ingestion, and makes no boot or compatibility claim. Not a Gate 3 increment and not Gate 4 evidence.**
+
+- [x] Sparse guest memory with explicit bounds, single-region access, overlap rejection and allocation budgets.
+- [x] Fail-closed ELF32/EM_MIPS loader: header, program-header table, `PT_LOAD` sizes/bounds/alignment/order/overlap, 32-bit address-space bounds, entry file-backed/executable checks and explicit limits.
+- [x] Stable error taxonomy and deterministic CLI JSON; exit `0` accepted, `2` load error, `1` usage/read failure.
+- [x] Direct synthetic C++ checks plus an independent Python ELF builder driving the CLI; CTest `runtime_loader_tests` and `runtime_loader_cli`.
+- [ ] Execution harness for a documented synthetic instruction subset, with the same differential-oracle discipline (next, separate increment).
+- [ ] Retail boot-executable ingestion and the first kernel/syscall services (future; each needs separate evidence and a Gate disposition).
+
+**Evidence and limits:** `runtime/tests/runtime_tests.cpp`, `tests/test_runtime_loader.py`, [RUNTIME.md](RUNTIME.md); local runs are recorded in [VERIFICATION_LOG.md](VERIFICATION_LOG.md). Only synthetic images and the Gate 0 fixture have been loaded. A successfully loaded image is not a bootable or compatible game.
 
 ## Gate 3 — Recompiler MVP
 

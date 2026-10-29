@@ -32,6 +32,8 @@ def tracked_project_files() -> list[Path]:
             rel.name == "CMakeLists.txt"
             or rel.parts[:2] == (".github", "workflows") and rel.suffix == ".yml"
             or rel.suffix in {".py", ".ps1"}
+            # evidence/ holds captured build output, not authored project source.
+            or (rel.suffix in {".hpp", ".cpp"} and rel.parts[:1] != ("evidence",))
         )
         if covered:
             paths.append(ROOT / Path(*rel.parts))
