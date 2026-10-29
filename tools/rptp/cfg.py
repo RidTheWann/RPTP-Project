@@ -259,7 +259,9 @@ class Discovery:
         successors: list[int] = []
         kind = "unsupported"
         call_target: int | None = None
-        if mnemonic in {"beq", "bne", "blez", "bgtz", "bltz", "bgez", "bltzal", "bgezal"}:
+        if mnemonic in {"beq", "bne", "blez", "bgtz", "bltz", "bgez", "bltzal", "bgezal",
+                        "beql", "bnel", "blezl", "bgtzl", "bltzl", "bgezl",
+                        "bltzall", "bgezall"}:
             kind = "branch"
             target = control.target or 0
             if target in self.words:
@@ -525,7 +527,9 @@ class Discovery:
 
 def _writes_register(instruction: Instruction, register: int) -> bool:
     if instruction.mnemonic in {"beq", "bne", "blez", "bgtz", "bltz", "bgez",
-                                "bltzal", "bgezal", "j", "jal", "jr", "jalr",
+                                "bltzal", "bgezal", "beql", "bnel", "blezl",
+                                "bgtzl", "bltzl", "bgezl", "bltzall", "bgezall",
+                                "j", "jal", "jr", "jalr",
                                 "sw", "sh", "sb", "sd", "sq", "cache", "pref",
                                 "syscall", "break", "sync", "nop"}:
         return False

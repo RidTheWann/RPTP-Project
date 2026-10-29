@@ -387,11 +387,16 @@ class _Emitter:
             raise CodegenError(f"Block 0x{block.start:08X} is unsupported: {control.reason}")
         if kind == "branch":
             if control.mnemonic not in {"beq", "bne", "blez", "bgtz", "bltz", "bgez",
-                                        "bltzal", "bgezal"}:
+                                        "bltzal", "bgezal", "beql", "bnel", "blezl",
+                                        "bgtzl", "bltzl", "bgezl", "bltzall",
+                                        "bgezall"}:
                 raise CodegenError(f"No native branch lowering for {control.mnemonic}")
             self.emit(f"rptp::push_trace(s, {_u32(control.pc)});")
             left = _reg(control.rs)
-            right = _reg(control.rt) if control.rt is not None and control.mnemonic in {"beq", "bne"} else None
+            right = (_reg(control.rt)
+                     if control.rt is not None
+                     and control.mnemonic in {"beq", "bne", "beql", "bnel"}
+                     else None)
             if control.cond == "eq":
                 condition = f"{left}.lo == {right}.lo"
             elif control.cond == "ne":
@@ -407,8 +412,18 @@ class _Emitter:
             self.emit(f"const bool taken = {condition};")
             if control.link_reg is not None:
                 self.emit(f"rptp::write_reg(s, {control.link_reg}u, rptp::u128({_u32(control.pc + 8)}));")
-            for op in block.delay_ops:
-                self.op(op)
+            if control.likely:
+                self.emit("if (taken) {")
+                first = len(self.lines)
+                for op in block.delay_ops:
+                    self.op(op)
+                for index in range(first, len(self.lines)):
+                    if self.lines[index]:
+                        self.lines[index] = "    " + self.lines[index]
+                self.emit("}")
+            else:
+                for op in block.delay_ops:
+                    self.op(op)
             target = control.target if control.target is not None else control.fallthrough
             self.emit(f"s.pc = taken ? {_u32(target)} : {_u32(control.fallthrough)};")
             return

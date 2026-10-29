@@ -1,17 +1,31 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """R5900 instruction catalog and decoder.
 
-Encodings are derived from neutral public documentation: the Sony/Toshiba
-EE Core Instruction Set Manual, the MIPS III architecture manual and ps2tek
-(https://psi-rockin.github.io/ps2tek/).  No emulator or recompiler
-implementation source was used.  Entries carry an explicit verification
-label; ``provisional`` entries are implemented from documented pseudocode
-but still need an independent review against the hardware manual before
-they may be treated as verified.
+Provenance is mixed, and the verification labels are documentation metadata
+rather than hardware or clean-room certification:
 
-The decoder never guesses an instruction: an unrecognised word becomes an
-``unknown`` instruction that static analysis and code generation must treat
-as unsupported rather than silently lowering it.
+* The supported synthetic test subset is cross-checked against the references
+  approved in ``docs/REFERENCES.md`` (``RPTP-REF-001``, ``RPTP-REF-002``,
+  ``RPTP-REF-013``, ``RPTP-REF-014`` and ``RPTP-REF-015``) and the repository's
+  own tests.
+* The MMI, COP2 and other R5900-specific catalog data carry page citations
+  from the R5900 EE Core Instruction Set Manual.  That manual is PENDING an
+  owner decision and is not an approved reference, so those entries must not
+  be presented as verified hardware behavior.
+* ps2tek (https://psi-rockin.github.io/ps2tek/) is a secondary cross-check
+  only: it is not recorded as an ``RPTP-REF`` and is not used for behavior
+  claims.
+
+Label meanings: ``generic-mips-cross-checked`` means a generic MIPS reference
+supports the encoding; ``manual-cross-checked`` means the entry was compared
+with a hardware manual (not necessarily an approved one, see above);
+``provisional`` means it is implemented from documented pseudocode without an
+independent review.  None of these labels is a certification.
+
+No emulator or recompiler implementation source was used.  The decoder never
+guesses an instruction: an unrecognised word becomes an ``unknown``
+instruction that static analysis and code generation must treat as
+unsupported rather than silently lowering it.
 """
 from __future__ import annotations
 
@@ -47,7 +61,9 @@ def _op(mnemonic: str, fmt: str, cls: str, **kwargs: Any) -> OpSpec:
 
 
 # ---------------------------------------------------------------------------
-# Core tables (ps2tek encoding tables; MIPS III cross-check).
+# Core tables (encoding cross-checks against generic MIPS references; ps2tek
+# is a secondary cross-check only: it is not a recorded RPTP-REF and is not a
+# behavior authority).
 # ---------------------------------------------------------------------------
 
 SPECIAL: dict[int, OpSpec] = {
@@ -115,10 +131,10 @@ SPECIAL: dict[int, OpSpec] = {
 REGIMM: dict[int, OpSpec] = {
     0x00: _op("bltz", "rs,offset", "regimm", delay_slot=True, verification=GENERIC),
     0x01: _op("bgez", "rs,offset", "regimm", delay_slot=True, verification=GENERIC),
-    0x02: _op("bltzl", "rs,offset", "regimm", supported=False, delay_slot=True, verification=MANUAL,
-              note="Branch-likely delay-slot nullification is not implemented yet."),
-    0x03: _op("bgezl", "rs,offset", "regimm", supported=False, delay_slot=True, verification=MANUAL,
-              note="Branch-likely delay-slot nullification is not implemented yet."),
+    0x02: _op("bltzl", "rs,offset", "regimm", delay_slot=True, verification=MANUAL,
+              note="Delay slot is nullified when the branch is not taken."),
+    0x03: _op("bgezl", "rs,offset", "regimm", delay_slot=True, verification=MANUAL,
+              note="Delay slot is nullified when the branch is not taken."),
     0x08: _op("tgei", "rs,imm", "regimm", supported=False, verification=GENERIC),
     0x09: _op("tgeiu", "rs,imm", "regimm", supported=False, verification=GENERIC),
     0x0A: _op("tlti", "rs,imm", "regimm", supported=False, verification=GENERIC),
@@ -129,10 +145,12 @@ REGIMM: dict[int, OpSpec] = {
               note="Writes GPR 31 unconditionally."),
     0x11: _op("bgezal", "rs,offset", "regimm", delay_slot=True, verification=GENERIC,
               note="Writes GPR 31 unconditionally."),
-    0x12: _op("bltzall", "rs,offset", "regimm", supported=False, delay_slot=True, verification=MANUAL,
-              note="Branch-likely delay-slot nullification is not implemented yet."),
-    0x13: _op("bgezall", "rs,offset", "regimm", supported=False, delay_slot=True, verification=MANUAL,
-              note="Branch-likely delay-slot nullification is not implemented yet."),
+    0x12: _op("bltzall", "rs,offset", "regimm", delay_slot=True, verification=MANUAL,
+              note="Writes GPR 31 unconditionally; delay slot is nullified when not taken. "
+                   "GPR 31 must not be used as rs."),
+    0x13: _op("bgezall", "rs,offset", "regimm", delay_slot=True, verification=MANUAL,
+              note="Writes GPR 31 unconditionally; delay slot is nullified when not taken. "
+                   "GPR 31 must not be used as rs."),
     0x18: _op("mtsab", "rs,imm", "regimm", supported=False, verification=MANUAL),
     0x19: _op("mtsah", "rs,imm", "regimm", supported=False, verification=MANUAL),
 }
@@ -159,14 +177,14 @@ PRIMARY: dict[int, OpSpec] = {
               note="R5900 COP1 floating point is not implemented yet."),
     0x12: _op("cop2", "cop2", "cop2", supported=False, verification=MANUAL,
               note="VU0 macro-mode COP2 is not implemented yet."),
-    0x14: _op("beql", "rs,rt,offset", "branch", supported=False, delay_slot=True, verification=MANUAL,
-              note="Branch-likely delay-slot nullification is not implemented yet."),
-    0x15: _op("bnel", "rs,rt,offset", "branch", supported=False, delay_slot=True, verification=MANUAL,
-              note="Branch-likely delay-slot nullification is not implemented yet."),
-    0x16: _op("blezl", "rs,offset", "branch", supported=False, delay_slot=True, verification=MANUAL,
-              note="Branch-likely delay-slot nullification is not implemented yet."),
-    0x17: _op("bgtzl", "rs,offset", "branch", supported=False, delay_slot=True, verification=MANUAL,
-              note="Branch-likely delay-slot nullification is not implemented yet."),
+    0x14: _op("beql", "rs,rt,offset", "branch", delay_slot=True, verification=MANUAL,
+              note="Delay slot is nullified when the branch is not taken."),
+    0x15: _op("bnel", "rs,rt,offset", "branch", delay_slot=True, verification=MANUAL,
+              note="Delay slot is nullified when the branch is not taken."),
+    0x16: _op("blezl", "rs,offset", "branch", delay_slot=True, verification=MANUAL,
+              note="Delay slot is nullified when the branch is not taken."),
+    0x17: _op("bgtzl", "rs,offset", "branch", delay_slot=True, verification=MANUAL,
+              note="Delay slot is nullified when the branch is not taken."),
     0x18: _op("daddi", "rt,rs,imm", "immediate", verification=GENERIC,
               note="Signed-overflow trap; trap delivery is not implemented yet."),
     0x19: _op("daddiu", "rt,rs,imm", "immediate", verification=GENERIC),
@@ -341,6 +359,7 @@ SUPPORTED_MNEMONICS = {
     "lb", "lbu", "lh", "lhu", "lw", "lwu", "ld", "lq",
     "sb", "sh", "sw", "sd", "sq",
     "beq", "bne", "blez", "bgtz", "bltz", "bgez", "bltzal", "bgezal",
+    "beql", "bnel", "blezl", "bgtzl", "bltzl", "bgezl", "bltzall", "bgezall",
     "j", "jal",
     "cache", "pref",
     # HI/LO operations (32-bit operands, 64-bit HI/LO; HI1/LO1 for the *1 forms).
@@ -369,6 +388,10 @@ BRANCH_MNEMONICS = {
     "beq", "bne", "blez", "bgtz", "bltz", "bgez", "bltzal", "bgezal",
     "beql", "bnel", "blezl", "bgtzl", "bltzl", "bgezl", "bltzall", "bgezall",
 }
+LIKELY_MNEMONICS = {
+    "beql", "bnel", "blezl", "bgtzl", "bltzl", "bgezl", "bltzall", "bgezall",
+}
+LINK_LIKELY_MNEMONICS = {"bltzall", "bgezall"}
 JUMP_MNEMONICS = {"j", "jal"}
 INDIRECT_MNEMONICS = {"jr", "jalr"}
 HALT_MNEMONICS = {"syscall", "break", "eret"}
@@ -417,6 +440,10 @@ class Instruction:
     @property
     def is_branch(self) -> bool:
         return self.mnemonic in BRANCH_MNEMONICS
+
+    @property
+    def is_likely(self) -> bool:
+        return self.mnemonic in LIKELY_MNEMONICS
 
     @property
     def is_jump(self) -> bool:
@@ -578,9 +605,16 @@ def decode_instruction(word: int, pc: int = 0, *, strict: bool = False) -> Instr
             if strict:
                 raise ValueError(f"Unsupported REGIMM rt 0x{rt:02X} at 0x{pc:08X}")
             return _unknown(pc, word, f"Unsupported REGIMM rt 0x{rt:02X}.")
+        valid = True
+        note = spec.note
+        if spec.mnemonic in LINK_LIKELY_MNEMONICS and rs == 31:
+            valid = False
+            note = ("GPR 31 must not be used as rs; the manual defines the result "
+                    "as undefined.")
         return _make(pc, word, spec, rs=rs, rt=rt,
                      imm=imm, simm=simm,
-                     target=_target_for_branch(pc, simm))
+                     target=_target_for_branch(pc, simm),
+                     valid=valid, note_override=note)
 
     if op == 0x1C:
         funct11 = word & 0x7FF
