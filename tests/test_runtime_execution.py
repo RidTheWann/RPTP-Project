@@ -94,7 +94,10 @@ def extended_words() -> list[int]:
         encode_i(0x23, 23, 24, 0),  # 0x4c lw t8, 0(s7)
         encode_i(0x0F, 0, 25, 0x4000),  # 0x50 lui t9, 0x4000
         encode_r(0, 25, 26, 1, 0x00),  # 0x54 sll k0, t9, 1
-        encode_r(0, 0, 0, 0, 0),  # 0x58 nop
+        encode_r(26, 25, 27, 0, 0x2D),  # 0x58 daddu k1, k0, t9
+        encode_r(26, 26, 28, 0, 0x2D),  # 0x5c daddu gp, k0, k0
+        encode_r(8, 9, 0, 0, 0x2D),  # 0x60 daddu zero, t0, t1
+        encode_r(0, 0, 0, 0, 0),  # 0x64 nop
     ]
 
 
@@ -171,6 +174,9 @@ class RuntimeExecutionCliTests(unittest.TestCase):
             int(entry["address"], 16): int(entry["value"], 16) for entry in document["memory_writes"]
         }
         self.assertEqual(expected_memory, actual_memory)
+        self.assertEqual(0xFFFFFFFFC0000000, int(document["registers"][27], 16))
+        self.assertEqual(0xFFFFFFFF00000000, int(document["registers"][28], 16))
+        self.assertEqual(0, int(document["registers"][0], 16))
 
     def test_output_is_deterministic(self) -> None:
         image = build_program(main_words())

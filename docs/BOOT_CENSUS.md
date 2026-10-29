@@ -52,6 +52,8 @@ The warning status for Bully and both San Andreas samples comes from the previou
 
 The counts include data, padding and embedded tables, so they are an upper-bound description of code-like words, not a function-level measurement. The ratio measures decoder coverage of those words, not runtime correctness. The consistent `special_0x2d` and `opcode_0x11`/`opcode_0x12` presence across titles is evidence for prioritization only; no instruction semantics are claimed by this document.
 
+These figures were measured with the decoder revision before `DADDU` (`SPECIAL` funct `0x2D`) support. Once that increment is merged, `special_0x2d` words become decoder-accepted and the percentages will rise; a read-only refresh is a separate evidence increment, and the numbers above remain dated to the pre-`DADDU` revision.
+
 ## Commands and tests
 
 ```powershell
