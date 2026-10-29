@@ -55,6 +55,7 @@ Every increment must review and update every document affected by its change bef
 - `docs/research/r5900-isa.json` — R5900/MMI encoding catalog with per-entry page citations; provenance is pending owner review, so the catalog is not an approved reference and its claims are not verified semantics — see [isa-evidence.md](research/isa-evidence.md).
 - `docs/research/isa-evidence.md` — evidence levels for the R5900 ISA catalog: decoder cross-check, test-defined subset with approved references, and pending/unverified citations.
 - `docs/research/instruction-semantics-matrix.md` — per-instruction semantic evidence matrix across decoder, oracle, CFG, IR/emitter, native runtime and approved references; path asymmetries and a planning recommendation.
+- `docs/research/disc-assets-plan.md` — read-only disc/assets research plan: current inspector envelope, metadata and sampling stages, retail variant gaps and what a future extraction ADR must decide; no extraction, format decoding or Gate 2 disposition.
 
 ## Game records
 
