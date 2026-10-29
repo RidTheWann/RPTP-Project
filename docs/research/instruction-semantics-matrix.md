@@ -3,9 +3,10 @@
 - **Status date:** 2026-10-30
 - **Baseline:** `origin/main` commit `00af3234a9b39ad06d343b7537f0a616a312e374` (the merge of PR #47). The original measurement baseline was `0944c84e8ed11c2d7db5d54ad23671b9a8de869d`; the runtime-coverage rows were revised at the current baseline after PR #41 (branch-likely in the C++ harness) and PR #43 (`LW`/`SW` alignment), as recorded under **Revision** below.
 - **Scope:** Documentation and evidence classification only. This note adds no instruction semantics, changes no code, test, catalog entry or Gate status, and makes no compatibility claim.
-- **Subject:** the 36-instruction Level B synthetic subset in [INSTRUCTION_CATALOG.md](../INSTRUCTION_CATALOG.md) and [isa-evidence.md](isa-evidence.md), including the eight branch-likely forms. There is no separate 36 + 8 set: the eight likely forms are rows 25-32 of the same 36-row matrix.
-- **Method:** source reading at the baseline commit plus the focused test runs recorded in §8. No retail data, emulator or recompiler source, Sony manual, or unapproved reference was used. Manual use remains unapproved, so no manual text is quoted or relied on here.
-- **Revision (2026-10-30, after PR #41 and PR #43):** the C++ runtime harness now decodes and executes all 36 Level B operations, including the eight likely forms, and it rejects unaligned `LW`/`SW` with `EXEC_MEMORY_FAULT`. Those two gaps are closed in `R`. The legacy pipeline and the Gate 0 spike remain at 28 non-likely operations with no `LW`/`SW` alignment check. The `RT†` execution column and §8 remain the original baseline session, where the runtime binary was not built; the runtime corrections here are **Terverifikasi by source reading**, not by execution in that session.
+- **Subject:** the 42-instruction Level B synthetic subset in [INSTRUCTION_CATALOG.md](../INSTRUCTION_CATALOG.md) and [isa-evidence.md](isa-evidence.md), including the six ordinary branch forms and the eight branch-likely forms. There is no separate set: the six ordinary forms are rows 37-42 and the eight likely forms are rows 25-32 of the same 42-row matrix.
+- **Method:** source reading at the baseline commit plus the focused test runs recorded in §8. No retail data, emulator or recompiler source, Sony manual, or unapproved reference was used. The Sony manual and the R5900 catalog remain unapproved; the only manual used is the MIPS Technologies MIPS64 Revision 5.04 record under `RPTP-REF-015`, and no manual text is quoted here.
+- **Revision (2026-10-30, ordinary-branch increment):** adds rows 37-42 for `BLEZ`, `BGTZ`, `BLTZ`, `BGEZ`, `BLTZAL` and `BGEZAL`, promotes them from Level C to Level B under `RPTP-REF-015` (MIPS64 Revision 5.04 pages 76, 77, 81, 83, 85 and 86) and extends the native harness and the cross-path suite to the same six forms with always-executed delay slots and unconditional link writes. The C++ runtime harness now has 42 operations. Section 6 recalculates the Level B/Level C split; §7.2 records that the fallback was executed and corrects its earlier claim that the legacy pipeline supported these forms. The legacy pipeline and the Gate 0 spike remain at 28 non-likely operations with `BEQ`/`BNE` as their only conditional branches.
+- **Revision (2026-10-30, after PR #41 and PR #43):** the C++ runtime harness decodes and executes all Level B operations available at that baseline, including the eight likely forms, and it rejects unaligned `LW`/`SW` with `EXEC_MEMORY_FAULT`. Those two gaps are closed in `R`. The legacy pipeline and the Gate 0 spike remain at 28 non-likely operations with no `LW`/`SW` alignment check. The `RT†` execution column and §8 remain the original baseline session, where the runtime binary was not built; the runtime corrections here are **Terverifikasi by source reading**, not by execution in that session. The ordinary-branch increment later added six operations, bringing the harness to 42.
 - **Revision (2026-10-30, census refresh):** the eight-image read-only census was re-measured on 2026-10-29 with the current decoder and is recorded in [BOOT_CENSUS.md](../BOOT_CENSUS.md). The refreshed range is 76.96%-86.30%, superseding the pre-`SUBU` 58.3%-69.2% range and the one-image 63.03% figure. Sections 6, 7 and 9 now cite the refreshed values; the census was not rerun for this note.
 - **Evidence labels:** `Terverifikasi` = read in source or run in this session and shown in §8; `Belum diverifikasi` = not run, not checked against a source, or dependent on a recorded run not repeated here; `Dugaan` = inference or planning judgement. These labels follow [AGENTS.md](../../AGENTS.md) §4.
 
@@ -28,9 +29,9 @@ The two matrices use the same row number and mnemonic as a join key. Matrix A re
 This note is **not**:
 
 - a Gate disposition, a clean-room certification or a compatibility result;
-- a statement that the 36 instructions are correct R5900 hardware behavior;
-- a statement that the 36-op runtime harness represents the recompiler product path;
-- a statement that decoder-supported mnemonics outside the 36 have approved semantics;
+- a statement that the 42 instructions are correct R5900 hardware behavior;
+- a statement that the 42-op runtime harness represents the recompiler product path;
+- a statement that decoder-supported mnemonics outside the 42 have approved semantics;
 - a replacement for [INSTRUCTION_CATALOG.md](../INSTRUCTION_CATALOG.md), [IR_CFG.md](../IR_CFG.md), [RUNTIME.md](../RUNTIME.md) or [REFERENCES.md](../REFERENCES.md).
 
 **Terverifikasi:** the repository has two Python implementation paths and one C++ runtime harness:
@@ -39,9 +40,9 @@ This note is **not**:
 - **L** = the legacy pipeline: `tools/rptp_gate0_spike.py`, `tools/rptp_ir.py`, `tools/rptp_lower.py`.
 - **R** = the C++ harness: `runtime/src/execution.cpp` and `runtime/tools/rptp_run.cpp`.
 
-The runtime harness is a test vehicle, not a product runtime. [RUNTIME.md](../RUNTIME.md) records its 36-instruction subset and its explicit non-goals.
+The runtime harness is a test vehicle, not a product runtime. [RUNTIME.md](../RUNTIME.md) records its 42-instruction subset and its explicit non-goals.
 
-**Terverifikasi at the revision baseline:** `runtime/src/execution.cpp` decodes all eight likely forms (`0x14`-`0x17` and REGIMM `rt=0x02/0x03/0x12/0x13`), checks `address & 3` for `LW`/`SW` and `address & 7` for `LD`/`SD`, and its `Op` enum has 36 entries (`Nop` through `Jr`). `tools/rptp_lower.py` `_SUPPORTED_OPS` and `tools/rptp_gate0_spike.py` still implement 28 non-likely operations and no `LW`/`SW` alignment check. The runtime therefore no longer lacks the branch-likely or `LW`/`SW` alignment coverage; the remaining asymmetries are the legacy pipeline and the memory/register model differences recorded in §5.
+**Terverifikasi at the revision baseline:** `runtime/src/execution.cpp` decodes all eight likely forms (`0x14`-`0x17` and REGIMM `rt=0x02/0x03/0x12/0x13`), all six ordinary branch forms (`0x06`/`0x07` and REGIMM `rt=0x00/0x01/0x10/0x11`) and `BEQ`/`BNE`, checks `address & 3` for `LW`/`SW` and `address & 7` for `LD`/`SD`, and its `Op` enum has 42 entries (`Nop` through `Jr`). `tools/rptp_lower.py` `_SUPPORTED_OPS` and `tools/rptp_gate0_spike.py` still implement 28 operations with `BEQ`/`BNE` as their only conditional branches and no `LW`/`SW` alignment check. The runtime therefore no longer lacks the ordinary/likely branch or `LW`/`SW` alignment coverage; the remaining asymmetries are the legacy pipeline and the memory/register model differences recorded in §5.
 
 ## 2. Matrix legend
 
@@ -64,6 +65,7 @@ The runtime harness is a test vehicle, not a product runtime. [RUNTIME.md](../RU
 | `IRL` | `tests/test_ir_lowering.py` | Ran: 11 tests, 8 passed and 3 native lowerings skipped because the test helper could not find `cl`/`c++`. |
 | `RT†` | `tests/test_runtime_execution.py` and `runtime/tests/runtime_tests.cpp` | **Not executed.** The 16 Python runtime tests skipped because `RPTP_RUN_BINARY` was unset and no build was present; the C++ test binary was not built. |
 | `BL` | `tests/test_instruction_branch_likely.py` | Ran: 12 tests, all passed, including the MSVC native differential. |
+| `PB` | `tests/test_instruction_branch_plain.py` | Ran in the ordinary-branch increment session: 12 tests after review hardening, all passed, including the native differential and the signed-low-64-bit cases. |
 | `ISA` | `tests/test_isa_encodings.py` | Ran: all tests passed. Structural decode/lowering coverage only; not semantic proof. |
 | `T-DADDIU` | `tests/test_instruction_daddiu.py` | Ran in the per-instruction batch; Python/oracle and lowering-source assertions passed; native parts skipped where recorded. |
 | `T-DADDU` | `tests/test_instruction_daddu.py` | Same batch status as `T-DADDIU`. |
@@ -90,6 +92,7 @@ The per-instruction batch ran 156 tests: 130 passed and 26 native cases skipped 
 | `P-G0` | Level B. The instruction is in the accepted Gate 0 synthetic scope; the Gate 0 component status is `Provisional independent`. Not certified. |
 | `P-EXP` | Level B. Added after the Gate 0 disposition; the runtime/recompiler expansion component status is `Recorded`. Not certified. |
 | `P-BL` | Level B. Added by the 2026-10-30 branch-likely increment; expansion status `Recorded`. Not certified. |
+| `P-PB` | Level B. Added by the 2026-10-30 ordinary-branch increment; expansion status `Recorded`. Not certified. |
 | `P-TD` | Level B. `NOP` has no specific approved reference; its semantics are an RPTP test definition. Not certified. |
 
 `Provisional independent`, `Recorded` and `Review required` are component-level labels from [CLEAN_ROOM_AUDIT.md](../CLEAN_ROOM_AUDIT.md) and [PROVENANCE_PLAN.md](../PROVENANCE_PLAN.md). They are not per-instruction certifications. The build/CI/doctor layer remains `Review required`; no component is clean-room certified.
@@ -134,8 +137,14 @@ The per-instruction batch ran 156 tests: 130 passed and 26 native cases skipped 
 | 34 | `JAL` | J-type opcode `0x03` | `OK` | `N + L` | `N + L`; one direct successor; link `pc+8`; delay always | `N + L` | `R`; delay always |
 | 35 | `JR` | SPECIAL funct `0x08`, `rt=rd=shamt=0` | `OK` | `N + L` | `N + L`; dynamic target; delay always | `N + L` | `R`; delay always |
 | 36 | `NOP` | all-zero word `0x00000000` | `OK` | `N + L` | `N + L`; fallthrough | `N + L` | `R` |
+| 37 | `BLEZ` | I-type opcode `0x06` | `OK` | `N only` | `N only`; both successors; delay always | `N only` | `R`; delay always |
+| 38 | `BGTZ` | I-type opcode `0x07` | `OK` | `N only` | `N only`; both successors; delay always | `N only` | `R`; delay always |
+| 39 | `BLTZ` | REGIMM opcode `0x01`, `rt=0x00` | `OK` | `N only` | `N only`; both successors; delay always | `N only` | `R`; delay always |
+| 40 | `BGEZ` | REGIMM opcode `0x01`, `rt=0x01` | `OK` | `N only` | `N only`; both successors; delay always | `N only` | `R`; delay always |
+| 41 | `BLTZAL` | REGIMM opcode `0x01`, `rt=0x10` | `OK`; `rs=31` rejected | `N only` | `N only`; both successors; delay always; link `pc+8` | `N only` | `R`; delay always; link `pc+8` |
+| 42 | `BGEZAL` | REGIMM opcode `0x01`, `rt=0x11` | `OK`; `rs=31` rejected | `N only` | `N only`; both successors; delay always; link `pc+8` | `N only` | `R`; delay always; link `pc+8` |
 
-`Terverifikasi`: every row above was checked by reading the named source in `tools/rptp/isa.py`, `tools/rptp/cfg.py`, `tools/rptp/ir.py`, `tools/rptp/oracle.py`, `tools/rptp/codegen.py`, `tools/rptp_gate0_spike.py`, `tools/rptp_ir.py`, `tools/rptp_lower.py` and `runtime/src/execution.cpp`. The runtime column records source support only; it is not execution evidence for this session.
+`Terverifikasi`: every row above was checked by reading the named source in `tools/rptp/isa.py`, `tools/rptp/cfg.py`, `tools/rptp/ir.py`, `tools/rptp/oracle.py`, `tools/rptp/codegen.py`, `tools/rptp_gate0_spike.py`, `tools/rptp_ir.py`, `tools/rptp_lower.py` and `runtime/src/execution.cpp`. The runtime column records source support only; it is not execution evidence for this session. Rows 37-42 were appended on 2026-10-30 to preserve the historical row numbers of the original 36-row matrix; they are the six ordinary branch forms.
 
 ## 4. Matrix B — approved reference, tests, provenance and limits
 
@@ -177,8 +186,14 @@ The per-instruction batch ran 156 tests: 130 passed and 26 native cases skipped 
 | 34 | `JAL` | `RPTP-REF-001` | `G0`, `IRL`, `RT†` | `P-G0` | Writes `pc+8` to `r31`; delay slot always executes; no full call convention or pipeline claim. |
 | 35 | `JR` | `RPTP-REF-001` | `G0`, `IRL`, `RT†` | `P-G0` | Dynamic target is the low 32 bits of `rs`; no return-address stack, speculation or exception behavior; delay slot always executes. |
 | 36 | `NOP` | none specific; RPTP test definition | `G0`, `IRL`, `RT†` | `P-TD` | Only the encoded all-zero word is recognized as `NOP`. |
+| 37 | `BLEZ` | `RPTP-REF-015` p. 83 | `PB` | `P-PB` | Taken when signed low 64 bits of `rs` are `<= 0`; delay slot always executes. `N + R`; legacy has no implementation. Low-64-bit comparison, 32-bit PC masking and trace/step accounting are RPTP test definitions. |
+| 38 | `BGTZ` | `RPTP-REF-015` p. 81 | `PB` | `P-PB` | Taken when signed low 64 bits of `rs` are `> 0`; delay slot always executes. `N + R`; legacy has no implementation. |
+| 39 | `BLTZ` | `RPTP-REF-015` p. 85 | `PB` | `P-PB` | Taken when signed low 64 bits of `rs` are `< 0`; delay slot always executes. `N + R`; legacy has no implementation. |
+| 40 | `BGEZ` | `RPTP-REF-015` p. 76 | `PB` | `P-PB` | Taken when signed low 64 bits of `rs` are `>= 0`; delay slot always executes. `N + R`; legacy has no implementation. |
+| 41 | `BLTZAL` | `RPTP-REF-015` p. 86 | `PB` | `P-PB` | `GPR[31] = pc + 8` is written unconditionally, including when the branch is not taken; delay slot always executes; `rs=31` is rejected fail-closed because the reference marks it UNPREDICTABLE, and both `N` and `R` decode paths apply that policy. `N + R`; legacy has no implementation. |
+| 42 | `BGEZAL` | `RPTP-REF-015` p. 77 | `PB` | `P-PB` | Same unconditional link, always-executed delay slot and `rs=31` rejection as `BLTZAL`. `N + R`; legacy has no implementation. |
 
-`Terverifikasi` for the reference mapping: each approved-reference cell was checked against [REFERENCES.md](../REFERENCES.md) and [isa-evidence.md](isa-evidence.md) §3. `Belum diverifikasi` for the `RT†` cells: the runtime harness was not executed in this session. The reference pins support the encoding/operation model within the recorded limits; they do not establish complete R5900 semantics.
+`Terverifikasi` for the reference mapping: each approved-reference cell was checked against [REFERENCES.md](../REFERENCES.md) and [isa-evidence.md](isa-evidence.md) §3. `Belum diverifikasi` for the `RT†` cells: the runtime harness was not executed in the original matrix session. The reference pins support the encoding/operation model within the recorded limits; they do not establish complete R5900 semantics. The `PB` cells were executed in the ordinary-branch increment session (12 tests after review hardening, all passed); the runtime half of rows 37-42 was executed through `tests/test_runtime_execution.py` in the same increment session, as recorded in §4.2 and [VERIFICATION_LOG.md](../VERIFICATION_LOG.md).
 
 ### 4.1 Branch-likely rows in detail
 
@@ -191,11 +206,28 @@ The eight likely forms are rows 25-32. Their shared implementation contract is:
 - `BLTZALL` and `BGEZALL` write `GPR[31] = pc + 8` unconditionally, including when the branch is not taken.
 - `rs = 31` on either link form is rejected fail-closed as RPTP policy because the approved reference marks the result UNPREDICTABLE.
 
-`Terverifikasi` by source reading: `tools/rptp/isa.py` (`LIKELY_MNEMONICS`, `LINK_LIKELY_MNEMONICS`, target calculation and `rs=31` rejection), `tools/rptp/oracle.py` (`nullify_delay` and unconditional link write), `tools/rptp/ir.py` (`Control.likely`, `link_reg`) and `tools/rptp/codegen.py` (`if (taken) {` around delay operations). `Terverifikasi` by execution: `BL` passed 12 of 12 tests, including the MSVC native differential against the new oracle. `ISA` also decodes and statically lowers all eight forms, but it is structural evidence, not semantic execution evidence.
+`Terverifikasi` by source reading: `tools/rptp/isa.py` (`LIKELY_MNEMONICS`, `LINK_MNEMONICS`, target calculation and `rs=31` rejection), `tools/rptp/oracle.py` (`nullify_delay` and unconditional link write), `tools/rptp/ir.py` (`Control.likely`, `link_reg`) and `tools/rptp/codegen.py` (`if (taken) {` around delay operations). `Terverifikasi` by execution: `BL` passed 12 of 12 tests, including the MSVC native differential against the new oracle. `ISA` also decodes and statically lowers all eight forms, but it is structural evidence, not semantic execution evidence.
 
 `Terverifikasi` by source reading at the revision baseline: `runtime/src/execution.cpp` decodes the same eight forms (`kOpcodeBeql`-`kOpcodeBgtzl` and REGIMM `kRegimmBltzl`/`kRegimmBgezl`/`kRegimmBltzall`/`kRegimmBgezall`), rejects `rs=31` on both link forms, and implements nullified delay slots. `runtime/tests/runtime_tests.cpp` has `test_execution_likely_branch_forms`, `test_execution_likely_combined_program`, `test_execution_likely_nullification_and_failures` and `test_execution_likely_pc_masking`; `tests/test_runtime_execution.py` has the matching Python-side cases. Those runtime tests were **not executed** in the original session (`RT†`), so they are source evidence here, not execution evidence.
 
 **Asymmetry:** none of the eight forms exists in `tools/rptp_gate0_spike.py`, `tools/rptp_ir.py` or `tools/rptp_lower.py`; the legacy pipeline cannot analyze or lower them. The legacy runtime differential therefore cannot cover this family. The C++ harness and the `N` path both implement it, but `tests/test_cross_path_equivalence.py` does not include a likely-branch program, so there is still no single test that drives all three paths on the same likely branch.
+
+### 4.2 Ordinary branch rows in detail
+
+The six non-likely branch forms are rows 37-42. Their shared implementation contract is:
+
+- The condition is evaluated from the architectural state **before** the delay slot.
+- The delay slot **always** executes, whether the branch is taken or not; there is no nullification.
+- The target is the sign-extended 18-bit offset added to `pc + 4`, with the 32-bit PC mask used by the existing branch model.
+- The CFG records both the direct target and the fallthrough, target first. There is no nullification filter.
+- `BLTZAL` and `BGEZAL` write `GPR[31] = pc + 8` unconditionally, including when the branch is not taken.
+- `rs = 31` on either link form is rejected fail-closed as RPTP policy because the approved reference marks the result UNPREDICTABLE.
+
+`Terverifikasi` by source reading: `tools/rptp/isa.py` (`BRANCH_MNEMONICS`, `LINK_MNEMONICS` and the `rs=31` rejection), `tools/rptp/oracle.py` (the `blez`/`bgtz`/`bltz`/`bgez` conditions and the unconditional link write), `tools/rptp/ir.py` (`Control.cond`, `link_reg`, `likely=False`) and `tools/rptp/codegen.py` (no `if (taken) {` around the delay block). `Terverifikasi` by execution: `PB` passed 12 of 12 tests after review hardening, including the native differential against the oracle and the signed-low-64-bit cases.
+
+`Terverifikasi` by execution in the ordinary-branch increment session: `tests/test_runtime_execution.py` ran 26 tests after review hardening, all passed with the built `rptp-run` binary, including `test_plain_branch_forms_match_the_python_oracle` and `test_plain_link_forms_with_rs_31_fail_closed`. `runtime/tests/runtime_tests.cpp` adds `test_execution_plain_branch_forms` and `test_execution_plain_branch_failures`; the CTest result is recorded in [VERIFICATION_LOG.md](../VERIFICATION_LOG.md).
+
+**Asymmetry:** none of the six forms exists in `tools/rptp_gate0_spike.py`, `tools/rptp_ir.py` or `tools/rptp_lower.py`; the legacy pipeline's only conditional branches are `BEQ`/`BNE`. The `N` path, the C++ harness and `tests/test_cross_path_equivalence.py` now cover all six forms on one shared synthetic program.
 
 ## 5. Discrepancies and asymmetries
 
@@ -209,10 +241,12 @@ The eight likely forms are rows 25-32. Their shared implementation contract is:
 | `tools/rptp/codegen.py` | Yes, emitted `if (taken)` delay block | Source read; `BL` generated-source and native differential |
 | `tools/rptp_gate0_spike.py` | No | Source read: no `0x14`-`0x17` opcode cases and no REGIMM decode |
 | `tools/rptp_ir.py` / `rptp_lower.py` | No | Source read: `rptp_lower._SUPPORTED_OPS` has 28 non-likely operations |
-| `runtime/src/execution.cpp` | Yes, all eight since PR #41 | Source read: decoder has `0x14`-`0x17`, REGIMM `0x02`/`0x03`/`0x12`/`0x13`, and `rs=31` rejection; `Op` enum has 36 entries |
-| `tests/test_runtime_execution.py` / `runtime/tests/runtime_tests.cpp` | Yes, four likely test functions; not executed in the original session | Source read; `RT†` |
+| `runtime/src/execution.cpp` | Yes, all eight since PR #41 | Source read: decoder has `0x14`-`0x17`, REGIMM `0x02`/`0x03`/`0x12`/`0x13`, and `rs=31` rejection; `Op` enum has 42 entries |
+| `tests/test_runtime_execution.py` / `runtime/tests/runtime_tests.cpp` | Yes, four likely and two ordinary-branch test functions; the likely tests were not executed in the original session | Source read; `RT†`; `PB` |
 
 Consequence: a program containing a likely branch is now valid for the `tools/rptp` analysis, its generated C++, and the C++ runtime harness; it still fails closed in the legacy pipeline. The branch-likely native differential compiles generated C++ directly via `tools/rptp/native.py`; it does not exercise `runtime/src/execution.cpp`. No test drives the three paths on the same likely program.
+
+The six ordinary forms have the same asymmetry for the same reason: `tools/rptp`, the C++ harness and the cross-path suite implement them (rows 37-42), while `tools/rptp_gate0_spike.py`, `tools/rptp_ir.py` and `tools/rptp_lower.py` reject them. §4.2 records the contract and evidence.
 
 ### 5.2 `LW`/`SW` alignment policy differs only in the legacy paths
 
@@ -239,17 +273,17 @@ Consequence: a fresh in-range `LD` in the new oracle can return zero, while the 
 
 ### 5.4 There are two Python oracles and two emitters
 
-- **New oracle:** `tools/rptp/oracle.py`, used by `BL` and by the `tools/rptp` codegen differential. It implements all 36 Level B instructions and many beyond-Level-B instructions, with a 128-bit register file, 32 MiB default-zero RAM, KSEG translation and alignment checks.
-- **Legacy oracle:** `tools/rptp_gate0_spike.execute_oracle`, used by `tests/test_runtime_execution.py` as the expected side of the runtime differential. It implements only the 28 non-likely Level B instructions, with 64-bit registers, an initialized-word map and no `LW`/`SW` alignment check.
-- **New emitter:** `tools/rptp/codegen.py`, which supports the 36 and many beyond-Level-B instructions, branch-likely control and the 128-bit model.
-- **Legacy emitter:** `tools/rptp_lower.py`, which has exactly 28 supported operations and no branch-likely.
-- **C++ harness:** `runtime/src/execution.cpp` supports the 36 Level B operations, branch-likely nullification and alignment checks, but with 64-bit registers and mapped ELF regions rather than the 128-bit/default-zero model.
+- **New oracle:** `tools/rptp/oracle.py`, used by `BL`, `PB` and the `tools/rptp` codegen differential. It implements all 42 Level B instructions and many beyond-Level-B instructions, with a 128-bit register file, 32 MiB default-zero RAM, KSEG translation and alignment checks.
+- **Legacy oracle:** `tools/rptp_gate0_spike.execute_oracle`, used by `tests/test_runtime_execution.py` as the expected side of the runtime differential. It implements 28 of the 34 non-likely Level B instructions: the original arithmetic/logic/memory set with `BEQ`/`BNE` as its only conditional branches, but not the six ordinary branch forms. It uses 64-bit registers, an initialized-word map and no `LW`/`SW` alignment check.
+- **New emitter:** `tools/rptp/codegen.py`, which supports the 42 and many beyond-Level-B instructions, ordinary and branch-likely control and the 128-bit model.
+- **Legacy emitter:** `tools/rptp_lower.py`, which has exactly 28 supported operations, `BEQ`/`BNE` as its only conditional branches and no branch-likely or ordinary branch forms.
+- **C++ harness:** `runtime/src/execution.cpp` supports the 42 Level B operations, ordinary-branch always-executed delay slots, branch-likely nullification and alignment checks, but with 64-bit registers and mapped ELF regions rather than the 128-bit/default-zero model.
 
-`Terverifikasi` by source reading. The two differential families answer different questions: `BL` compares new oracle vs new generated C++; `tests/test_runtime_execution.py` compares legacy oracle vs the C++ runtime harness for the 28 non-likely operations and, separately, the new oracle vs the C++ runtime for likely and unaligned cases. Agreement in one family does not prove agreement with the other, and neither proves hardware behavior.
+`Terverifikasi` by source reading. The two differential families answer different questions: `BL` and `PB` compare the new oracle against new generated C++; `tests/test_runtime_execution.py` compares the legacy oracle against the C++ runtime harness for the 28 operations the legacy oracle implements, and separately the new oracle against the C++ runtime for the ordinary, likely, alignment and `LD`/`SD` cases. Agreement in one family does not prove agreement with the other, and neither proves hardware behavior.
 
-### 5.5 The 141/142 decoder count is broader than the 36-row Level B set
+### 5.5 The 141/142 decoder count is broader than the 42-row Level B set
 
-`tools/rptp/isa.py` declares 142 supported mnemonics at this baseline. One is `NOP`, which is not a catalog entry; the other 141 match catalog entries. Those 141 include all 35 catalog entries in Level B plus 106 Level C entries. Decoder acceptance is not semantics, and the 36-row matrix does not cover the other 106 supported catalog mnemonics. `ISA` exercises their decode/lower paths, but no Level B evidence exists for them. See §6 for the full count reconciliation.
+`tools/rptp/isa.py` declares 142 supported mnemonics at this baseline. One is `NOP`, which is not a catalog entry; the other 141 match catalog entries. Those 141 include all 41 catalog entries in Level B plus 100 Level C entries. Decoder acceptance is not semantics, and the 42-row matrix does not cover the other 100 supported catalog mnemonics. `ISA` exercises their decode/lower paths, but no Level B evidence exists for them. See §6 for the full count reconciliation.
 
 ### 5.6 Test-run asymmetries in this session
 
@@ -270,27 +304,27 @@ These numbers are frequently conflated. They answer different questions, and **n
 |---:|---|---|
 | 224 | Mnemonic entries in `docs/research/r5900-isa.json` | Not verified semantics. Every entry carries `"verified": true` as an undefined bookkeeping marker; see [isa-evidence.md](isa-evidence.md) §1. |
 | 216 | Catalog entries that round-trip through the decoder in `ISA` (Level A) | Encoding-field consistency at sampled values only. Excludes 8 COP2 names that collapse to one opaque placeholder. |
-| 36 | Level B synthetic instructions: 35 catalog entries plus `NOP` | The 36 are the only rows with an approved reference and executable tests. Includes the 8 branch-likely forms. It is not a hardware subset and not a game-compatibility set. |
-| 189 | Catalog entries outside Level B (Level C) | Pending approved reference and/or executable semantic tests. Decoder recognition does not move a row out of Level C. |
-| 141 | Catalog entries whose mnemonic is in the decoder's supported set | Structural decoder acceptance only. Includes 106 Level C entries; it is not a semantics count. |
+| 42 | Level B synthetic instructions: 41 catalog entries plus `NOP` | The 42 are the only rows with an approved reference and executable tests. Includes the 6 ordinary forms and the 8 branch-likely forms. It is not a hardware subset and not a game-compatibility set. |
+| 183 | Catalog entries outside Level B (Level C) | Pending approved reference and/or executable semantic tests. Decoder recognition does not move a row out of Level C. |
+| 141 | Catalog entries whose mnemonic is in the decoder's supported set | Structural decoder acceptance only. Includes 100 Level C entries; it is not a semantics count. |
 | 142 | Supported mnemonics declared by `tools/rptp/isa.py` | 141 catalog matches plus `NOP`. Not a count of tested or approved instructions. |
-| 36 | Instructions executed by the C++ runtime harness | The full Level B set, including the 8 likely forms and `NOP`. It excludes all Level C instructions and is not the product runtime's final scope. |
-| 28 | Instructions supported by the legacy pipeline and the Gate 0 spike | Exactly the non-likely Level B subset. It excludes the 8 likely forms and all Level C instructions, and it has no `LW`/`SW` alignment check. |
+| 42 | Instructions executed by the C++ runtime harness | The full Level B set, including the 6 ordinary forms, the 8 likely forms and `NOP`. It excludes all Level C instructions and is not the product runtime's final scope. |
+| 28 | Instructions supported by the legacy pipeline and the Gate 0 spike | A subset of the 34 non-likely Level B instructions: it excludes the 6 ordinary branch forms, the 8 likely forms and all Level C instructions, and it has no `LW`/`SW` alignment check. |
 | 76.96%-86.30% | Aligned-word decoder-acceptance range across the eight boot images in the refreshed census (2026-10-29, current decoder) | Static words in file-backed `PT_LOAD` ranges, including data, padding and tables. Not runtime coverage and not compatibility. Supersedes the pre-`SUBU` 58.3%-69.2% range. |
 | 81.81% | Downhill Domination in the refreshed census (338,288 / 413,500) | One image, current decoder. Supersedes the 63.03% post-`SUBU` figure. Not a compatibility percentage. |
-| 36/36 | Runtime harness operations that have a decoder/oracle/emitter counterpart | Agreement of two RPTP models, not hardware validation. |
+| 42/42 | Runtime harness operations that have a decoder/oracle/emitter counterpart | Agreement of two RPTP models, not hardware validation. |
 
 The catalog arithmetic is internally consistent and can be checked without rerunning anything:
 
-- `224 = 35 Level B catalog entries + 189 Level C catalog entries`.
-- `216 = 35 Level B catalog entries + 181 Level C entries that round-trip` (the other 8 Level C entries are the COP2 names outside Level A).
-- `189 = 106 Level C entries with decoder-supported mnemonics + 83 Level C entries without`.
-- `141 = 35 Level B catalog entries + 106 Level C entries`.
+- `224 = 41 Level B catalog entries + 183 Level C catalog entries`.
+- `216 = 41 Level B catalog entries + 175 Level C entries that round-trip` (the other 8 Level C entries are the COP2 names outside Level A).
+- `183 = 100 Level C entries with decoder-supported mnemonics + 83 Level C entries without`.
+- `141 = 41 Level B catalog entries + 100 Level C entries`.
 - `142 = 141 + NOP`.
 
-So a row can be decoder-supported and still be Level C; a row can be Level A and still be Level C; and a row can be in the 36 and still be absent from the legacy pipeline. Conversely, neither the 36-op runtime harness nor the 28-op legacy pipeline is a small version of the 224-entry catalog: the former is exactly Level B, and the latter is exactly its non-likely subset.
+So a row can be decoder-supported and still be Level C; a row can be Level A and still be Level C; and a row can be in the 42 and still be absent from the legacy pipeline. Conversely, neither the 42-op runtime harness nor the 28-op legacy pipeline is a small version of the 224-entry catalog: the former is exactly Level B, and the latter is a 28-operation subset of the 34 non-likely Level B instructions.
 
-`Terverifikasi`: the 224/216/8 and 141/83 split is pinned by `tests/test_isa_encodings.py`; the 36-row Level B mapping is pinned by `tests/test_catalog_provenance.py` against [INSTRUCTION_CATALOG.md](../INSTRUCTION_CATALOG.md). `Terverifikasi` as recorded values: the 76.96%-86.30% range and its input hashes are in [BOOT_CENSUS.md](../BOOT_CENSUS.md), and the decoder identity recorded there matches the current `tools/rptp/isa.py`. `Belum diverifikasi`: the census was not rerun for this note.
+`Terverifikasi`: the 224/216/8 and 141/83 split is pinned by `tests/test_isa_encodings.py`; the 42-row Level B mapping is pinned by `tests/test_catalog_provenance.py` against [INSTRUCTION_CATALOG.md](../INSTRUCTION_CATALOG.md). `Terverifikasi` as recorded values: the 76.96%-86.30% range and its input hashes are in [BOOT_CENSUS.md](../BOOT_CENSUS.md), and the decoder identity recorded there matches the current `tools/rptp/isa.py`. `Belum diverifikasi`: the census was not rerun for this note.
 
 ## 7. Prioritized next-instruction recommendation (planning only)
 
@@ -317,7 +351,7 @@ The pre-refresh table also recorded `opcode_0x1e`, `opcode_0x37` and `opcode_0x3
 | Candidate | Frequency evidence | Semantic risk | Implementation cost | Assessment |
 |---|---|---|---|---|
 | COP1 transfer-only subset: `LWC1`, `SWC1`, and `MFC1`/`MTC1` if a sub-breakdown confirms them | `opcode_0x31`/`0x39` are top-three in three images; `opcode_0x11` is top-three in all eight | Medium: requires a COP1 register file and a reference that covers the transfer semantics; no FPU arithmetic or paired-single needed | Medium: 32-bit register transfers plus load/store addressing, bounded to COP1 data movement | Best next candidate, but gated on reference approval and a census sub-breakdown. |
-| Non-likely branch family: `BLEZ`, `BGTZ`, `BLTZ`, `BGEZ`, `BLTZAL`, `BGEZAL` | Not in the recorded top-three lists; frequency unknown | Low: the ordinary branch contract is already implemented in `tools/rptp` and the legacy 28-op path | Low-medium: promote evidence, add runtime support with the existing delay-slot model | Best fallback if COP1 reference approval is unavailable. It closes a path gap rather than chasing a large opaque family. |
+| Non-likely branch family: `BLEZ`, `BGTZ`, `BLTZ`, `BGEZ`, `BLTZAL`, `BGEZAL` | Not in the recorded top-three lists; frequency unknown | Low: the ordinary branch contract is implemented in `tools/rptp` and the C++ harness; the legacy pipeline still rejects it | Low: promoted to Level B and runtime coverage on 2026-10-30; no remaining implementation work | Executed fallback after COP1 reference approval was unavailable. It closed the runtime gap but did not change the legacy pipeline. |
 | Full COP1 arithmetic or paired-single | `opcode_0x11` is the largest label in most images | High: rounding, NaN, flags and PS2-specific paired-single behavior are not in the approved evidence base | High | Do not start from this note. |
 | COP2/VU macro mode | `opcode_0x12` is top-three in two images; `opcode_0x3e` (`SQC2`) is top-three in one | High: no approved VU/COP2 semantics | Very high | Blocked pending an owner reference decision. |
 | `LQ`/`SQ` and 128-bit GPR runtime state | `LQ`/`SQ` are decoder-supported, so the refreshed table no longer lists `opcode_0x1e`; the pre-refresh counts are not current frequency evidence | High: 128-bit register file changes the runtime model; no approved reference and no Level B evidence; the runtime harness does not execute them | High | Lower priority than COP1 transfers; frequency must be re-established from a supported-label histogram. |
@@ -331,7 +365,7 @@ The pre-refresh table also recorded `opcode_0x1e`, `opcode_0x37` and `opcode_0x3
 3. decide whether the COP1 register file is 32-bit or wider and how it coexists with the 64-bit runtime model;
 4. define fail-closed behavior for every unsupported COP1 sub-encoding.
 
-**Fallback:** if step 1 cannot be met, promote the six non-likely branch forms to a tested evidence row and close the runtime gap; their semantics are already implemented in `tools/rptp` and are closer to the existing branch contract. This is a lower-frequency, lower-risk increment.
+**Fallback executed (2026-10-30):** the six non-likely branch forms were promoted to rows 37-42 at Level B, and the native harness and cross-path suite now cover them. Their semantics were already implemented in `tools/rptp`; the increment added the runtime, tests and evidence. The legacy pipeline still rejects them. The COP1 transfer-only recommendation remains primary and unstarted.
 
 **Do not** use the historical `opcode_0x37`/`0x3f` counts as a reason to revisit `LD`/`SD`; the refreshed census no longer lists them as unsupported because those instructions are decoder-supported. **Do not** treat the 76.96%-86.30% decoder-acceptance range as a target or a compatibility score.
 
@@ -351,13 +385,20 @@ python -m unittest tests.test_doc_freshness tests.test_doc_budget tests.test_lic
 python tools/check_forbidden_artifacts.py --root .
 ```
 
-Observed in this session:
+Observed in the original matrix session:
 
 - Focused evidence set: **50 tests, OK, 16 skipped**. All 16 skips were `tests.test_runtime_execution` because `RPTP_RUN_BINARY` was unset.
 - Supporting contracts: **59 tests, OK, 3 skipped**. The 3 skips were the native cases in `tests.test_ir_lowering` because `cl`/`c++` was not discoverable through that module's helper.
 - Per-instruction batch: **156 tests, OK, 26 skipped** native cases. Python/oracle and lowering-source assertions ran.
 - `tests.test_instruction_branch_likely`: **12 tests, OK**, including the MSVC native differential.
 - Artifact guard: **passed**.
+
+Observed in the ordinary-branch increment session (2026-10-30):
+
+- `tests.test_instruction_branch_plain`: **12 tests, OK**, including the native differential and signed-low-64-bit cases.
+- `tests.test_runtime_execution` with `RPTP_RUN_BINARY`: **26 tests, OK**, including the signed-low-64-bit cases.
+- `tests.test_cross_path_equivalence` with `RPTP_RUN_BINARY`: **4 tests, OK**, all three legs active.
+- The full suite, CTest, artifact guard and documentation checks are recorded in [VERIFICATION_LOG.md](../VERIFICATION_LOG.md).
 
 To run the runtime-harness evidence that was not run here:
 
@@ -379,12 +420,12 @@ The census is deliberately not rerun here; [BOOT_CENSUS.md](../BOOT_CENSUS.md) i
 
 ## 9. What remains unverified
 
-- **C++ runtime execution of the 36 Level B instructions:** source-read at the revision baseline; `RT†` tests and `runtime/tests/runtime_tests.cpp` were not executed in the original session.
+- **C++ runtime execution of the 42 Level B instructions:** source-read at the revision baseline; `RT†` tests and `runtime/tests/runtime_tests.cpp` were not executed in the original session. The ordinary-branch increment session did execute `tests/test_runtime_execution.py` (26 tests after review hardening) against a built `rptp-run`; the CTest result is recorded in [VERIFICATION_LOG.md](../VERIFICATION_LOG.md).
 - **Legacy native differentials:** 26 per-instruction native cases and 3 `IRL` native cases skipped for compiler-discovery reasons; their Python/oracle assertions passed.
-- **New-path Level B differentials other than branch-likely:** no new-path native differential was run for the 28 non-likely rows. `ISA` proves decode and static lowering, not execution.
+- **New-path Level B differentials other than ordinary and likely branches:** no new-path native differential was run for the remaining 28 non-likely rows. `ISA` proves decode and static lowering, not execution.
 - **Branch-likely in the runtime harness:** implemented since PR #41 with four likely test functions, but those tests are source-read only in this note; `BL`'s native differential still uses generated C++, not `runtime/src/execution.cpp`.
 - **`LW`/`SW` alignment agreement:** runtime and oracle agreement is asserted in `tests/test_runtime_execution.py`, but that module was not executed here; the legacy paths still lack the check and no cross-path test asserts the legacy divergence. The same untested-divergence caveat applies to the KSEG translation difference and the 128-bit vs 64-bit register model.
-- **Cross-path likely branches and unaligned faults:** `tests/test_cross_path_equivalence.py` covers arithmetic, logic, shifts, `LW`/`SW`, `LD`/`SD` and taken/not-taken ordinary branches, but not the eight likely forms or an unaligned-fault case.
+- **Cross-path likely branches and unaligned faults:** `tests/test_cross_path_equivalence.py` covers arithmetic, logic, shifts, `LW`/`SW`, `LD`/`SD` and the six ordinary branch forms, but not the eight likely forms or an unaligned-fault case. The ordinary-branch increment added the six ordinary forms to the shared program; the likely forms remain uncovered by this suite.
 - **Hardware behavior:** no hardware measurement and no manual use; no claim that any model matches R5900 silicon.
 - **Census measurement:** the eight-image table was refreshed on 2026-10-29 with the current decoder (142 supported mnemonics, set SHA-256 `ddc255931fb49ecb0c8bc778037344e2e05ac32d8898fd77586db3162c904e13`), so the 76.96%-86.30% range is current recorded evidence rather than a pre-`SUBU` figure. It measures decoder acceptance over data-inclusive `PT_LOAD` words, not function-level or runtime coverage; this note did not rerun it, and only each image's top three labels are recorded.
 - **Gate, provenance and compatibility:** no Gate disposition, no clean-room certification and no compatibility claim. Gate 3 remains not passed; Gate 2 remains open and read-only.
@@ -396,7 +437,7 @@ Internal evidence:
 - [INSTRUCTION_CATALOG.md](../INSTRUCTION_CATALOG.md) — per-instruction synthetic model and limits.
 - [isa-evidence.md](isa-evidence.md) — Level A/B/C definitions, counts and reference-scope observations.
 - [IR_CFG.md](../IR_CFG.md) — IR, CFG, branch-likely contract and legacy pipeline boundary.
-- [RUNTIME.md](../RUNTIME.md) — 36-op runtime harness contract, alignment policy and fail-closed errors.
+- [RUNTIME.md](../RUNTIME.md) — 42-op runtime harness contract, alignment policy and fail-closed errors.
 - [REFERENCES.md](../REFERENCES.md) — approved `RPTP-REF-*` rows and permitted-use limits.
 - [PROVENANCE_PLAN.md](../PROVENANCE_PLAN.md) — per-increment evidence obligations.
 - [CLEAN_ROOM_AUDIT.md](../CLEAN_ROOM_AUDIT.md) — component-level provenance status.

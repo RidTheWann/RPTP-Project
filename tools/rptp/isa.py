@@ -129,8 +129,8 @@ SPECIAL: dict[int, OpSpec] = {
 }
 
 REGIMM: dict[int, OpSpec] = {
-    0x00: _op("bltz", "rs,offset", "regimm", delay_slot=True, verification=GENERIC),
-    0x01: _op("bgez", "rs,offset", "regimm", delay_slot=True, verification=GENERIC),
+    0x00: _op("bltz", "rs,offset", "regimm", delay_slot=True, verification=MANUAL),
+    0x01: _op("bgez", "rs,offset", "regimm", delay_slot=True, verification=MANUAL),
     0x02: _op("bltzl", "rs,offset", "regimm", delay_slot=True, verification=MANUAL,
               note="Delay slot is nullified when the branch is not taken."),
     0x03: _op("bgezl", "rs,offset", "regimm", delay_slot=True, verification=MANUAL,
@@ -141,10 +141,10 @@ REGIMM: dict[int, OpSpec] = {
     0x0B: _op("tltiu", "rs,imm", "regimm", supported=False, verification=GENERIC),
     0x0C: _op("teqi", "rs,imm", "regimm", supported=False, verification=GENERIC),
     0x0E: _op("tnei", "rs,imm", "regimm", supported=False, verification=GENERIC),
-    0x10: _op("bltzal", "rs,offset", "regimm", delay_slot=True, verification=GENERIC,
-              note="Writes GPR 31 unconditionally."),
-    0x11: _op("bgezal", "rs,offset", "regimm", delay_slot=True, verification=GENERIC,
-              note="Writes GPR 31 unconditionally."),
+    0x10: _op("bltzal", "rs,offset", "regimm", delay_slot=True, verification=MANUAL,
+              note="Writes GPR 31 unconditionally; GPR 31 must not be used as rs."),
+    0x11: _op("bgezal", "rs,offset", "regimm", delay_slot=True, verification=MANUAL,
+              note="Writes GPR 31 unconditionally; GPR 31 must not be used as rs."),
     0x12: _op("bltzall", "rs,offset", "regimm", delay_slot=True, verification=MANUAL,
               note="Writes GPR 31 unconditionally; delay slot is nullified when not taken. "
                    "GPR 31 must not be used as rs."),
@@ -160,8 +160,8 @@ PRIMARY: dict[int, OpSpec] = {
     0x03: _op("jal", "target", "jump", delay_slot=True, verification=GENERIC),
     0x04: _op("beq", "rs,rt,offset", "branch", delay_slot=True, verification=GENERIC),
     0x05: _op("bne", "rs,rt,offset", "branch", delay_slot=True, verification=GENERIC),
-    0x06: _op("blez", "rs,offset", "branch", delay_slot=True, verification=GENERIC),
-    0x07: _op("bgtz", "rs,offset", "branch", delay_slot=True, verification=GENERIC),
+    0x06: _op("blez", "rs,offset", "branch", delay_slot=True, verification=MANUAL),
+    0x07: _op("bgtz", "rs,offset", "branch", delay_slot=True, verification=MANUAL),
     0x08: _op("addi", "rt,rs,imm", "immediate", verification=GENERIC,
               note="Signed-overflow trap; trap delivery is not implemented yet."),
     0x09: _op("addiu", "rt,rs,imm", "immediate", verification=GENERIC),
@@ -391,7 +391,7 @@ BRANCH_MNEMONICS = {
 LIKELY_MNEMONICS = {
     "beql", "bnel", "blezl", "bgtzl", "bltzl", "bgezl", "bltzall", "bgezall",
 }
-LINK_LIKELY_MNEMONICS = {"bltzall", "bgezall"}
+LINK_MNEMONICS = {"bltzal", "bgezal", "bltzall", "bgezall"}
 JUMP_MNEMONICS = {"j", "jal"}
 INDIRECT_MNEMONICS = {"jr", "jalr"}
 HALT_MNEMONICS = {"syscall", "break", "eret"}
@@ -607,7 +607,7 @@ def decode_instruction(word: int, pc: int = 0, *, strict: bool = False) -> Instr
             return _unknown(pc, word, f"Unsupported REGIMM rt 0x{rt:02X}.")
         valid = True
         note = spec.note
-        if spec.mnemonic in LINK_LIKELY_MNEMONICS and rs == 31:
+        if spec.mnemonic in LINK_MNEMONICS and rs == 31:
             valid = False
             note = ("GPR 31 must not be used as rs; the manual defines the result "
                     "as undefined.")

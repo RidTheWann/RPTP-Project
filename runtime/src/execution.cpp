@@ -25,12 +25,18 @@ constexpr std::uint32_t kOpcodeSd = 0x3FU;
 constexpr std::uint32_t kOpcodeRegimm = 0x01U;
 constexpr std::uint32_t kOpcodeBeq = 0x04U;
 constexpr std::uint32_t kOpcodeBne = 0x05U;
+constexpr std::uint32_t kOpcodeBlez = 0x06U;
+constexpr std::uint32_t kOpcodeBgtz = 0x07U;
 constexpr std::uint32_t kOpcodeBeql = 0x14U;
 constexpr std::uint32_t kOpcodeBnel = 0x15U;
 constexpr std::uint32_t kOpcodeBlezl = 0x16U;
 constexpr std::uint32_t kOpcodeBgtzl = 0x17U;
 constexpr std::uint32_t kOpcodeJ = 0x02U;
 constexpr std::uint32_t kOpcodeJal = 0x03U;
+constexpr std::uint32_t kRegimmBltz = 0x00U;
+constexpr std::uint32_t kRegimmBgez = 0x01U;
+constexpr std::uint32_t kRegimmBltzal = 0x10U;
+constexpr std::uint32_t kRegimmBgezal = 0x11U;
 constexpr std::uint32_t kRegimmBltzl = 0x02U;
 constexpr std::uint32_t kRegimmBgezl = 0x03U;
 constexpr std::uint32_t kRegimmBltzall = 0x12U;
@@ -71,6 +77,12 @@ enum class Op {
   Sw,
   Ld,
   Sd,
+  Blez,
+  Bgtz,
+  Bltz,
+  Bgez,
+  Bltzal,
+  Bgezal,
   Beq,
   Bne,
   Beql,
@@ -216,6 +228,12 @@ bool decode(std::uint32_t word, std::uint32_t pc, Instruction& instruction) {
     case kOpcodeBne:
       instruction = {Op::Bne, rs, rt, 0, 0, sign_immediate, branch_target(pc, sign_immediate)};
       return true;
+    case kOpcodeBlez:
+      instruction = {Op::Blez, rs, 0, 0, 0, sign_immediate, branch_target(pc, sign_immediate)};
+      return true;
+    case kOpcodeBgtz:
+      instruction = {Op::Bgtz, rs, 0, 0, 0, sign_immediate, branch_target(pc, sign_immediate)};
+      return true;
     case kOpcodeBeql:
       instruction = {Op::Beql, rs, rt, 0, 0, sign_immediate, branch_target(pc, sign_immediate)};
       return true;
@@ -231,6 +249,24 @@ bool decode(std::uint32_t word, std::uint32_t pc, Instruction& instruction) {
     case kOpcodeRegimm: {
       Op op = Op::Nop;
       switch (rt) {
+        case kRegimmBltz:
+          op = Op::Bltz;
+          break;
+        case kRegimmBgez:
+          op = Op::Bgez;
+          break;
+        case kRegimmBltzal:
+          if (rs == 31) {
+            return false;
+          }
+          op = Op::Bltzal;
+          break;
+        case kRegimmBgezal:
+          if (rs == 31) {
+            return false;
+          }
+          op = Op::Bgezal;
+          break;
         case kRegimmBltzl:
           op = Op::Bltzl;
           break;
@@ -309,9 +345,11 @@ bool decode(std::uint32_t word, std::uint32_t pc, Instruction& instruction) {
 }
 
 bool is_control(Op op) {
-  return op == Op::Beq || op == Op::Bne || op == Op::Beql || op == Op::Bnel || op == Op::Blezl ||
-         op == Op::Bgtzl || op == Op::Bltzl || op == Op::Bgezl || op == Op::Bltzall ||
-         op == Op::Bgezall || op == Op::J || op == Op::Jal || op == Op::Jr;
+  return op == Op::Blez || op == Op::Bgtz || op == Op::Bltz || op == Op::Bgez ||
+         op == Op::Bltzal || op == Op::Bgezal || op == Op::Beq || op == Op::Bne ||
+         op == Op::Beql || op == Op::Bnel || op == Op::Blezl || op == Op::Bgtzl ||
+         op == Op::Bltzl || op == Op::Bgezl || op == Op::Bltzall || op == Op::Bgezall ||
+         op == Op::J || op == Op::Jal || op == Op::Jr;
 }
 
 }  // namespace
@@ -582,6 +620,36 @@ ExecOutcome execute_loaded(const LoadReport& report, GuestMemory& memory, const 
         }
         writes[address] = static_cast<std::uint32_t>(value);
         writes[address + 4U] = static_cast<std::uint32_t>(value >> 32U);
+        break;
+      }
+      case Op::Blez: {
+        const std::uint64_t value = registers[instruction.rs];
+        const bool taken = value == 0 || (value & 0x8000000000000000ULL) != 0;
+        new_target = taken ? instruction.target : (pc + 8U) & 0xFFFFFFFFU;
+        break;
+      }
+      case Op::Bgtz: {
+        const std::uint64_t value = registers[instruction.rs];
+        const bool taken = value != 0 && (value & 0x8000000000000000ULL) == 0;
+        new_target = taken ? instruction.target : (pc + 8U) & 0xFFFFFFFFU;
+        break;
+      }
+      case Op::Bltz:
+      case Op::Bltzal: {
+        if (instruction.op == Op::Bltzal) {
+          registers[31] = (pc + 8U) & 0xFFFFFFFFU;
+        }
+        const bool taken = (registers[instruction.rs] & 0x8000000000000000ULL) != 0;
+        new_target = taken ? instruction.target : (pc + 8U) & 0xFFFFFFFFU;
+        break;
+      }
+      case Op::Bgez:
+      case Op::Bgezal: {
+        if (instruction.op == Op::Bgezal) {
+          registers[31] = (pc + 8U) & 0xFFFFFFFFU;
+        }
+        const bool taken = (registers[instruction.rs] & 0x8000000000000000ULL) == 0;
+        new_target = taken ? instruction.target : (pc + 8U) & 0xFFFFFFFFU;
         break;
       }
       case Op::Beq:

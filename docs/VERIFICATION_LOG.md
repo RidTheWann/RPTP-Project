@@ -1106,3 +1106,38 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-msvc.ps1
 - Contents: PR #47 changed only [VERIFICATION_LOG.md](VERIFICATION_LOG.md) and the status pointers; PR #48 changed only [research/instruction-semantics-matrix.md](research/instruction-semantics-matrix.md); PR #49 added [research/disc-assets-plan.md](research/disc-assets-plan.md) and one mapping line in [docs/README.md](README.md). None touched code, runtime, build files, fixtures or dependencies.
 - This entry makes PR #49 the latest merge recorded here; STATE and HANDOFF now cite `be8269e` and the PR range through #49. The follow-up promised by the previous entry is therefore complete.
 - Limitation: the merge run verifies the tree at `be8269e`, not later commits. The separate synthetic paths, the older pipelines, the stale-row history in [BOOT_CENSUS.md](BOOT_CENSUS.md) and the remaining semantic-evidence gap stay open.
+
+## 2026-10-30 — merge record for PR #50
+
+- Scope: documentation-only merge evidence. No code, runtime, build, fixture or dependency change; no Gate, provenance or compatibility status changed.
+- PR #50 `docs: synchronize current status through PR #49` merged 2026-10-30T04:48:04+07:00 (2026-10-29T21:48:04Z) as `a4b18bf3ec52464789d42332824afb986f6317b4`, head `7075048448cc18c76ada2e36620fd046b18b2b43`. Exact-head `RPTP CI` runs `40960386025` (pull request) and `40960369874` (push) succeeded on `7075048`; merge run `40960801533` (`RPTP CI`) and pages run `40960799512` succeeded on `a4b18bf`.
+- This entry makes PR #50 the latest merge recorded here; STATE and HANDOFF now cite `a4b18bf` and the PR range through #50.
+- Limitation: the merge run verifies the tree at `a4b18bf`, not later commits. PR #51 (the ordinary-branch increment) is open at this snapshot; its merge evidence will be recorded in a follow-up.
+
+## 2026-10-30 — ordinary-branch increment local evidence (PR #51)
+
+- Scope: synthetic runtime and analysis increment. Adds `BLEZ`, `BGTZ`, `BLTZ`, `BGEZ`, `BLTZAL` and `BGEZAL` to `runtime/src/execution.cpp`, `runtime/tests/runtime_tests.cpp`, `tests/test_runtime_execution.py` and `tests/test_cross_path_equivalence.py`; adds `tests/test_instruction_branch_plain.py`; promotes the six forms to Level B (`RPTP-REF-015`, pages 76, 77, 81, 83, 85 and 86) in the catalog, reference record, ISA evidence, runtime contract and semantics matrix. No product recompiler, kernel, boot or compatibility behavior; Gate 2 remains open and read-only and Gate 3 remains not passed.
+- Branch `automation/827e7b9005d246449dc834d517d6f60d`, code commit `50dd4e74021ac8536cd416827ee72533fec419ea`, PR #51 (open at this snapshot; not counted as merged).
+- Local commands and results (Windows x64/MSVC, 2026-10-30):
+  - `python tools/rptp_doctor.py` → Overall status: PASS, with MSVC `cl.exe` 14.51.36231.
+  - `python tools/check_forbidden_artifacts.py --root .` → passed.
+  - `python -m compileall -q tools tests` → OK.
+  - `cmake --preset windows-msvc`, `cmake --build --preset windows-msvc` → succeeded; `ctest --test-dir build/cmake-msvc --output-on-failure` → 7/7 tests passed (`artifact_guard`, `python_unit_tests`, `gate0_differential_spike`, `runtime_loader_tests`, `runtime_loader_cli`, `runtime_execution_cli`, `cross_path_equivalence`).
+  - `python -m unittest discover -s tests -v` with `RPTP_LOAD_BINARY` and `RPTP_RUN_BINARY` set to the built tools → 516 tests, OK, 0 skipped, 1 expected failure.
+  - `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-msvc.ps1` → artifact guard, Gate 0 spike and the full suite passed; 516 tests, OK, 0 skipped, 1 expected failure.
+  - Focused modules: `tests.test_instruction_branch_plain` 10 tests OK; `tests.test_runtime_execution` 25 tests OK; `tests.test_cross_path_equivalence` 4 tests OK.
+  - `git diff --check` → no whitespace errors; the only output was Git's LF/CRLF normalization warnings for generated assets.
+- Limitations: local results are not hosted CI. The exact-head Windows x64/MSVC and Linux/GCC jobs and the merge-commit run are recorded only after PR #51 is pushed and merged. The increment is synthetic-only; no real ISO was needed, the local ISO corpus was not accessed, and no ISO, BIOS, game code or extracted asset was uploaded, committed or executed.
+
+## 2026-10-30 — ordinary-branch review hardening (PR #51)
+
+- Scope: review hardening for PR #51 only. Adds signed-low-64-bit condition cases (`0x00000000FFFFFFFF` positive and `0xFFFFFFFF00000001` negative) to `tests/test_instruction_branch_plain.py` and `tests/test_runtime_execution.py`, covering the Python oracle, generated C++ and the native `rptp-run` harness, and synchronizes stale PR pointers and test counts in `README.md`, [CLEAN_ROOM_AUDIT.md](CLEAN_ROOM_AUDIT.md), [COMPATIBILITY.md](COMPATIBILITY.md), [research/instruction-semantics-matrix.md](research/instruction-semantics-matrix.md) and [research/isa-evidence.md](research/isa-evidence.md). No runtime, decoder, oracle, emitter or build behavior changed; no Gate, provenance or compatibility status changed.
+- Commit `854ae42a7b544fef0f0bed4dea197b3f93ddb6f0` on branch `automation/827e7b9005d246449dc834d517d6f60d`; PR #51 remains open at this snapshot.
+- Local commands and results in the x64 MSVC environment (`VsDevCmd.bat -arch=x64 -host_arch=x64`, MSVC 14.51.36231, 2026-10-30):
+  - `python tools/rptp_doctor.py` → Overall status: PASS.
+  - `cmake --preset windows-msvc`, `cmake --build --preset windows-msvc` → succeeded; `ctest --test-dir build/cmake-msvc --output-on-failure` → 7/7 tests passed.
+  - `python -m unittest discover -s tests` with `RPTP_LOAD_BINARY` and `RPTP_RUN_BINARY` set to the built tools → 519 tests, OK, 0 skipped, 1 expected failure.
+  - Focused modules under the same environment: `tests.test_instruction_branch_plain` 12 tests, `tests.test_runtime_execution` 26 tests and `tests.test_cross_path_equivalence` 4 tests → 42 tests, OK, no skips.
+  - `python -m unittest tests.test_doc_budget tests.test_doc_freshness tests.test_progress_consistency tests.test_license_headers tests.test_build_contract` → 19 tests, OK; `python tools/check_forbidden_artifacts.py --root .` passed; `git diff --check` reported no whitespace errors.
+- These results supersede the earlier PR #51 entry counts (516 full-suite tests, 10 plain-branch tests, 25 runtime tests); that entry is kept unchanged because this log is append-only.
+- Limitations: local results are not hosted CI. No real ISO was needed or accessed; no ISO, BIOS, game code or extracted asset was uploaded, committed or executed.

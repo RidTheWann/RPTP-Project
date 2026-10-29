@@ -856,6 +856,119 @@ void test_execution_likely_pc_masking() {
   }
 }
 
+enum class PlainKind {
+  Lez,
+  Gtz,
+  Ltz,
+  Gez,
+};
+
+struct PlainFormSpec {
+  const char* name;
+  std::uint32_t opcode;
+  std::uint32_t rt;
+  PlainKind kind;
+  bool link;
+};
+
+void test_execution_plain_branch_forms() {
+  const PlainFormSpec forms[] = {
+      {"blez", 0x06U, 0U, PlainKind::Lez, false},
+      {"bgtz", 0x07U, 0U, PlainKind::Gtz, false},
+      {"bltz", 0x01U, 0x00U, PlainKind::Ltz, false},
+      {"bgez", 0x01U, 0x01U, PlainKind::Gez, false},
+      {"bltzal", 0x01U, 0x10U, PlainKind::Ltz, true},
+      {"bgezal", 0x01U, 0x11U, PlainKind::Gez, true},
+  };
+  const bool outcomes[] = {false, true};
+  for (const PlainFormSpec& form : forms) {
+    for (const bool taken : outcomes) {
+      const auto expect = [&form, taken](bool condition, const char* what) {
+        if (!condition) {
+          std::cerr << "FAIL plain " << form.name << (taken ? " taken" : " not-taken") << ": "
+                    << what << '\n';
+          ++failures;
+        }
+      };
+      std::int32_t t0 = 0;
+      switch (form.kind) {
+        case PlainKind::Lez:
+          t0 = taken ? 0 : 1;
+          break;
+        case PlainKind::Gtz:
+          t0 = taken ? 1 : 0;
+          break;
+        case PlainKind::Ltz:
+          t0 = taken ? -1 : 0;
+          break;
+        case PlainKind::Gez:
+          t0 = taken ? 0 : -1;
+          break;
+      }
+      const std::vector<std::uint32_t> code{
+          encode_i(0x09, 0, 8, t0),
+          encode_i(form.opcode, 8, form.rt, 2),
+          encode_i(0x09, 0, 4, 0x11),
+          encode_i(0x09, 0, 5, 0x22),
+          encode_i(0x09, 0, 6, 0x33),
+      };
+      ExecOptions options;
+      options.trace = true;
+      const ExecOutcome outcome = run_code(code, options);
+      if (!outcome.ok()) {
+        std::cerr << "FAIL plain " << form.name << (taken ? " taken" : " not-taken")
+                  << ": execution failed with " << to_string(outcome.error->code) << '\n';
+        ++failures;
+        continue;
+      }
+      expect(outcome.result.steps == (taken ? 4U : 5U), "step count");
+      expect(outcome.result.final_pc == kExecutableBase + 20U, "final pc");
+      std::vector<std::uint32_t> expected_trace{kExecutableBase, kExecutableBase + 4U,
+                                                kExecutableBase + 8U};
+      if (!taken) {
+        expected_trace.push_back(kExecutableBase + 12U);
+      }
+      expected_trace.push_back(kExecutableBase + 16U);
+      expect(outcome.result.trace == expected_trace, "trace");
+      expect(outcome.result.registers[4] == 0x11U, "delay-slot register effect");
+      expect(outcome.result.registers[5] == (taken ? 0U : 0x22U), "fall-through effect");
+      expect(outcome.result.registers[6] == 0x33U, "target effect");
+      expect(outcome.result.registers[0] == 0U, "zero register");
+      if (form.link) {
+        expect(outcome.result.registers[31] == kExecutableBase + 12U, "link address");
+      } else {
+        expect(outcome.result.registers[31] == 0U, "unexpected link");
+      }
+    }
+  }
+}
+
+void test_execution_plain_branch_failures() {
+  ExecOptions traced;
+  traced.trace = true;
+  expect_exec_error(run_code({encode_i(0x01, 31, 0x10, 1), encode_r(0, 0, 0, 0, 0)}),
+                    ExecErrorCode::UnsupportedInstruction, "bltzal with rs=31");
+  expect_exec_error(run_code({encode_i(0x01, 31, 0x11, 1), encode_r(0, 0, 0, 0, 0)}),
+                    ExecErrorCode::UnsupportedInstruction, "bgezal with rs=31");
+  expect_exec_error(run_code({encode_i(0x06, 8, 0, 1), encode_j(0x02, kExecutableBase)}),
+                    ExecErrorCode::DelaySlotControl, "control in a plain-branch delay slot");
+
+  const ExecOutcome rs31_non_link = run_code(
+      {
+          encode_i(0x06, 31, 0, 2),     // 0x00 blez ra, 0x0c (taken; ra=0)
+          encode_i(0x09, 0, 4, 0x11),   // 0x04 addiu a0, zero, 0x11 (delay slot)
+          encode_i(0x09, 0, 5, 0x22),   // 0x08 addiu a1, zero, 0x22 (skipped)
+          encode_r(0, 0, 0, 0, 0),      // 0x0c nop
+      },
+      traced);
+  CHECK(rs31_non_link.ok());
+  if (rs31_non_link.ok()) {
+    CHECK(rs31_non_link.result.registers[4] == 0x11U);
+    CHECK(rs31_non_link.result.registers[5] == 0U);
+    CHECK(rs31_non_link.result.registers[31] == 0U);
+  }
+}
+
 void test_execution_extended_subset() {
   const std::vector<std::uint32_t> code{
       encode_r(0, 0, 31, 0, 0x21),      // 0x00 addu ra, zero, zero
@@ -1124,6 +1237,8 @@ int main() {
   test_execution_likely_combined_program();
   test_execution_likely_nullification_and_failures();
   test_execution_likely_pc_masking();
+  test_execution_plain_branch_forms();
+  test_execution_plain_branch_failures();
   test_execution_extended_subset();
   test_execution_doubleword_memory();
   test_execution_word_memory_alignment();

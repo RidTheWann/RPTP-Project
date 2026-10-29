@@ -16,7 +16,9 @@ The program deliberately avoids ``$ra`` control flow so that all three paths
 start from the same observable state, uses only the instruction intersection of
 the three models, and ends with a jump outside every loaded segment.  It covers
 arithmetic, logic, shifts, LW/SW, a signed/unsigned 64-bit boundary loaded with
-LD and taken/not-taken branches whose delay slots change live registers.
+LD, taken/not-taken BEQ/BNE branches, and the six non-likely branch forms whose
+delay slots always execute; BLTZAL/BGEZAL additionally exercise the
+unconditional ``$ra = PC + 8`` link write.
 """
 from __future__ import annotations
 
@@ -70,7 +72,7 @@ def build_cross_path_image(words: list[int]) -> bytes:
     )
 
 
-def shared_words() -> list[int]:
+def shared_program() -> tuple[list[int], dict[str, int]]:
     asm = fixtures.Assembler()
     asm.addu(fixtures.RA, fixtures.ZERO, fixtures.ZERO)      # normalize $ra across paths
     asm.addiu(fixtures.T0, fixtures.ZERO, DATA_BASE)          # data base
@@ -131,9 +133,52 @@ def shared_words() -> list[int]:
     asm.sw(fixtures.T4, 16, fixtures.T0)                      # 55 at 0x2010
     asm.lw(fixtures.T6, 16, fixtures.T0)                      # read it back
 
+    asm.addiu(fixtures.S0, fixtures.ZERO, 0)
+    asm.blez(fixtures.S0, "plain_blez")                       # taken
+    asm.addiu(fixtures.S1, fixtures.ZERO, 111)                # delay slot
+    asm.addiu(fixtures.S2, fixtures.ZERO, 222)                # skipped
+    asm.label("plain_blez")
+
+    asm.addiu(fixtures.S3, fixtures.ZERO, 0)
+    asm.bgtz(fixtures.S3, "plain_bgtz_end")                   # not taken
+    asm.addiu(fixtures.S4, fixtures.ZERO, 333)                # delay slot still executes
+    asm.addiu(fixtures.S5, fixtures.ZERO, 444)                # fall-through
+    asm.label("plain_bgtz_end")
+
+    asm.addiu(fixtures.S6, fixtures.ZERO, -1)
+    asm.addiu(fixtures.K0, fixtures.ZERO, 0)
+    asm.bltz(fixtures.S6, "plain_bltz")                       # taken
+    asm.addiu(fixtures.S7, fixtures.ZERO, 555)                # delay slot
+    asm.addiu(fixtures.K0, fixtures.ZERO, 666)                # skipped
+    asm.label("plain_bltz")
+
+    asm.addiu(fixtures.K1, fixtures.ZERO, 0)
+    asm.addiu(fixtures.SP, fixtures.ZERO, 0)
+    asm.bgez(fixtures.K1, "plain_bgez")                       # taken
+    asm.addiu(fixtures.GP, fixtures.ZERO, 777)                # delay slot
+    asm.addiu(fixtures.SP, fixtures.ZERO, 888)                # skipped
+    asm.label("plain_bgez")
+
+    asm.addiu(fixtures.FP, fixtures.ZERO, 0)
+    asm.bltzal(fixtures.FP, "plain_bltzal_end")               # not taken, link written
+    asm.addiu(fixtures.S0, fixtures.ZERO, 999)                # delay slot still executes
+    asm.addiu(fixtures.S1, fixtures.ZERO, 1111)               # fall-through
+    asm.label("plain_bltzal_end")
+
+    asm.addiu(fixtures.S2, fixtures.ZERO, 0)
+    asm.label("plain_bgezal_branch")
+    asm.bgezal(fixtures.S2, "plain_bgezal")                   # taken, link written
+    asm.addiu(fixtures.S3, fixtures.ZERO, 2222)               # delay slot
+    asm.addiu(fixtures.S4, fixtures.ZERO, 3333)               # skipped
+    asm.label("plain_bgezal")
+
     asm.emit(fixtures.encode_j(0x02, EXIT_PC))                # halt outside every segment
     asm.nop()                                                 # delay slot
-    return asm.resolve()
+    return asm.resolve(), dict(asm.labels)
+
+
+def shared_words() -> list[int]:
+    return shared_program()[0]
 
 
 def normalize_oracle(state: dict) -> dict:
@@ -189,7 +234,7 @@ def final_data(normalized: dict) -> bytes:
 class CrossPathEquivalenceTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.words = shared_words()
+        cls.words, cls.labels = shared_program()
         cls.image = build_cross_path_image(cls.words)
         cls.parsed = elf.parse_elf_bytes(cls.image, path="cross_path_shared.elf")
         cls.program = cfg.discover_program(cls.parsed)
@@ -205,7 +250,7 @@ class CrossPathEquivalenceTests(unittest.TestCase):
         self.assertEqual("pc_outside_code", state["reason"])
         self.assertEqual(EXIT_PC, state["pc"])
         registers = state["registers"]
-        self.assertEqual(0, registers[fixtures.RA])
+        self.assertEqual(self.labels["plain_bgezal_branch"] + 8, registers[fixtures.RA])
         self.assertEqual(0xFFFFFFFFAABBCCDD, registers[fixtures.T1])
         self.assertEqual(0x8000000000000000, registers[fixtures.T8])
         self.assertEqual(1, registers[fixtures.T9])
@@ -220,6 +265,22 @@ class CrossPathEquivalenceTests(unittest.TestCase):
         self.assertEqual(55, registers[fixtures.T4])
         self.assertEqual(78, registers[fixtures.T5])
         self.assertEqual(55, registers[fixtures.T6])
+        # Six non-likely branch forms: delay slots always execute, link writes happen
+        # even when the branch is not taken.
+        self.assertEqual(999, registers[fixtures.S0])
+        self.assertEqual(1111, registers[fixtures.S1])
+        self.assertEqual(0, registers[fixtures.S2])
+        self.assertEqual(2222, registers[fixtures.S3])
+        self.assertEqual(333, registers[fixtures.S4])
+        self.assertEqual(444, registers[fixtures.S5])
+        self.assertEqual(0xFFFFFFFFFFFFFFFF, registers[fixtures.S6])
+        self.assertEqual(555, registers[fixtures.S7])
+        self.assertEqual(0, registers[fixtures.K0])
+        self.assertEqual(0, registers[fixtures.K1])
+        self.assertEqual(777, registers[fixtures.GP])
+        self.assertEqual(0, registers[fixtures.SP])
+        self.assertEqual(0, registers[fixtures.FP])
+        self.assertEqual(0, registers[0])
         data = final_data(state)
         self.assertEqual(
             (0xAABBCCDD + 0x11223344) & 0xFFFFFFFF,

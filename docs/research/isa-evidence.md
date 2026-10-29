@@ -1,7 +1,7 @@
 # R5900 ISA catalog evidence levels
 
 - **Status date:** 2026-10-30
-- **Baseline:** `origin/main` after the approved-reference branch-likely increment merged (`fcae099`, 2026-10-30).
+- **Baseline:** `origin/main` after the approved-reference branch-likely increment merged (`fcae099`, 2026-10-30); §3 and §4 were revised by the ordinary-branch evidence increment later on 2026-10-30.
 - **Subject:** [`docs/research/r5900-isa.json`](r5900-isa.json) — schema version 1, 224 instruction entries, four cited sources, `"verified": true` on every entry.
 - **Purpose:** Define honest, auditable evidence levels for the catalog so that its `"verified"` boolean, its `semantics` text and its page citations are not read as semantic proof or as an approved reference.
 - **Scope:** Documentation and evidence classification only. This document adds no instruction semantics, corrects no catalog entry, quotes no text from the cited manuals, changes no JSON data and records no Gate, provenance or legal disposition. Only the owner can approve a reference.
@@ -33,15 +33,15 @@ The catalog mixes several different things: an encoding map (opcode/`funct`/oper
 ### Level B — `test-defined + approved reference`
 
 - **Basis:** the instruction has (1) an approved `RPTP-REF-*` row in [REFERENCES.md](../REFERENCES.md) that supports the encoding/operation used, and (2) executable RPTP tests that would fail if the modeled behavior is wrong — literal-expectation assertions, an oracle differential, an IR-lowering native differential, or the Gate 0 synthetic fixture and its native differential.
-- **Coverage:** the synthetic instruction subset in [INSTRUCTION_CATALOG.md](../INSTRUCTION_CATALOG.md) — 36 instructions at this commit, mapped row by row in §3, including the eight branch-likely forms added by the 2026-10-30 approved-reference increment (`RPTP-REF-015`, §3.1).
+- **Coverage:** the synthetic instruction subset in [INSTRUCTION_CATALOG.md](../INSTRUCTION_CATALOG.md) — 42 instructions at this commit, mapped row by row in §3, including the six ordinary branch forms and the eight branch-likely forms added by the 2026-10-30 approved-reference increments (`RPTP-REF-015`, §3.1 and §3.2).
 - **What it proves:** for each listed instruction, an approved generic reference supports the cited encoding/operation, and RPTP tests exercise the modeled behavior. The model itself is an RPTP test definition and is narrower than R5900 hardware wherever the limits column says so.
-- **What it does not prove:** complete R5900 semantics; hardware behavior beyond the permitted-use scope of the cited reference; or the catalog entry's `semantics` text for that instruction (the catalog is not the evidence). It also does not promote any other catalog entry: the 189 catalog entries outside §3 remain at Level C even when the decoder recognizes their mnemonic.
+- **What it does not prove:** complete R5900 semantics; hardware behavior beyond the permitted-use scope of the cited reference; or the catalog entry's `semantics` text for that instruction (the catalog is not the evidence). It also does not promote any other catalog entry: the 183 catalog entries outside §3 remain at Level C even when the decoder recognizes their mnemonic.
 - **Dual-model differential tests are not Level B by themselves.** `tests/test_native_diff.py`, `tests/test_oracle_edges.py` and `tests/test_oracle_fuzz.py` compare an RPTP Python oracle with RPTP generated C++. Agreement between two RPTP implementations shows internal consistency; it is not an approved reference and does not establish hardware behavior.
 
 ### Level C — `unverified / pending approved reference`
 
 - **Basis:** the only support for the claim is the catalog's own `semantics` prose and a page citation to a document that is not an approved reference. No approved `RPTP-REF-*` and no executable test in this repository establishes the claim.
-- **Coverage:** every catalog claim outside §3 — 189 of 224 entries at this commit (`NOP` is one of the 36 Level B instructions but is a decoder synonym rather than a catalog entry). This includes the eight COP2 entries that cannot round-trip (Level A also excludes them), the MMI/MMI0–MMI3/SPECIAL2 families, the HI/LO instructions, the REGIMM traps, the unaligned load/store forms, and the COP2 `LQC2`/`SQC2` entries.
+- **Coverage:** every catalog claim outside §3 — 183 of 224 entries at this commit (`NOP` is one of the 42 Level B instructions but is a decoder synonym rather than a catalog entry). This includes the eight COP2 entries that cannot round-trip (Level A also excludes them), the MMI/MMI0–MMI3/SPECIAL2 families, the HI/LO instructions, the REGIMM traps, the unaligned load/store forms, and the COP2 `LQC2`/`SQC2` entries.
 - **Decoder labels are not evidence.** `tools/rptp/isa.py` attaches `generic-mips-cross-checked`, `manual-cross-checked` and `provisional` labels to its own decoder specs. After the 2026-10-30 wording correction the decoder docstring states that these labels are documentation metadata, not certification, and that the R5900 manual they partly refer to is pending an owner decision; even so, `manual-cross-checked` is not an approved reference and cannot be read as owner approval. An implemented oracle/emitter path for such an instruction does not move it to Level B.
 - **What would change it:** owner approval of a cited document plus recorded permitted use and limits as a reference row; or re-derivation from an approved neutral reference plus an independent test; or removal/quarantine of the entry. Until then, no semantic claim outside §3 is approved for implementation or release use.
 
@@ -53,7 +53,7 @@ The catalog mixes several different things: an encoding map (opcode/`funct`/oper
 
 ## 3. Supported synthetic subset mapped to approved references and tests
 
-The table below is the complete list of RPTP synthetic instructions that have both an approved reference and executable tests: 36 instructions at this commit. The behavior descriptions live in [INSTRUCTION_CATALOG.md](../INSTRUCTION_CATALOG.md); this table records evidence provenance only and its limits column is part of the record.
+The table below is the complete list of RPTP synthetic instructions that have both an approved reference and executable tests: 42 instructions at this commit. The behavior descriptions live in [INSTRUCTION_CATALOG.md](../INSTRUCTION_CATALOG.md); this table records evidence provenance only and its limits column is part of the record.
 
 | Instruction | Encoding | Approved reference | Test evidence | Limits |
 |---|---|---|---|---|
@@ -81,6 +81,12 @@ The table below is the complete list of RPTP synthetic instructions that have bo
 | `SD` | I-type opcode `0x3F` | `RPTP-REF-015` (SD p. 327) | `tests/test_instruction_ld_sd.py`, `tests/test_runtime_execution.py`, `runtime/tests/runtime_tests.cpp` | Two-word split, 32-bit effective address and fail-closed alignment are RPTP test definitions. |
 | `BEQ` | I-type opcode `0x04` | `RPTP-REF-001` | `tests/test_gate0_spike.py`, `tests/test_ir_lowering.py` | Full R5900 branch behavior is not claimed; static targets must stay inside the synthetic code model. |
 | `BNE` | I-type opcode `0x05` | `RPTP-REF-001` | `tests/test_gate0_spike.py`, `tests/test_ir_lowering.py` | Full R5900 branch behavior is not claimed; static targets must stay inside the synthetic code model. |
+| `BLEZ` | I-type opcode `0x06` | `RPTP-REF-015` (BLEZ p. 83) | `tests/test_instruction_branch_plain.py`, `tests/test_runtime_execution.py`, `tests/test_cross_path_equivalence.py`, `tests/test_isa_encodings.py` | Taken when the signed low 64 bits of `rs` are `<= 0`; delay slot executes on both outcomes; no timing or exception claim. |
+| `BGTZ` | I-type opcode `0x07` | `RPTP-REF-015` (BGTZ p. 81) | `tests/test_instruction_branch_plain.py`, `tests/test_runtime_execution.py`, `tests/test_cross_path_equivalence.py`, `tests/test_isa_encodings.py` | Taken when the signed low 64 bits of `rs` are `> 0`; delay slot executes on both outcomes; no timing or exception claim. |
+| `BLTZ` | REGIMM opcode `0x01`, `rt=0x00` | `RPTP-REF-015` (BLTZ p. 85) | `tests/test_instruction_branch_plain.py`, `tests/test_runtime_execution.py`, `tests/test_cross_path_equivalence.py`, `tests/test_isa_encodings.py` | Taken when the signed low 64 bits of `rs` are `< 0`; delay slot executes on both outcomes; no timing or exception claim. |
+| `BGEZ` | REGIMM opcode `0x01`, `rt=0x01` | `RPTP-REF-015` (BGEZ p. 76) | `tests/test_instruction_branch_plain.py`, `tests/test_runtime_execution.py`, `tests/test_cross_path_equivalence.py`, `tests/test_isa_encodings.py` | Taken when the signed low 64 bits of `rs` are `>= 0`; delay slot executes on both outcomes; no timing or exception claim. |
+| `BLTZAL` | REGIMM opcode `0x01`, `rt=0x10` | `RPTP-REF-015` (BLTZAL p. 86) | `tests/test_instruction_branch_plain.py`, `tests/test_runtime_execution.py`, `tests/test_cross_path_equivalence.py`, `tests/test_isa_encodings.py` | Writes `GPR[31] = pc + 8` unconditionally, including on a not-taken branch; `rs = 31` is rejected fail-closed because the reference marks it UNPREDICTABLE; the rejection is RPTP policy. |
+| `BGEZAL` | REGIMM opcode `0x01`, `rt=0x11` | `RPTP-REF-015` (BGEZAL p. 77) | `tests/test_instruction_branch_plain.py`, `tests/test_runtime_execution.py`, `tests/test_cross_path_equivalence.py`, `tests/test_isa_encodings.py` | Writes `GPR[31] = pc + 8` unconditionally, including on a not-taken branch; `rs = 31` is rejected fail-closed because the reference marks it UNPREDICTABLE; the rejection is RPTP policy. |
 | `BEQL` | I-type opcode `0x14` | `RPTP-REF-015` (BEQL p. 75) | `tests/test_instruction_branch_likely.py`, `tests/test_isa_encodings.py` | Likely-branch nullification; low-64-bit comparison, 32-bit PC masking and trace/step accounting are RPTP test definitions; no timing or exception claim. |
 | `BNEL` | I-type opcode `0x15` | `RPTP-REF-015` (BNEL p. 91) | `tests/test_instruction_branch_likely.py`, `tests/test_isa_encodings.py` | Same likely-branch model as `BEQL`; no timing or exception claim. |
 | `BLEZL` | I-type opcode `0x16` | `RPTP-REF-015` (BLEZL p. 84) | `tests/test_instruction_branch_likely.py`, `tests/test_isa_encodings.py` | Taken when the signed low 64 bits of `rs` are `<= 0`; same test-defined model limits. |
@@ -94,11 +100,15 @@ The table below is the complete list of RPTP synthetic instructions that have bo
 | `JR` | SPECIAL funct `0x08`, `rt=rd=shamt=0` | `RPTP-REF-001` | `tests/test_gate0_spike.py`, `tests/test_ir_lowering.py` | No return-address stack, speculation or exception behavior. |
 | `NOP` | SPECIAL word `0x00000000` | none specific; RPTP test definition | `tests/test_gate0_spike.py`, `tests/test_ir_lowering.py` | Only the encoded all-zero NOP is recognized. |
 
-NOP is the only Level B instruction without a catalog entry (the catalog lists 224 mnemonics and NOP is a decoder synonym for the all-zero word). All other 35 Level B instructions are catalog entries; the remaining 189 catalog entries stay at Level C.
+NOP is the only Level B instruction without a catalog entry (the catalog lists 224 mnemonics and NOP is a decoder synonym for the all-zero word). All other 41 Level B instructions are catalog entries; the remaining 183 catalog entries stay at Level C.
 
 ### 3.1 Branch-likely forms (added 2026-10-30, `RPTP-REF-015`)
 
-The eight branch-likely forms are the newest Level B rows. `RPTP-REF-015` (MIPS64 Revision 5.04, pages above) supports their encodings, PC-relative target, equality/zero-test conditions, take-only delay-slot execution, the unconditional `GPR[31] = PC + 8` link for the two link forms and the `rs = 31` UNPREDICTABLE restriction. `tests/test_instruction_branch_likely.py` covers both outcomes for all eight forms, delay-slot register and memory effects, `$zero`, unconditional link writes, the `rs = 31` rejection, CFG successors, deterministic generated C++ and a native differential against the oracle; `tests/test_isa_encodings.py` exercises the decoder and lowering path for the same forms. The branch-likely rows are implemented in the `tools/rptp` decoder/oracle/emitter path; the older `tools/rptp_ir.py`/`tools/rptp_lower.py` pipeline remains unchanged and does not implement them. The low-64-bit comparison, 32-bit PC masking, trace/step accounting, `$zero` suppression, memory representation and the fail-closed `rs = 31` rejection are RPTP test definitions, not hardware facts, and no branch-prediction, timing, exception or TLB behavior is claimed.
+The eight branch-likely forms are Level B rows 25-32. `RPTP-REF-015` (MIPS64 Revision 5.04, pages 75, 78, 80, 82, 84, 87, 89 and 91) supports their encodings, PC-relative target, equality/zero-test conditions, take-only delay-slot execution, the unconditional `GPR[31] = PC + 8` link for the two link forms and the `rs = 31` UNPREDICTABLE restriction. `tests/test_instruction_branch_likely.py` covers both outcomes for all eight forms, delay-slot register and memory effects, `$zero`, unconditional link writes, the `rs = 31` rejection, CFG successors, deterministic generated C++ and a native differential against the oracle; `tests/test_isa_encodings.py` exercises the decoder and lowering path for the same forms. The branch-likely rows are implemented in the `tools/rptp` decoder/oracle/emitter path; the older `tools/rptp_ir.py`/`tools/rptp_lower.py` pipeline remains unchanged and does not implement them. The low-64-bit comparison, 32-bit PC masking, trace/step accounting, `$zero` suppression, memory representation and the fail-closed `rs = 31` rejection are RPTP test definitions, not hardware facts, and no branch-prediction, timing, exception or TLB behavior is claimed.
+
+### 3.2 Ordinary branch forms (added 2026-10-30, `RPTP-REF-015`)
+
+The six non-likely branch forms are Level B rows 37-42 and the newest addition in this family. `RPTP-REF-015` (MIPS64 Revision 5.04, pages 76, 77, 81, 83, 85 and 86) supports their encodings, the 18-bit signed PC-relative target added to the delay-slot address, the signed zero-test conditions, the delay slot executing after the branch on both outcomes, the unconditional `GPR[31] = PC + 8` link for `BLTZAL`/`BGEZAL` and the `rs = 31` UNPREDICTABLE restriction. `tests/test_instruction_branch_plain.py` covers both outcomes for all six forms, delay-slot register and memory effects, `$zero`, unconditional link writes, the `rs = 31` rejection, CFG successors, deterministic generated C++ and a native differential against the oracle; `tests/test_runtime_execution.py` and `runtime/tests/runtime_tests.cpp` add the independent runtime differential and direct C++ cases; `tests/test_cross_path_equivalence.py` drives the same six forms through the Python oracle, generated C++ and `rptp-run`; `tests/test_isa_encodings.py` exercises the decoder and lowering path. The decoder and oracle already recognized these six forms at the increment base; this change promotes them to Level B, adds the fail-closed `rs = 31` rejection for the link forms, and adds native and cross-path coverage. The older `tools/rptp_ir.py`/`tools/rptp_lower.py` pipeline remains unchanged: its only conditional branches are `BEQ` and `BNE`, so it rejects these six. The low-64-bit comparison, 32-bit PC masking, trace/step accounting, `$zero` suppression, memory representation and the fail-closed `rs = 31` rejection are RPTP test definitions, not hardware facts, and no branch-prediction, timing, exception or TLB behavior is claimed.
 
 ## 4. Catalog coverage inventory (structural only)
 
@@ -115,8 +125,8 @@ These are structural counts of the JSON data and the decoder, not semantic claim
 | Entries with no mnemonic-level decoder representation | 8 | The COP2 forms; decoder exposes an opaque `cop2` placeholder. |
 | Catalog entries with a decoder-supported mnemonic | 141 | `ins.supported` is true for these; structural only. |
 | Catalog entries without a decoder-supported mnemonic | 83 | Decode either as an unsupported named spec or as `unknown_*`; decode acceptance is not semantics. |
-| Level B instructions | 36 | §3 table; 35 are catalog entries, plus `NOP`. |
-| Catalog entries at Level C | 189 | Everything outside §3. |
+| Level B instructions | 42 | §3 table; 41 are catalog entries, plus `NOP`. |
+| Catalog entries at Level C | 183 | Everything outside §3. |
 
 Class distribution of the 224 entries (from the JSON only): `special` 52, `mips3` 41, `special2` 25, `mmi0` 25, `mmi2` 22, `mmi1` 18, `regimm` 16, `mmi3` 13, `cop2` 10, `lqsq` 2. The decoder declares 142 supported mnemonics after the branch-likely increment (134 before it), and 141 of the 224 catalog entries are among them. The decoder-label distribution for the 216 entries that match a decoder spec by mnemonic is `generic-mips-cross-checked` 77, `manual-cross-checked` 131 and `provisional` 8; the decoder docstring now documents these labels as metadata, and they are not evidence (§2, Level C).
 
@@ -171,6 +181,7 @@ The following are questions for the owner. This document records evidence and op
 The structural checks in this document are reproducible from the repository:
 
     python -m unittest tests.test_isa_encodings -v
+    python -m unittest tests.test_instruction_branch_plain -v
     python -m unittest tests.test_instruction_branch_likely -v
     python -m unittest tests.test_catalog_provenance -v
 
