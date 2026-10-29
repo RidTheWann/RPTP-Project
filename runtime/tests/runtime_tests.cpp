@@ -981,6 +981,67 @@ void test_execution_doubleword_memory() {
                     "sdc2");
 }
 
+void test_execution_word_memory_alignment() {
+  const std::vector<std::uint32_t> aligned_code{
+      encode_i(0x0F, 0, 8, 0xAABB),   // lui t0, 0xAABB
+      encode_i(0x0D, 8, 8, 0xCCDD),   // ori t0, t0, 0xCCDD
+      encode_i(0x09, 0, 9, 0x2000),   // addiu t1, zero, 0x2000
+      encode_i(0x2B, 9, 8, 0),        // sw t0, 0(t1)
+      encode_i(0x23, 9, 10, 0),       // lw t2, 0(t1)
+      encode_i(0x2B, 9, 8, 4),        // sw t0, 4(t1)
+      encode_i(0x23, 9, 11, 4),       // lw t3, 4(t1)
+  };
+  const ExecOutcome aligned = run_code(aligned_code, ExecOptions{}, 8U);
+  CHECK(aligned.ok());
+  if (aligned.ok()) {
+    CHECK(aligned.result.registers[8] == 0xFFFFFFFFAABBCCDDULL);
+    CHECK(aligned.result.registers[10] == 0xFFFFFFFFAABBCCDDULL);
+    CHECK(aligned.result.registers[11] == 0xFFFFFFFFAABBCCDDULL);
+    CHECK(aligned.result.memory_writes.size() == 2U);
+    if (aligned.result.memory_writes.size() == 2U) {
+      CHECK(aligned.result.memory_writes[0].address == kDataBase);
+      CHECK(aligned.result.memory_writes[0].value == 0xAABBCCDDU);
+      CHECK(aligned.result.memory_writes[1].address == kDataBase + 4U);
+      CHECK(aligned.result.memory_writes[1].value == 0xAABBCCDDU);
+    }
+  }
+
+  const ExecOutcome unaligned_load =
+      run_code({encode_i(0x09, 0, 9, 0x2000), encode_i(0x23, 9, 8, 2)}, ExecOptions{}, 8U);
+  expect_exec_error(unaligned_load, ExecErrorCode::MemoryFault, "unaligned word load");
+  if (!unaligned_load.ok()) {
+    CHECK(unaligned_load.error->message.find("unaligned word load") != std::string::npos);
+  }
+
+  const ExecOutcome unaligned_store =
+      run_code({encode_i(0x09, 0, 9, 0x2000), encode_i(0x2B, 9, 8, 2)}, ExecOptions{}, 8U);
+  expect_exec_error(unaligned_store, ExecErrorCode::MemoryFault, "unaligned word store");
+  if (!unaligned_store.ok()) {
+    CHECK(unaligned_store.error->message.find("unaligned word store") != std::string::npos);
+  }
+
+  // An unaligned store must be rejected before any byte reaches memory.  The
+  // data word starts as 0x11223344; a partial write at +2 would replace its
+  // upper two bytes.
+  std::vector<std::uint8_t> image = make_runnable_image(
+      {encode_i(0x0F, 0, 8, 0xAABB), encode_i(0x0D, 8, 8, 0xCCDD),
+       encode_i(0x09, 0, 9, 0x2000), encode_i(0x2B, 9, 8, 2)},
+      0U, 8U);
+  put32(image, 0x100U, 0x11223344U);
+  LoadOutcome loaded = load_elf(image);
+  CHECK(loaded.ok());
+  if (loaded.ok()) {
+    const ExecOutcome rejected = execute_loaded(loaded.report, loaded.memory);
+    expect_exec_error(rejected, ExecErrorCode::MemoryFault, "unaligned word store is not partial");
+    std::array<std::uint8_t, 4> bytes{};
+    CHECK(loaded.memory.read(kDataBase, bytes));
+    CHECK(bytes[0] == 0x44U);
+    CHECK(bytes[1] == 0x33U);
+    CHECK(bytes[2] == 0x22U);
+    CHECK(bytes[3] == 0x11U);
+  }
+}
+
 void test_execution_failures() {
   expect_exec_error(run_code({0x0000003FU}), ExecErrorCode::UnsupportedInstruction, "unsupported");
   expect_exec_error(run_code({encode_i(0x0F, 1, 8, 0)}), ExecErrorCode::UnsupportedInstruction,
@@ -1065,6 +1126,7 @@ int main() {
   test_execution_likely_pc_masking();
   test_execution_extended_subset();
   test_execution_doubleword_memory();
+  test_execution_word_memory_alignment();
   test_execution_failures();
   test_execution_is_deterministic();
   if (failures != 0) {

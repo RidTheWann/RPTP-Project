@@ -521,6 +521,9 @@ ExecOutcome execute_loaded(const LoadReport& report, GuestMemory& memory, const 
       case Op::Lw: {
         const auto address = static_cast<std::uint32_t>(static_cast<std::uint32_t>(registers[instruction.rs]) +
                                                         instruction.immediate);
+        if ((address & 3U) != 0U) {
+          return fail(ExecErrorCode::MemoryFault, address_message("unaligned word load", address));
+        }
         std::array<std::uint8_t, 4> bytes{};
         if (!memory.read(address, bytes)) {
           return fail(ExecErrorCode::MemoryFault, address_message("load outside mapped memory", address));
@@ -531,6 +534,9 @@ ExecOutcome execute_loaded(const LoadReport& report, GuestMemory& memory, const 
       case Op::Sw: {
         const auto address = static_cast<std::uint32_t>(static_cast<std::uint32_t>(registers[instruction.rs]) +
                                                         instruction.immediate);
+        if ((address & 3U) != 0U) {
+          return fail(ExecErrorCode::MemoryFault, address_message("unaligned word store", address));
+        }
         const auto value = static_cast<std::uint32_t>(registers[instruction.rt]);
         const std::array<std::uint8_t, 4> bytes = write_le32(value);
         if (!memory.write(address, bytes)) {
