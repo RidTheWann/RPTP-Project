@@ -102,17 +102,21 @@ def extended_words() -> list[int]:
         encode_r(10, 12, 4, 0, 0x23),  # 0x6c subu a0, t2, t4
         encode_r(0, 8, 5, 0, 0x23),  # 0x70 subu a1, zero, t0
         encode_r(8, 9, 0, 0, 0x23),  # 0x74 subu zero, t0, t1
-        encode_r(0, 0, 0, 0, 0),  # 0x78 nop
+        encode_i(0x3F, 23, 28, 8),  # 0x78 sd gp, 8(s7)
+        encode_i(0x37, 23, 29, 8),  # 0x7c ld sp, 8(s7)
+        encode_i(0x3F, 0, 0, 0),  # 0x80 sd zero, 0(s7)
+        encode_i(0x37, 23, 30, 0),  # 0x84 ld fp, 0(s7)
+        encode_r(0, 0, 0, 0, 0),  # 0x88 nop
     ]
 
 
-def build_program(words: list[int], entry: int = BASE) -> bytes:
+def build_program(words: list[int], entry: int = BASE, data_memsz: int = 16) -> bytes:
     code = b"".join(struct.pack("<I", word & 0xFFFFFFFF) for word in words)
     payload = b"\x00" * (CODE_OFFSET - DATA_OFFSET) + code
     return build_elf(
         entry,
         [
-            {"offset": DATA_OFFSET, "vaddr": DATA, "filesz": 4, "memsz": 4, "flags": 6},
+            {"offset": DATA_OFFSET, "vaddr": DATA, "filesz": 4, "memsz": data_memsz, "flags": 6},
             {"offset": CODE_OFFSET, "vaddr": BASE, "filesz": len(code), "memsz": len(code), "flags": 5},
         ],
         payload=payload,
@@ -186,6 +190,12 @@ class RuntimeExecutionCliTests(unittest.TestCase):
         self.assertEqual(0x000000007FFFFFFF, int(document["registers"][3], 16))
         self.assertEqual(0xFFFFFFFFFFFFACF1, int(document["registers"][4], 16))
         self.assertEqual(0xFFFFFFFFFFFFFFFF, int(document["registers"][5], 16))
+        self.assertEqual(0xFFFFFFFF00000000, int(document["registers"][29], 16))
+        self.assertEqual(0, int(document["registers"][30], 16))
+        self.assertEqual(0x00000000, actual_memory[0x00002000])
+        self.assertEqual(0x00000000, actual_memory[0x00002004])
+        self.assertEqual(0x00000000, actual_memory[0x00002008])
+        self.assertEqual(0xFFFFFFFF, actual_memory[0x0000200C])
 
     def test_output_is_deterministic(self) -> None:
         image = build_program(main_words())
@@ -195,7 +205,7 @@ class RuntimeExecutionCliTests(unittest.TestCase):
         self.assertEqual(first.stdout, second.stdout)
 
     def test_unsupported_instruction_fails_closed(self) -> None:
-        result, _ = self.run_cli(build_program([0xFC000000]), "--json")
+        result, _ = self.run_cli(build_program([0x0000003F]), "--json")
         self.assertEqual(2, result.returncode)
         self.assertEqual("", result.stderr.strip())
         document = json.loads(result.stdout)
@@ -219,6 +229,79 @@ class RuntimeExecutionCliTests(unittest.TestCase):
         self.assertEqual(2, result.returncode)
         document = json.loads(result.stdout)
         self.assertEqual("EXEC_MEMORY_FAULT", document["error"]["code"])
+
+    def test_unaligned_doubleword_load_fails_closed(self) -> None:
+        words = [
+            encode_i(0x09, 0, 8, 1),
+            encode_i(0x09, 0, 23, DATA),
+            encode_i(0x37, 23, 8, 2),
+        ]
+        result, _ = self.run_cli(build_program(words), "--json")
+        self.assertEqual(2, result.returncode)
+        document = json.loads(result.stdout)
+        self.assertEqual("EXEC_MEMORY_FAULT", document["error"]["code"])
+
+    def test_unaligned_doubleword_store_fails_closed(self) -> None:
+        words = [
+            encode_i(0x09, 0, 8, 1),
+            encode_i(0x09, 0, 23, DATA),
+            encode_i(0x3F, 23, 8, 4),
+        ]
+        result, _ = self.run_cli(build_program(words), "--json")
+        self.assertEqual(2, result.returncode)
+        document = json.loads(result.stdout)
+        self.assertEqual("EXEC_MEMORY_FAULT", document["error"]["code"])
+
+    def test_doubleword_load_past_the_segment_fails_closed(self) -> None:
+        words = [
+            encode_i(0x09, 0, 23, DATA),
+            encode_i(0x37, 23, 8, 0),
+        ]
+        result, _ = self.run_cli(build_program(words, data_memsz=4), "--json")
+        self.assertEqual(2, result.returncode)
+        document = json.loads(result.stdout)
+        self.assertEqual("EXEC_MEMORY_FAULT", document["error"]["code"])
+
+    def test_doubleword_store_past_the_segment_fails_closed(self) -> None:
+        words = [
+            encode_i(0x09, 0, 8, 1),
+            encode_i(0x09, 0, 23, DATA),
+            encode_i(0x3F, 23, 8, 4),
+        ]
+        result, _ = self.run_cli(build_program(words, data_memsz=12), "--json")
+        self.assertEqual(2, result.returncode)
+        document = json.loads(result.stdout)
+        self.assertEqual("EXEC_MEMORY_FAULT", document["error"]["code"])
+
+    def test_doubleword_load_across_adjacent_segments_fails_closed(self) -> None:
+        words = [
+            encode_i(0x09, 0, 23, DATA),
+            encode_i(0x37, 23, 8, 0),
+        ]
+        code = b"".join(struct.pack("<I", word) for word in words)
+        payload = b"\x00" * (CODE_OFFSET - DATA_OFFSET) + code
+        image = build_elf(
+            BASE,
+            [
+                {"offset": DATA_OFFSET, "vaddr": DATA, "filesz": 4, "memsz": 8, "flags": 6},
+                {"offset": DATA_OFFSET + 4, "vaddr": DATA + 8, "filesz": 4, "memsz": 8, "flags": 6},
+                {"offset": CODE_OFFSET, "vaddr": BASE, "filesz": len(code), "memsz": len(code), "flags": 5},
+            ],
+            payload=payload,
+            payload_offset=DATA_OFFSET,
+        )
+        result, _ = self.run_cli(image, "--json")
+        self.assertEqual(2, result.returncode)
+        document = json.loads(result.stdout)
+        self.assertEqual("EXEC_MEMORY_FAULT", document["error"]["code"])
+
+    def test_neighbouring_coprocessor_transfers_fail_closed(self) -> None:
+        for word in (encode_i(0x36, 0, 8, 0), encode_i(0x3E, 0, 8, 0)):
+            with self.subTest(word=f"0x{word:08x}"):
+                result, _ = self.run_cli(build_program([word]), "--json")
+                self.assertEqual(2, result.returncode)
+                document = json.loads(result.stdout)
+                self.assertEqual("EXEC_UNSUPPORTED_INSTRUCTION", document["error"]["code"])
 
     def test_control_transfer_in_delay_slot_fails_closed(self) -> None:
         words = [

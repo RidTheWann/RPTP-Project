@@ -315,7 +315,7 @@ class IrCfgFailureTests(unittest.TestCase):
         self.assert_analysis_error(ir.IR_TARGET_IN_DELAY_SLOT, BASE, words)
 
     def test_unsupported_and_malformed_inputs_fail_closed(self):
-        error = self.assert_analysis_error(ir.IR_UNSUPPORTED_INSTRUCTION, BASE, {BASE: 0xFC000000})
+        error = self.assert_analysis_error(ir.IR_UNSUPPORTED_INSTRUCTION, BASE, {BASE: 0x0000003F})
         self.assertEqual(error.pc, BASE)
         self.assert_analysis_error(ir.IR_EMPTY_CODE, BASE, {})
         self.assert_analysis_error(ir.IR_LIMIT_EXCEEDED, BASE, {BASE: nop_word(), BASE + 4: nop_word()}, max_instructions=1)

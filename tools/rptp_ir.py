@@ -271,7 +271,7 @@ def _decode_word(pc: int, word: int) -> IRInstruction:
         destination_register = spike.RA
     elif op == "jr":
         control = RETURN_CANDIDATE if decoded["rs"] == spike.RA else INDIRECT_JUMP
-    elif op in {"nop", "sll", "addu", "subu", "daddu", "and", "or", "xor", "nor", "slt", "sltu", "addiu", "daddiu", "slti", "sltiu", "andi", "ori", "xori", "lui", "lw", "sw"}:
+    elif op in {"nop", "sll", "addu", "subu", "daddu", "and", "or", "xor", "nor", "slt", "sltu", "addiu", "daddiu", "slti", "sltiu", "andi", "ori", "xori", "lui", "lw", "sw", "ld", "sd"}:
         control = FALLTHROUGH
     else:
         raise AnalysisError(IR_UNSUPPORTED_INSTRUCTION, f"Unsupported decoded operation {op}", pc=pc)
@@ -281,7 +281,7 @@ def _decode_word(pc: int, word: int) -> IRInstruction:
     if op == "sll" and decoded["rs"] != spike.ZERO:
         raise AnalysisError(IR_UNSUPPORTED_INSTRUCTION, "SLL requires rs=0", pc=pc)
 
-    if op in {"addiu", "daddiu", "slti", "sltiu", "lw", "sw", "beq", "bne"}:
+    if op in {"addiu", "daddiu", "slti", "sltiu", "lw", "sw", "ld", "sd", "beq", "bne"}:
         immediate = decoded["imm"]
         immediate_kind = SIGNED16
     elif op in {"andi", "ori", "xori"}:
@@ -294,7 +294,7 @@ def _decode_word(pc: int, word: int) -> IRInstruction:
         immediate = decoded["shamt"]
         immediate_kind = SHIFT5
 
-    if op in {"addiu", "daddiu", "slti", "sltiu", "andi", "ori", "xori", "lui", "lw"}:
+    if op in {"addiu", "daddiu", "slti", "sltiu", "andi", "ori", "xori", "lui", "lw", "ld"}:
         rt = decoded["rt"]
         destination_register = rt if rt != spike.ZERO else None
     elif op in {"sll", "addu", "subu", "daddu", "and", "or", "xor", "nor", "slt", "sltu"}:

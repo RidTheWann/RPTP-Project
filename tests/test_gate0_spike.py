@@ -48,7 +48,7 @@ class Gate0SpikeTests(unittest.TestCase):
 
     def test_unknown_opcode_fails_explicitly(self):
         with self.assertRaisesRegex(ValueError, "Unsupported"):
-            spike.decode_instruction(spike.BASE, 0xFC000000)
+            spike.decode_instruction(spike.BASE, 0x0000003F)
 
     def test_executable_segment_past_eof_is_rejected(self):
         data = bytearray(spike.build_fixture_elf())
