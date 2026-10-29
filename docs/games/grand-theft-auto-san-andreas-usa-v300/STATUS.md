@@ -57,11 +57,11 @@ Recorded owner-authorized local evidence from main; documentation checked agains
 - Evidence: local `build/elf-retail-summary.json`, `build/elf-retail-grand-theft-auto-san-andreas-usa-v300.inspect.json`, `build/elf-retail-grand-theft-auto-san-andreas-usa-v300.survey.json` and `build/elf-retail-independent-check.json`.
 - No extraction, content analysis, function discovery, boot, runtime, recompilation or compatibility testing was performed; owner-provided original provenance remains unaudited.
 
-### 2026-10-29 — read-only boot-code census
+### 2026-10-29 — read-only boot-code census refresh
 
 - `python tools/rptp_census.py <iso> --iso --json` completed in memory with exit 0 and status `CENSUSED_WITH_WARNINGS`; no file was extracted, modified or executed.
-- Census: 1,420,864 aligned words across 10 PT_LOAD segment(s); 714,339 (50.3%) accepted by the current synthetic decoder; 706,525 raw-unsupported words.
-- Most frequent unsupported raw encodings: `opcode_0x11` (133,433); `special_0x2d` (91,977); `opcode_0x31` (74,361).
+- Census with the current decoder after `SLL` and `DADDU`: 1,420,864 aligned words across 10 PT_LOAD segment(s); 828,703 (58.3%) accepted; 592,161 raw-unsupported words. These figures supersede the earlier pre-`DADDU` count.
+- Most frequent unsupported raw encodings: `opcode_0x11` (133,433); `opcode_0x31` (74,361); `opcode_0x39` (45,517).
 - Counts include data and padding and are not a function-level, runtime, boot or compatibility measurement. See [BOOT_CENSUS.md](../../BOOT_CENSUS.md).
 
 ## What is not tested

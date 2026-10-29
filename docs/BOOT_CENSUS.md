@@ -31,7 +31,7 @@ python tools/rptp_census.py path\to\boot.elf --elf
 - `warnings`: non-fatal ELF/load observations such as overlap or a non-executable entry, plus uncounted trailing bytes.
 - `limitations`: the fixed non-claims listed below.
 
-Supported labels use the current decoder's operation names (`addiu`, `daddiu`, `nop`, ...). Unsupported labels are stable raw identifiers: `special_0xNN` for opcode 0 function fields, `regimm_0xNN` for opcode 1 `rt` fields, and `opcode_0xNN` for other primary opcodes. Those identifiers describe an encoding, not an instruction name or behavior.
+Supported labels use the current decoder's operation names (`addiu`, `daddiu`, `daddu`, `nop`, ...). Unsupported labels are stable raw identifiers: `special_0xNN` for opcode 0 function fields, `regimm_0xNN` for opcode 1 `rt` fields, and `opcode_0xNN` for other primary opcodes. Those identifiers describe an encoding, not an instruction name or behavior.
 
 ## Local read-only evidence — 2026-10-29
 
@@ -39,20 +39,20 @@ All eight owner-authorized images were inspected and censused in memory. No file
 
 | Image | Boot size (bytes) | PT_LOAD | Words | Decoder-accepted | Status | Most frequent unsupported labels |
 |---|---:|---:|---:|---:|---|---|
-| Black (USA) | 3,371,868 | 1 | 801,120 | 406,159 (50.7%) | `CENSUSED` | `special_0x2d` 58,215; `opcode_0x11` 35,149; `opcode_0x12` 29,211 |
-| Bully (USA) | 5,132,120 | 19 | 1,282,560 | 640,730 (50.0%) | `CENSUSED_WITH_WARNINGS` | `special_0x2d` 104,020; `opcode_0x11` 85,141; `opcode_0x31` 58,096 |
-| Downhill Domination (USA) | 1,691,684 | 1 | 413,500 | 223,497 (54.1%) | `CENSUSED` | `special_0x2d` 31,782; `opcode_0x11` 23,903; `opcode_0x37` 16,726 |
-| God of War II (USA) | 2,125,688 | 1 | 520,042 | 277,381 (53.3%) | `CENSUSED` | `special_0x2d` 40,580; `opcode_0x11` 28,957; `opcode_0x12` 23,930 |
-| GTA San Andreas (Indonesian v6) | 5,684,592 | 10 | 1,420,864 | 714,339 (50.3%) | `CENSUSED_WITH_WARNINGS` | `opcode_0x11` 133,433; `special_0x2d` 91,977; `opcode_0x31` 74,361 |
-| GTA San Andreas (USA v3.00) | 5,684,592 | 10 | 1,420,864 | 714,339 (50.3%) | `CENSUSED_WITH_WARNINGS` | `opcode_0x11` 133,433; `special_0x2d` 91,977; `opcode_0x31` 74,361 |
-| Need for Speed - Most Wanted (v2.00) | 4,918,740 | 1 | 1,224,439 | 724,764 (59.2%) | `CENSUSED` | `special_0x2d` 111,122; `opcode_0x37` 53,806; `opcode_0x11` 49,291 |
-| Resident Evil 4 (USA) | 3,096,892 | 1 | 731,082 | 376,290 (51.5%) | `CENSUSED` | `special_0x2d` 52,487; `opcode_0x11` 31,396; `opcode_0x37` 13,623 |
+| Black (USA) | 3,371,868 | 1 | 801,120 | 473,481 (59.1%) | `CENSUSED` | `opcode_0x11` 35,149; `opcode_0x12` 29,211; `opcode_0x1e` 25,759 |
+| Bully (USA) | 5,132,120 | 19 | 1,282,560 | 760,604 (59.3%) | `CENSUSED_WITH_WARNINGS` | `opcode_0x11` 85,141; `opcode_0x31` 58,096; `opcode_0x39` 34,483 |
+| Downhill Domination (USA) | 1,691,684 | 1 | 413,500 | 259,646 (62.8%) | `CENSUSED` | `opcode_0x11` 23,903; `opcode_0x37` 16,726; `opcode_0x3f` 15,142 |
+| God of War II (USA) | 2,125,688 | 1 | 520,042 | 325,561 (62.6%) | `CENSUSED` | `opcode_0x11` 28,957; `opcode_0x12` 23,930; `opcode_0x1e` 16,920 |
+| GTA San Andreas (Indonesian v6) | 5,684,592 | 10 | 1,420,864 | 828,703 (58.3%) | `CENSUSED_WITH_WARNINGS` | `opcode_0x11` 133,433; `opcode_0x31` 74,361; `opcode_0x39` 45,517 |
+| GTA San Andreas (USA v3.00) | 5,684,592 | 10 | 1,420,864 | 828,703 (58.3%) | `CENSUSED_WITH_WARNINGS` | `opcode_0x11` 133,433; `opcode_0x31` 74,361; `opcode_0x39` 45,517 |
+| Need for Speed - Most Wanted (v2.00) | 4,918,740 | 1 | 1,224,439 | 847,057 (69.2%) | `CENSUSED` | `opcode_0x37` 53,806; `opcode_0x11` 49,291; `opcode_0x3f` 46,493 |
+| Resident Evil 4 (USA) | 3,096,892 | 1 | 731,082 | 435,621 (59.6%) | `CENSUSED` | `opcode_0x11` 31,396; `opcode_0x37` 13,623; `opcode_0x1e` 12,620 |
 
 The warning status for Bully and both San Andreas samples comes from the previously reported `PT_LOAD` memory overlaps, not from the census counts. Raw JSON reports are local artifacts under `build/census/` and are not committed.
 
-The counts include data, padding and embedded tables, so they are an upper-bound description of code-like words, not a function-level measurement. The ratio measures decoder coverage of those words, not runtime correctness. The consistent `special_0x2d` and `opcode_0x11`/`opcode_0x12` presence across titles is evidence for prioritization only; no instruction semantics are claimed by this document.
+The counts include data, padding and embedded tables, so they are an upper-bound description of code-like words, not a function-level measurement. The ratio measures decoder coverage of those words, not runtime correctness. The consistent `opcode_0x11`/`opcode_0x31` and `opcode_0x37`/`opcode_0x3f` presence across titles is evidence for prioritization only; no instruction semantics are claimed by this document.
 
-These figures were measured with the decoder revision before `DADDU` (`SPECIAL` funct `0x2D`) support. Once that increment is merged, `special_0x2d` words become decoder-accepted and the percentages will rise; a read-only refresh is a separate evidence increment, and the numbers above remain dated to the pre-`DADDU` revision.
+This refresh uses the current decoder after the `SLL` and `DADDU` increments and supersedes the earlier pre-`DADDU` table. `special_0x2d` no longer appears among the top unsupported labels, and the acceptance range is now 58.3%–69.2%. These remain static coverage figures, not runtime results, and the data/padding caveat above still applies.
 
 ## Commands and tests
 

@@ -58,11 +58,11 @@ Recorded owner-authorized local evidence from main; documentation checked agains
 - Evidence: local `build/elf-retail-summary.json`, `build/elf-retail-god-of-war-ii.inspect.json`, `build/elf-retail-god-of-war-ii.survey.json` and `build/elf-retail-independent-check.json`.
 - No extraction, content analysis, function discovery, boot, runtime, recompilation or compatibility testing was performed.
 
-### 2026-10-29 — read-only boot-code census
+### 2026-10-29 — read-only boot-code census refresh
 
 - `python tools/rptp_census.py <iso> --iso --json` completed in memory with exit 0 and status `CENSUSED`; no file was extracted, modified or executed.
-- Census: 520,042 aligned words across 1 PT_LOAD segment(s); 277,381 (53.3%) accepted by the current synthetic decoder; 242,661 raw-unsupported words.
-- Most frequent unsupported raw encodings: `special_0x2d` (40,580); `opcode_0x11` (28,957); `opcode_0x12` (23,930).
+- Census with the current decoder after `SLL` and `DADDU`: 520,042 aligned words across 1 PT_LOAD segment(s); 325,561 (62.6%) accepted; 194,481 raw-unsupported words. These figures supersede the earlier pre-`DADDU` count.
+- Most frequent unsupported raw encodings: `opcode_0x11` (28,957); `opcode_0x12` (23,930); `opcode_0x1e` (16,920).
 - Counts include data and padding and are not a function-level, runtime, boot or compatibility measurement. See [BOOT_CENSUS.md](../../BOOT_CENSUS.md).
 
 ## What is not tested
