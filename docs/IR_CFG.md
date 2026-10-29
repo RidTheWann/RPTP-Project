@@ -199,6 +199,7 @@ The DADDIU fixture in `tests/test_instruction_daddiu.py` checks positive and neg
 
 ## Limitations
 
+- The separate read-only direct-evidence report in `tools/rptp_discover.py` scans every aligned word of file-backed executable `PT_LOAD` bytes and reports candidate-only entry evidence with explicit unsupported diagnostics; see [FUNCTION_DISCOVERY.md](FUNCTION_DISCOVERY.md). It does not replace this CFG contract, and it adds no reachability, code/data separation or function-extent claim here.
 - The subset is the existing synthetic ten-opcode Gate 0 subset plus `ORI`, `ANDI`, `XORI`, `LUI`, `SLL`, `AND`, `OR`, `XOR`, `NOR`, `SLT`, `SLTU`, `SLTI`, `SLTIU`, `DADDIU`, `DADDU`, `SUBU`, `LD` and `SD`. The `tools/rptp` package separately adds the eight branch-likely forms described above. No other opcode is added by these increments, and the legacy `tools/rptp_ir.py` pipeline does not implement branch-likely forms.
 - The CFG is a syntactic partition of the validated code range. Known-edge graph reachability is not runtime reachability, dead-code proof or function discovery.
 - Function entries are candidates only. There are no function extents, symbols, call graphs with return edges, or confident `JR $ra` return-path claims. The direct-call continuation caveat is explicit in the reachability report.
