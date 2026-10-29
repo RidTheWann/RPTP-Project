@@ -32,6 +32,7 @@ Every increment must review and update every document affected by its change bef
 
 - `docs/INSTRUCTION_CATALOG.md` — supported synthetic instruction subset and verification level.
 - `docs/IR_CFG.md` — IR, CFG, known-edge reachability and lowering contract.
+- `docs/FUNCTION_DISCOVERY.md` — conservative read-only direct-evidence discovery contract, error taxonomy and non-claims.
 - `docs/RUNTIME.md` — native loader and synthetic execution-harness contract.
 - `docs/ISO_INSPECTOR.md` — read-only ISO 9660 inspection contract and format envelope.
 - `docs/ISO_INSPECTOR_REVIEW.md` — independent inspector review findings against `4c0df86`; not a Gate disposition.
