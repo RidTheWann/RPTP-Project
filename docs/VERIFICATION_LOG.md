@@ -1088,3 +1088,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-msvc.ps1
 - CI observed in this session for the merge commits: `c3d4238` run `40950738453` (pages `40950736391`), `f119915` run `40951638248` (pages `40951637699`), `0fd6186` run `40951915221` (pages `40951913937`), `db24471` run `40952522927` (pages `40952522180`), `6a87b06` run `40952892786` (pages `40952890100`) and `477e5bd` run `40953215166` (pages `40953213734`) succeeded, covering the Windows x64/MSVC and Linux/GCC jobs.
 - This entry makes PR #45 the latest merge recorded here; STATE and HANDOFF now cite `477e5bd` and the PR range through #45.
 - Limitation: merge runs verify the tree at each merge commit, not later commits. The remaining audit findings (canonical-path consolidation, the older pipelines, and the untested scopes) stay open; this record only synchronizes the documents that describe them. The documentation-sync increment that produced this entry is not itself merged yet and will be recorded in a follow-up evidence change.
+
+## 2026-10-30 — merge record for PR #46
+
+- Scope: documentation-only merge evidence. No code, runtime, build, fixture or dependency change; no Gate, provenance or compatibility status changed.
+- PR #46 `docs: synchronize current status through PR #45` merged 2026-10-30T04:06:08+07:00 (2026-10-29T21:06:08Z) with `--match-head-commit 0af3660b36b8937ee761335b1f2405591f459c9b` as `3ee9ca255f62737115e3a7a6afde64b678ad9cda`. Exact-head runs `40954536932` (pull request) and `40954491552` (push) (`RPTP CI`) succeeded on `0af3660`, covering the Windows x64/MSVC and Linux/GCC jobs.
+- Main run `40954856937` (`RPTP CI`) and pages run `40954856044` succeeded on the merge commit `3ee9ca2`.
+- This entry makes PR #46 the latest merge recorded here; STATE and HANDOFF now cite `3ee9ca2` and the PR range through #46. The follow-up promised by the previous entry is therefore complete.
+- Limitation: the merge run verifies the tree at `3ee9ca2`, not later commits. This increment only aligns the documents that point at PRs #40–#45; the separate synthetic paths, the older pipelines, the stale-row history in [BOOT_CENSUS.md](BOOT_CENSUS.md) and the remaining semantic-evidence gap stay open.
