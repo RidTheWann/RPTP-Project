@@ -1322,18 +1322,53 @@ class IsoHardeningTests(unittest.TestCase):
             inspector.inspect_bytes(data)
         self.assertEqual(ctx.exception.code, "SYSTEM_CNF_NOT_FOUND")
 
-    def test_rejects_invalid_directory_data_lengths(self):
+    @staticmethod
+    def _non_aligned_directory_image(size: int) -> bytes:
         config = b"BOOT2 = cdrom0:\\SUBDIR;1\\SLUS_123.45;1\n"
-        for size in (0, 46, BLOCK + 1):
-            image = _iso(config=config, subdir_flags=0)
-            image[19 * BLOCK + 68 + 10:19 * BLOCK + 68 + 18] = _both32(size)
-            data = bytes(image)
+        image = _iso(config=config, subdir_flags=0)
+        executable = _elf()
+        records = (
+            _record(22, size, b"\x00", 0x02)
+            + _record(19, BLOCK, b"\x01", 0x02)
+            + _record(24, len(executable), b"SLUS_123.45;1")
+        )
+        if len(records) != 114:
+            raise AssertionError(f"unexpected subdirectory record length {len(records)}")
+        image[19 * BLOCK + 68 + 2:19 * BLOCK + 68 + 10] = _both32(22)
+        image[19 * BLOCK + 68 + 10:19 * BLOCK + 68 + 18] = _both32(size)
+        image[22 * BLOCK:22 * BLOCK + len(records)] = records
+        image[24 * BLOCK:24 * BLOCK + len(executable)] = executable
+        return bytes(image)
+
+    def test_accepts_non_block_aligned_directory_data_lengths(self):
+        # ECMA-119 7.4.5 permits a file section shorter than its data space.
+        for size in (114, 990):
+            data = self._non_aligned_directory_image(size)
             for method in ("inspect", "survey"):
                 with self.subTest(size=size, method=method):
-                    reader = inspector.IsoReader(BytesIO(data), len(data), "directory-size.iso")
-                    with self.assertRaises(inspector.InspectError) as ctx:
-                        getattr(reader, method)()
-                    self.assertEqual(ctx.exception.code, "DIRECTORY_SIZE_INVALID")
+                    result = getattr(
+                        inspector.IsoReader(BytesIO(data), len(data), "directory-size.iso"),
+                        method,
+                    )()
+                    self.assertIn(result["status"], {"INSPECTED", "SURVEYED"})
+
+    def test_rejects_zero_directory_data_length(self):
+        data = self._non_aligned_directory_image(0)
+        for method in ("inspect", "survey"):
+            with self.subTest(method=method):
+                reader = inspector.IsoReader(BytesIO(data), len(data), "directory-size.iso")
+                with self.assertRaises(inspector.InspectError) as ctx:
+                    getattr(reader, method)()
+                self.assertEqual(ctx.exception.code, "DIRECTORY_SIZE_INVALID")
+
+    def test_rejects_directory_length_that_truncates_a_record(self):
+        data = self._non_aligned_directory_image(100)
+        for method in ("inspect", "survey"):
+            with self.subTest(method=method):
+                reader = inspector.IsoReader(BytesIO(data), len(data), "directory-size.iso")
+                with self.assertRaises(inspector.InspectError) as ctx:
+                    getattr(reader, method)()
+                self.assertEqual(ctx.exception.code, "DIRECTORY_RECORD_CROSSES_BLOCK")
 
     def test_rejects_review_root_directory_without_dot_entries(self):
         image = _iso()
@@ -1347,7 +1382,7 @@ class IsoHardeningTests(unittest.TestCase):
                 reader = inspector.IsoReader(BytesIO(data), len(data), "no-dots.iso")
                 with self.assertRaises(inspector.InspectError) as ctx:
                     getattr(reader, method)()
-                self.assertEqual(ctx.exception.code, "DIRECTORY_SIZE_INVALID")
+                self.assertEqual(ctx.exception.code, "DIRECTORY_DOT_ENTRY_INVALID")
 
     def test_rejects_directory_without_dot_and_dotdot_records(self):
         variants = {
