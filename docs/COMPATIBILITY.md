@@ -23,7 +23,7 @@ Fixture metadata:
 
 - SHA-256 of synthetic ELF: `b21f1f7793236d1ccba7308cc82f42d9f89915c87c0b037c46d8170f28349ca9`
 - Generated C++ SHA-256: `5316e0f51ba8b1fa1252e409f38cb9ac7db7606fee17b28ef0dcf1be162ae795`
-- Accepted Gate 0 fixture subset: ADDIU, ADDU, LW, SW, BEQ, BNE, J, JAL, JR, NOP. Separate post-disposition tests cover ORI, ANDI, XORI, LUI, AND, OR, XOR, NOR, SLT, SLTU, SLTI, SLTIU, DADDIU, DADDU, SUBU, SLL, LD, SD and the eight branch-likely forms without changing this fixture.
+- Accepted Gate 0 fixture subset: ADDIU, ADDU, LW, SW, BEQ, BNE, J, JAL, JR, NOP. Separate post-disposition tests cover ORI, ANDI, XORI, LUI, AND, OR, XOR, NOR, SLT, SLTU, SLTI, SLTIU, DADDIU, DADDU, SUBU, SLL, LD, SD, the six ordinary branch forms and the eight branch-likely forms without changing this fixture.
 - Latest observed host trace: 22 instruction PCs; identical to the reference interpreter for this fixture path.
 
 ISO inspector evidence:
