@@ -67,6 +67,13 @@ Recorded owner-authorized local evidence from main; documentation checked agains
 - Whole-image SHA-256 `0fe2b77713d3440cc3030741ea0b18f49e3feaa09671a30a421e0d4888a7eb86`, size and mtime were unchanged before and after; two runs produced byte-identical JSON. `tests.test_boot_census` passed 6/6.
 - Most frequent unsupported raw encodings remain `opcode_0x11` (23,903); `opcode_0x37` (16,726); `opcode_0x3f` (15,142). Counts still include data and padding and are not a runtime, boot or compatibility measurement.
 
+### 2026-10-29 — current-decoder census refresh
+
+- `python tools/rptp_census.py <iso> --iso --json` on the current `tools/rptp/isa.py` decoder (142 supported mnemonics, including branch-likely forms and `LD`/`SD`) completed in memory with exit 0 and status `CENSUSED`; no file was extracted, modified or executed.
+- Result: 413,500 aligned words across 1 `PT_LOAD` segment; 338,288 (81.81%) accepted; 75,212 raw-unsupported; 29,124 zero words; no trailing bytes; no warnings. This supersedes the pre-`SUBU` and one-image `SUBU` counts above.
+- Most frequent unsupported raw encodings: `opcode_0x11` (23,903); `opcode_0x31` (9,381); `opcode_0x39` (7,081).
+- Whole-image SHA-256, size and mtime were unchanged before and after; three runs produced byte-identical JSON. Counts include data and padding and are not a function-level, runtime, boot or compatibility measurement. See [BOOT_CENSUS.md](../../BOOT_CENSUS.md).
+
 ## What is not tested
 
 - Booting the game or any PS2 runtime service.

@@ -21,24 +21,27 @@ from typing import BinaryIO, Callable
 MAX_BOOT_BYTES = 16 * 1024 * 1024
 MAX_WORDS = 4 * 1024 * 1024
 MODEL = "pt_load_word_census_v1"
+DECODER_MODULE = "tools/rptp/isa.py"
 
 
 def _load_module(name: str, filename: str):
-    path = Path(__file__).with_name(filename)
+    path = Path(__file__).parent / filename
     spec = importlib.util.spec_from_file_location(name, path)
     if spec is None or spec.loader is None:
         raise RuntimeError(f"Cannot load module {path}")
     module = importlib.util.module_from_spec(spec)
+    # Register before execution so dataclasses can resolve postponed annotations.
+    sys.modules[name] = module
     spec.loader.exec_module(module)
     return module
 
 
 inspector = _load_module("rptp_census_inspector", "rptp_inspect.py")
-ir = _load_module("rptp_census_ir", "rptp_ir.py")
+isa = _load_module("rptp_census_isa", "rptp/isa.py")
 
 LIMITATIONS = (
     "Counts every aligned 4-byte word in file-backed PT_LOAD bytes; those bytes may include data, padding or non-code content.",
-    "A supported word is accepted by the current synthetic IR decoder only; this does not prove semantics, reachability or runtime safety.",
+    "A supported word is accepted by the current R5900 decoder and its supported-mnemonic set only; this does not prove semantics, reachability or runtime safety.",
     "Unsupported labels are raw encoding identifiers (opcode or opcode/funct), not semantic instruction names.",
     "No code was executed, extracted, rewritten or recompiled; no function discovery, CFG or compatibility claim is made.",
     "Census results are static metadata and do not imply that an image can boot or run.",
@@ -66,10 +69,19 @@ class _BlobReader:
 
 
 def _supported_op(word: int) -> str | None:
-    try:
-        return ir._decode_word(0, word).op
-    except ir.AnalysisError:
-        return None
+    instruction = isa.decode_instruction(word, 0)
+    return instruction.mnemonic if instruction.supported else None
+
+
+def _decoder_identity() -> dict[str, object]:
+    """Deterministic identity for the decoder set used by this census."""
+    mnemonics = sorted(isa.SUPPORTED_MNEMONICS)
+    digest = hashlib.sha256("\n".join(mnemonics).encode("ascii")).hexdigest()
+    return {
+        "module": DECODER_MODULE,
+        "supported_mnemonic_count": len(mnemonics),
+        "supported_mnemonic_set_sha256": digest,
+    }
 
 
 def _encoding_label(word: int) -> str:
@@ -164,6 +176,7 @@ def _census(
     return {
         "status": "CENSUSED_WITH_WARNINGS" if warnings else "CENSUSED",
         "model": MODEL,
+        "decoder": _decoder_identity(),
         "source": source,
         "elf": {
             "entry_point": elf["entry_point"],
@@ -318,8 +331,13 @@ def main() -> int:
         print(json.dumps(report, indent=2, sort_keys=True))
         return 0
     census = report["census"]
+    decoder = report["decoder"]
     print(f"RPTP boot-code census: {report['status']}")
     print(f"Source: {report['source']['input_name']}")
+    print(
+        f"Decoder: {decoder['module']}; supported mnemonics: {decoder['supported_mnemonic_count']}; "
+        f"set SHA-256: {decoder['supported_mnemonic_set_sha256']}"
+    )
     if report["source"]["kind"] == "iso":
         print(f"BOOT executable: {report['source']['boot_path']} ({report['source']['boot_size_bytes']} bytes)")
     print(f"Entry point: 0x{report['elf']['entry_point']:08X}")
