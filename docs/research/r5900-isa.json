@@ -1,0 +1,3732 @@
+{
+  "schema_version": 1,
+  "sources": [
+    {
+      "id": "ee-isa",
+      "title": "EE Core Instruction Set Manual, Version 6.0",
+      "publisher": "Sony Computer Entertainment Inc.",
+      "date": "April 2002",
+      "url": "https://github.com/ninjadynamics/PS2Docs/blob/main/EE_Core_Instruction_Set_Manual.pdf",
+      "note": "Primary authority for opcodes, funct values and operation pseudocode. Page numbers are printed page numbers."
+    },
+    {
+      "id": "ee-users",
+      "title": "EE Core User's Manual, Version 6.0",
+      "publisher": "Sony Computer Entertainment Inc.",
+      "date": "April 2002",
+      "url": "https://github.com/ninjadynamics/PS2Docs/blob/main/EE_Core_Users_Manual.pdf",
+      "note": "Architecture, pipelines, load delay, branch delay rules, register file description."
+    },
+    {
+      "id": "vu-users",
+      "title": "VU User's Manual, Version 6.0",
+      "publisher": "Sony Computer Entertainment Inc.",
+      "date": "April 2002",
+      "url": "https://github.com/ninjadynamics/PS2Docs/blob/main/VU_Users_Manual.pdf",
+      "note": "COP2 macro mode encoding and QMFC2/QMTC2/CFC2/CTC2/LQC2/SQC2/BC2 semantics."
+    },
+    {
+      "id": "ps2tek",
+      "title": "ps2tek - Documentation on PS2 internals (EE section)",
+      "url": "https://psi-rockin.github.io/ps2tek/",
+      "note": "Independent cross-check of the opcode/funct maps; agrees with the EE ISA manual on every table cell used here."
+    }
+  ],
+  "instructions": [
+    {
+      "mnemonic": "J",
+      "opcode": 2,
+      "funct": null,
+      "format": "J target",
+      "operands": [
+        "target"
+      ],
+      "semantics": "PC = (PC+4)[31:28] || (target << 2); delay slot executes before transfer",
+      "writes_hi_lo": false,
+      "delay_slot": true,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.65",
+      "class": "mips3"
+    },
+    {
+      "mnemonic": "JAL",
+      "opcode": 3,
+      "funct": null,
+      "format": "JAL target",
+      "operands": [
+        "target"
+      ],
+      "semantics": "GPR[31] = PC+8; PC = (PC+4)[31:28] || (target << 2); delay slot executes",
+      "writes_hi_lo": false,
+      "delay_slot": true,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.66",
+      "class": "mips3"
+    },
+    {
+      "mnemonic": "BEQ",
+      "opcode": 4,
+      "funct": null,
+      "format": "BEQ rs, rt, offset",
+      "operands": [
+        "rs",
+        "rt",
+        "offset"
+      ],
+      "semantics": "if rs[63:0] == rt[63:0] then PC = PC+4 + (SEXT(offset)<<2); delay slot always executes",
+      "writes_hi_lo": false,
+      "delay_slot": true,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.30",
+      "class": "mips3"
+    },
+    {
+      "mnemonic": "BNE",
+      "opcode": 5,
+      "funct": null,
+      "format": "BNE rs, rt, offset",
+      "operands": [
+        "rs",
+        "rt",
+        "offset"
+      ],
+      "semantics": "if rs[63:0] != rt[63:0] then PC = PC+4 + (SEXT(offset)<<2); delay slot always executes",
+      "writes_hi_lo": false,
+      "delay_slot": true,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.44",
+      "class": "mips3"
+    },
+    {
+      "mnemonic": "BLEZ",
+      "opcode": 6,
+      "funct": null,
+      "format": "BLEZ rs, offset",
+      "operands": [
+        "rs",
+        "offset"
+      ],
+      "semantics": "if S64(rs) <= 0 then PC = PC+4 + (SEXT(offset)<<2); delay slot always executes",
+      "writes_hi_lo": false,
+      "delay_slot": true,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.38",
+      "class": "mips3"
+    },
+    {
+      "mnemonic": "BGTZ",
+      "opcode": 7,
+      "funct": null,
+      "format": "BGTZ rs, offset",
+      "operands": [
+        "rs",
+        "offset"
+      ],
+      "semantics": "if S64(rs) > 0 then PC = PC+4 + (SEXT(offset)<<2); delay slot always executes",
+      "writes_hi_lo": false,
+      "delay_slot": true,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.36",
+      "class": "mips3"
+    },
+    {
+      "mnemonic": "ADDI",
+      "opcode": 8,
+      "funct": null,
+      "format": "ADDI rt, rs, immediate",
+      "operands": [
+        "rt",
+        "rs",
+        "immediate"
+      ],
+      "semantics": "rt[63:0] = SEXT64((rs[31:0] + SEXT(immediate))[31:0]); signed overflow -> IntegerOverflow, rt unchanged",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.25",
+      "class": "mips3"
+    },
+    {
+      "mnemonic": "ADDIU",
+      "opcode": 9,
+      "funct": null,
+      "format": "ADDIU rt, rs, immediate",
+      "operands": [
+        "rt",
+        "rs",
+        "immediate"
+      ],
+      "semantics": "rt[63:0] = SEXT64((rs[31:0] + SEXT(immediate))[31:0]); no overflow trap",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.26",
+      "class": "mips3"
+    },
+    {
+      "mnemonic": "SLTI",
+      "opcode": 10,
+      "funct": null,
+      "format": "SLTI rt, rs, immediate",
+      "operands": [
+        "rt",
+        "rs",
+        "immediate"
+      ],
+      "semantics": "rt[63:0] = (S64(rs) < SEXT64(immediate)) ? 1 : 0",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.107",
+      "class": "mips3"
+    },
+    {
+      "mnemonic": "SLTIU",
+      "opcode": 11,
+      "funct": null,
+      "format": "SLTIU rt, rs, immediate",
+      "operands": [
+        "rt",
+        "rs",
+        "immediate"
+      ],
+      "semantics": "rt[63:0] = (U64(rs) < U64(SEXT64(immediate))) ? 1 : 0 (immediate sign-extended first)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.108",
+      "class": "mips3"
+    },
+    {
+      "mnemonic": "ANDI",
+      "opcode": 12,
+      "funct": null,
+      "format": "ANDI rt, rs, immediate",
+      "operands": [
+        "rt",
+        "rs",
+        "immediate"
+      ],
+      "semantics": "rt[63:0] = rs[63:0] AND ZEXT64(immediate)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.29",
+      "class": "mips3"
+    },
+    {
+      "mnemonic": "ORI",
+      "opcode": 13,
+      "funct": null,
+      "format": "ORI rt, rs, immediate",
+      "operands": [
+        "rt",
+        "rs",
+        "immediate"
+      ],
+      "semantics": "rt[63:0] = rs[63:0] OR ZEXT64(immediate)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.95",
+      "class": "mips3"
+    },
+    {
+      "mnemonic": "XORI",
+      "opcode": 14,
+      "funct": null,
+      "format": "XORI rt, rs, immediate",
+      "operands": [
+        "rt",
+        "rs",
+        "immediate"
+      ],
+      "semantics": "rt[63:0] = rs[63:0] XOR ZEXT64(immediate)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.136",
+      "class": "mips3"
+    },
+    {
+      "mnemonic": "LUI",
+      "opcode": 15,
+      "funct": null,
+      "format": "LUI rt, immediate",
+      "operands": [
+        "rt",
+        "immediate"
+      ],
+      "semantics": "rt[63:0] = SEXT64(immediate << 16)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.78",
+      "class": "mips3"
+    },
+    {
+      "mnemonic": "BEQL",
+      "opcode": 20,
+      "funct": null,
+      "format": "BEQL rs, rt, offset",
+      "operands": [
+        "rs",
+        "rt",
+        "offset"
+      ],
+      "semantics": "if rs == rt then PC = PC+4 + (SEXT(offset)<<2) else nullify delay slot",
+      "writes_hi_lo": false,
+      "delay_slot": true,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.31",
+      "class": "mips3"
+    },
+    {
+      "mnemonic": "BNEL",
+      "opcode": 21,
+      "funct": null,
+      "format": "BNEL rs, rt, offset",
+      "operands": [
+        "rs",
+        "rt",
+        "offset"
+      ],
+      "semantics": "if rs != rt then branch else nullify delay slot",
+      "writes_hi_lo": false,
+      "delay_slot": true,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.45",
+      "class": "mips3"
+    },
+    {
+      "mnemonic": "BLEZL",
+      "opcode": 22,
+      "funct": null,
+      "format": "BLEZL rs, offset",
+      "operands": [
+        "rs",
+        "offset"
+      ],
+      "semantics": "if S64(rs) <= 0 then branch else nullify delay slot",
+      "writes_hi_lo": false,
+      "delay_slot": true,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.39",
+      "class": "mips3"
+    },
+    {
+      "mnemonic": "BGTZL",
+      "opcode": 23,
+      "funct": null,
+      "format": "BGTZL rs, offset",
+      "operands": [
+        "rs",
+        "offset"
+      ],
+      "semantics": "if S64(rs) > 0 then branch else nullify delay slot",
+      "writes_hi_lo": false,
+      "delay_slot": true,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.37",
+      "class": "mips3"
+    },
+    {
+      "mnemonic": "DADDI",
+      "opcode": 24,
+      "funct": null,
+      "format": "DADDI rt, rs, immediate",
+      "operands": [
+        "rt",
+        "rs",
+        "immediate"
+      ],
+      "semantics": "rt[63:0] = rs[63:0] + SEXT64(immediate); signed 64-bit overflow -> IntegerOverflow",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.48",
+      "class": "mips3"
+    },
+    {
+      "mnemonic": "DADDIU",
+      "opcode": 25,
+      "funct": null,
+      "format": "DADDIU rt, rs, immediate",
+      "operands": [
+        "rt",
+        "rs",
+        "immediate"
+      ],
+      "semantics": "rt[63:0] = rs[63:0] + SEXT64(immediate); no overflow trap",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.49",
+      "class": "mips3"
+    },
+    {
+      "mnemonic": "LDL",
+      "opcode": 26,
+      "funct": null,
+      "format": "LDL rt, offset(base)",
+      "operands": [
+        "rt",
+        "offset",
+        "base"
+      ],
+      "semantics": "Unaligned merge load: the bytes from EA up to the end of the aligned doubleword replace the high-order bytes of rt; remaining low bytes of rt unchanged; no alignment fault",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.72",
+      "class": "mips3"
+    },
+    {
+      "mnemonic": "LDR",
+      "opcode": 27,
+      "funct": null,
+      "format": "LDR rt, offset(base)",
+      "operands": [
+        "rt",
+        "offset",
+        "base"
+      ],
+      "semantics": "Unaligned merge load: the bytes from the start of the aligned doubleword through EA replace the low-order bytes of rt; remaining high bytes of rt unchanged; no alignment fault",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.74",
+      "class": "mips3"
+    },
+    {
+      "mnemonic": "LB",
+      "opcode": 32,
+      "funct": null,
+      "format": "LB rt, offset(base)",
+      "operands": [
+        "rt",
+        "offset",
+        "base"
+      ],
+      "semantics": "rt[63:0] = SEXT64(mem8[EA]); EA = base + SEXT(offset); no alignment requirement",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.69",
+      "class": "mips3"
+    },
+    {
+      "mnemonic": "LH",
+      "opcode": 33,
+      "funct": null,
+      "format": "LH rt, offset(base)",
+      "operands": [
+        "rt",
+        "offset",
+        "base"
+      ],
+      "semantics": "rt[63:0] = SEXT64(mem16[EA]); EA must be 2-byte aligned else AddressError",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.76",
+      "class": "mips3"
+    },
+    {
+      "mnemonic": "LWL",
+      "opcode": 34,
+      "funct": null,
+      "format": "LWL rt, offset(base)",
+      "operands": [
+        "rt",
+        "offset",
+        "base"
+      ],
+      "semantics": "Unaligned merge load of the most-significant part of a word; result sign-extended from bit 31 into 63..32; no alignment fault",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.80",
+      "class": "mips3"
+    },
+    {
+      "mnemonic": "LW",
+      "opcode": 35,
+      "funct": null,
+      "format": "LW rt, offset(base)",
+      "operands": [
+        "rt",
+        "offset",
+        "base"
+      ],
+      "semantics": "rt[63:0] = SEXT64(mem32[EA]); EA must be 4-byte aligned else AddressError (manual 'Restrictions' text says halfword, pseudocode checks 2 bits)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.79",
+      "class": "mips3"
+    },
+    {
+      "mnemonic": "LBU",
+      "opcode": 36,
+      "funct": null,
+      "format": "LBU rt, offset(base)",
+      "operands": [
+        "rt",
+        "offset",
+        "base"
+      ],
+      "semantics": "rt[63:0] = ZEXT64(mem8[EA])",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.70",
+      "class": "mips3"
+    },
+    {
+      "mnemonic": "LHU",
+      "opcode": 37,
+      "funct": null,
+      "format": "LHU rt, offset(base)",
+      "operands": [
+        "rt",
+        "offset",
+        "base"
+      ],
+      "semantics": "rt[63:0] = ZEXT64(mem16[EA]); EA must be 2-byte aligned else AddressError",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.77",
+      "class": "mips3"
+    },
+    {
+      "mnemonic": "LWR",
+      "opcode": 38,
+      "funct": null,
+      "format": "LWR rt, offset(base)",
+      "operands": [
+        "rt",
+        "offset",
+        "base"
+      ],
+      "semantics": "Unaligned merge load of the least-significant part of a word; no alignment fault",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.82",
+      "class": "mips3"
+    },
+    {
+      "mnemonic": "LWU",
+      "opcode": 39,
+      "funct": null,
+      "format": "LWU rt, offset(base)",
+      "operands": [
+        "rt",
+        "offset",
+        "base"
+      ],
+      "semantics": "rt[63:0] = ZEXT64(mem32[EA]); EA must be 4-byte aligned else AddressError",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.84",
+      "class": "mips3"
+    },
+    {
+      "mnemonic": "SB",
+      "opcode": 40,
+      "funct": null,
+      "format": "SB rt, offset(base)",
+      "operands": [
+        "rt",
+        "offset",
+        "base"
+      ],
+      "semantics": "mem8[EA] = rt[7:0]; no alignment requirement",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.97",
+      "class": "mips3"
+    },
+    {
+      "mnemonic": "SH",
+      "opcode": 41,
+      "funct": null,
+      "format": "SH rt, offset(base)",
+      "operands": [
+        "rt",
+        "offset",
+        "base"
+      ],
+      "semantics": "mem16[EA] = rt[15:0]; EA must be 2-byte aligned else AddressError",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.103",
+      "class": "mips3"
+    },
+    {
+      "mnemonic": "SWL",
+      "opcode": 42,
+      "funct": null,
+      "format": "SWL rt, offset(base)",
+      "operands": [
+        "rt",
+        "offset",
+        "base"
+      ],
+      "semantics": "Unaligned merge store of the high-order bytes of rt into the low part of the aligned word; no alignment fault",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.117",
+      "class": "mips3"
+    },
+    {
+      "mnemonic": "SW",
+      "opcode": 43,
+      "funct": null,
+      "format": "SW rt, offset(base)",
+      "operands": [
+        "rt",
+        "offset",
+        "base"
+      ],
+      "semantics": "mem32[EA] = rt[31:0]; EA must be 4-byte aligned else AddressError",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.116",
+      "class": "mips3"
+    },
+    {
+      "mnemonic": "SDL",
+      "opcode": 44,
+      "funct": null,
+      "format": "SDL rt, offset(base)",
+      "operands": [
+        "rt",
+        "offset",
+        "base"
+      ],
+      "semantics": "Unaligned merge store: high-order bytes of rt go to the low part of the aligned doubleword; no alignment fault",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.99",
+      "class": "mips3"
+    },
+    {
+      "mnemonic": "SDR",
+      "opcode": 45,
+      "funct": null,
+      "format": "SDR rt, offset(base)",
+      "operands": [
+        "rt",
+        "offset",
+        "base"
+      ],
+      "semantics": "Unaligned merge store: low-order bytes of rt go to the high part of the aligned doubleword; no alignment fault",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.101",
+      "class": "mips3"
+    },
+    {
+      "mnemonic": "SWR",
+      "opcode": 46,
+      "funct": null,
+      "format": "SWR rt, offset(base)",
+      "operands": [
+        "rt",
+        "offset",
+        "base"
+      ],
+      "semantics": "Unaligned merge store of the low-order bytes of rt into the high part of the aligned word; no alignment fault",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.119",
+      "class": "mips3"
+    },
+    {
+      "mnemonic": "CACHE",
+      "opcode": 47,
+      "funct": null,
+      "format": "CACHE op, offset(base)",
+      "operands": [
+        "op",
+        "offset",
+        "base"
+      ],
+      "semantics": "Cache maintenance operation selected by rt (CACHE DHIN, DHWBIN, ... per chapter 4). No architectural register result; must be bracketed by SYNC when used for code modification",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.294-313 and p.396 (opcode 0x2F). Cache-op semantics are COP0/implementation-level",
+      "class": "mips3"
+    },
+    {
+      "mnemonic": "PREF",
+      "opcode": 51,
+      "funct": null,
+      "format": "PREF op, offset(base)",
+      "operands": [
+        "op",
+        "offset",
+        "base"
+      ],
+      "semantics": "Prefetch hint for the cache line containing EA; no architectural effect, no exception on TLB miss",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.96",
+      "class": "mips3"
+    },
+    {
+      "mnemonic": "LD",
+      "opcode": 55,
+      "funct": null,
+      "format": "LD rt, offset(base)",
+      "operands": [
+        "rt",
+        "offset",
+        "base"
+      ],
+      "semantics": "rt[63:0] = mem64[EA]; EA must be 8-byte aligned else AddressError",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.71",
+      "class": "mips3"
+    },
+    {
+      "mnemonic": "SD",
+      "opcode": 63,
+      "funct": null,
+      "format": "SD rt, offset(base)",
+      "operands": [
+        "rt",
+        "offset",
+        "base"
+      ],
+      "semantics": "mem64[EA] = rt[63:0]; EA must be 8-byte aligned else AddressError",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.98",
+      "class": "mips3"
+    },
+    {
+      "mnemonic": "SLL",
+      "opcode": 0,
+      "funct": 0,
+      "format": "SLL rd, rt, sa",
+      "operands": [
+        "rd",
+        "rt",
+        "sa"
+      ],
+      "semantics": "rd[63:0] = SEXT64((rt[31:0] << sa)[31:0]); sa = bits 10..6 (0..31)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.104",
+      "class": "special"
+    },
+    {
+      "mnemonic": "SRL",
+      "opcode": 0,
+      "funct": 2,
+      "format": "SRL rd, rt, sa",
+      "operands": [
+        "rd",
+        "rt",
+        "sa"
+      ],
+      "semantics": "rd[63:0] = SEXT64((rt[31:0] >> sa) zero-filled); sa = bits 10..6 (0..31)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.112",
+      "class": "special"
+    },
+    {
+      "mnemonic": "SRA",
+      "opcode": 0,
+      "funct": 3,
+      "format": "SRA rd, rt, sa",
+      "operands": [
+        "rd",
+        "rt",
+        "sa"
+      ],
+      "semantics": "rd[63:0] = SEXT64(arithmetic_shift_right(rt[31:0], sa)); sa = bits 10..6 (0..31)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.110",
+      "class": "special"
+    },
+    {
+      "mnemonic": "SLLV",
+      "opcode": 0,
+      "funct": 4,
+      "format": "SLLV rd, rt, rs",
+      "operands": [
+        "rd",
+        "rt",
+        "rs"
+      ],
+      "semantics": "rd[63:0] = SEXT64((rt[31:0] << (rs[4:0]))[31:0]); operand need not be sign-extended",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.105",
+      "class": "special"
+    },
+    {
+      "mnemonic": "SRLV",
+      "opcode": 0,
+      "funct": 6,
+      "format": "SRLV rd, rt, rs",
+      "operands": [
+        "rd",
+        "rt",
+        "rs"
+      ],
+      "semantics": "rd[63:0] = SEXT64(logical_shift_right(rt[31:0], rs[4:0]))",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.113",
+      "class": "special"
+    },
+    {
+      "mnemonic": "SRAV",
+      "opcode": 0,
+      "funct": 7,
+      "format": "SRAV rd, rt, rs",
+      "operands": [
+        "rd",
+        "rt",
+        "rs"
+      ],
+      "semantics": "rd[63:0] = SEXT64(arithmetic_shift_right(rt[31:0], rs[4:0]))",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.111",
+      "class": "special"
+    },
+    {
+      "mnemonic": "JR",
+      "opcode": 0,
+      "funct": 8,
+      "format": "JR rs",
+      "operands": [
+        "rs"
+      ],
+      "semantics": "target = rs[31:0]; delay slot executes, then PC = target. Target must be 4-byte aligned; a misaligned target raises AddressError on fetch",
+      "writes_hi_lo": false,
+      "delay_slot": true,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.68",
+      "class": "special"
+    },
+    {
+      "mnemonic": "JALR",
+      "opcode": 0,
+      "funct": 9,
+      "format": "JALR rd, rs (rd defaults to 31)",
+      "operands": [
+        "rd",
+        "rs"
+      ],
+      "semantics": "link = PC+8 -> rd[63:0] (zero-extended); target = rs[31:0]; delay slot executes, then PC = target. rd and rs must differ (else undefined)",
+      "writes_hi_lo": false,
+      "delay_slot": true,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.67",
+      "class": "special"
+    },
+    {
+      "mnemonic": "MOVZ",
+      "opcode": 0,
+      "funct": 10,
+      "format": "MOVZ rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "if rt[63:0] == 0 then rd[63:0] = rs[63:0]",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.88",
+      "class": "special"
+    },
+    {
+      "mnemonic": "MOVN",
+      "opcode": 0,
+      "funct": 11,
+      "format": "MOVN rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "if rt[63:0] != 0 then rd[63:0] = rs[63:0]",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.87",
+      "class": "special"
+    },
+    {
+      "mnemonic": "SYSCALL",
+      "opcode": 0,
+      "funct": 12,
+      "format": "SYSCALL (code in bits 25..6)",
+      "operands": [
+        "code"
+      ],
+      "semantics": "SignalException(SystemCall); code field is software-visible only via the instruction word",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.122",
+      "class": "special"
+    },
+    {
+      "mnemonic": "BREAK",
+      "opcode": 0,
+      "funct": 13,
+      "format": "BREAK (code in bits 25..6)",
+      "operands": [
+        "code"
+      ],
+      "semantics": "SignalException(Breakpoint)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.46",
+      "class": "special"
+    },
+    {
+      "mnemonic": "SYNC",
+      "opcode": 0,
+      "funct": 15,
+      "format": "SYNC / SYNC.L / SYNC.P (stype in bits 10..6)",
+      "operands": [
+        "stype"
+      ],
+      "semantics": "Suspend until prior memory accesses complete (SYNC, SYNC.L) or prior instruction completes except multiply/divide/multicycle COP1/COP2 (SYNC.P); also flushes uncached-accelerated and write buffers. stype: bit 4 = L, bit 0 = P. Illegal in a branch delay slot",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.121",
+      "class": "special"
+    },
+    {
+      "mnemonic": "MFHI",
+      "opcode": 0,
+      "funct": 16,
+      "format": "MFHI rd",
+      "operands": [
+        "rd"
+      ],
+      "semantics": "rd[63:0] = HI[63:0] (HI0); HI1 is not read",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.85",
+      "class": "special"
+    },
+    {
+      "mnemonic": "MTHI",
+      "opcode": 0,
+      "funct": 17,
+      "format": "MTHI rs",
+      "operands": [
+        "rs"
+      ],
+      "semantics": "HI[63:0] = rs[63:0]; HI1 unchanged",
+      "writes_hi_lo": true,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.89",
+      "class": "special"
+    },
+    {
+      "mnemonic": "MFLO",
+      "opcode": 0,
+      "funct": 18,
+      "format": "MFLO rd",
+      "operands": [
+        "rd"
+      ],
+      "semantics": "rd[63:0] = LO[63:0] (LO0); LO1 is not read",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.86",
+      "class": "special"
+    },
+    {
+      "mnemonic": "MTLO",
+      "opcode": 0,
+      "funct": 19,
+      "format": "MTLO rs",
+      "operands": [
+        "rs"
+      ],
+      "semantics": "LO[63:0] = rs[63:0]; LO1 unchanged",
+      "writes_hi_lo": true,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.90",
+      "class": "special"
+    },
+    {
+      "mnemonic": "DSLLV",
+      "opcode": 0,
+      "funct": 20,
+      "format": "DSLLV rd, rt, rs",
+      "operands": [
+        "rd",
+        "rt",
+        "rs"
+      ],
+      "semantics": "rd[63:0] = rt[63:0] << rs[5:0] (zeros shifted in)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.56",
+      "class": "special"
+    },
+    {
+      "mnemonic": "DSRLV",
+      "opcode": 0,
+      "funct": 22,
+      "format": "DSRLV rd, rt, rs",
+      "operands": [
+        "rd",
+        "rt",
+        "rs"
+      ],
+      "semantics": "rd[63:0] = rt[63:0] >> rs[5:0] logical",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.62",
+      "class": "special"
+    },
+    {
+      "mnemonic": "DSRAV",
+      "opcode": 0,
+      "funct": 23,
+      "format": "DSRAV rd, rt, rs",
+      "operands": [
+        "rd",
+        "rt",
+        "rs"
+      ],
+      "semantics": "rd[63:0] = rt[63:0] >> rs[5:0] arithmetic (sign replicated)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.59",
+      "class": "special"
+    },
+    {
+      "mnemonic": "MULT",
+      "opcode": 0,
+      "funct": 24,
+      "format": "MULT rs, rt / MULT rd, rs, rt",
+      "operands": [
+        "rd?",
+        "rs",
+        "rt"
+      ],
+      "semantics": "prod = S32(rs[31:0]) * S32(rt[31:0]); LO[63:0] = SEXT64(prod[31:0]); HI[63:0] = SEXT64(prod[63:32]); if rd != 0 also rd[63:0] = SEXT64(prod[31:0]). No overflow exception",
+      "writes_hi_lo": true,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.91 (2-operand) and p.154 (rd form; same SPECIAL funct 0x18, rd!=0 selects the 3-operand form)",
+      "class": "special"
+    },
+    {
+      "mnemonic": "MULTU",
+      "opcode": 0,
+      "funct": 25,
+      "format": "MULTU rs, rt / MULTU rd, rs, rt",
+      "operands": [
+        "rd?",
+        "rs",
+        "rt"
+      ],
+      "semantics": "prod = U32(rs[31:0]) * U32(rt[31:0]); LO[63:0] = SEXT64(prod[31:0]); HI[63:0] = SEXT64(prod[63:32]); if rd != 0 also rd[63:0] = SEXT64(prod[31:0])",
+      "writes_hi_lo": true,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.92 (2-operand) and p.156 (rd form; same SPECIAL funct 0x19)",
+      "class": "special"
+    },
+    {
+      "mnemonic": "DIV",
+      "opcode": 0,
+      "funct": 26,
+      "format": "DIV rs, rt",
+      "operands": [
+        "rs",
+        "rt"
+      ],
+      "semantics": "LO[63:0] = SEXT64(S32(rs[31:0]) / S32(rt[31:0])); HI[63:0] = SEXT64(S32(rs) MOD S32(rt)); divisor 0 -> quotient/remainder undefined, no exception; 0x80000000/-1 -> quotient 0x80000000, remainder 0",
+      "writes_hi_lo": true,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.51",
+      "class": "special"
+    },
+    {
+      "mnemonic": "DIVU",
+      "opcode": 0,
+      "funct": 27,
+      "format": "DIVU rs, rt",
+      "operands": [
+        "rs",
+        "rt"
+      ],
+      "semantics": "LO[63:0] = SEXT64(U32(rs[31:0]) / U32(rt[31:0])); HI[63:0] = SEXT64(U32(rs) MOD U32(rt)); divisor 0 -> undefined, no exception",
+      "writes_hi_lo": true,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.53",
+      "class": "special"
+    },
+    {
+      "mnemonic": "ADD",
+      "opcode": 0,
+      "funct": 32,
+      "format": "ADD rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "rd[63:0] = SEXT64((rs[31:0] + rt[31:0])[31:0]); signed 32-bit overflow -> IntegerOverflow, rd unchanged",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.24",
+      "class": "special"
+    },
+    {
+      "mnemonic": "ADDU",
+      "opcode": 0,
+      "funct": 33,
+      "format": "ADDU rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "rd[63:0] = SEXT64((rs[31:0] + rt[31:0])[31:0]); no overflow trap",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.27",
+      "class": "special"
+    },
+    {
+      "mnemonic": "SUB",
+      "opcode": 0,
+      "funct": 34,
+      "format": "SUB rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "rd[63:0] = SEXT64((rs[31:0] - rt[31:0])[31:0]); signed overflow -> IntegerOverflow",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.114",
+      "class": "special"
+    },
+    {
+      "mnemonic": "SUBU",
+      "opcode": 0,
+      "funct": 35,
+      "format": "SUBU rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "rd[63:0] = SEXT64((rs[31:0] - rt[31:0])[31:0]); no overflow trap",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.115",
+      "class": "special"
+    },
+    {
+      "mnemonic": "AND",
+      "opcode": 0,
+      "funct": 36,
+      "format": "AND rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "rd[63:0] = rs[63:0] AND rt[63:0]",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.28",
+      "class": "special"
+    },
+    {
+      "mnemonic": "OR",
+      "opcode": 0,
+      "funct": 37,
+      "format": "OR rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "rd[63:0] = rs[63:0] OR rt[63:0]",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.94",
+      "class": "special"
+    },
+    {
+      "mnemonic": "XOR",
+      "opcode": 0,
+      "funct": 38,
+      "format": "XOR rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "rd[63:0] = rs[63:0] XOR rt[63:0]",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.135",
+      "class": "special"
+    },
+    {
+      "mnemonic": "NOR",
+      "opcode": 0,
+      "funct": 39,
+      "format": "NOR rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "rd[63:0] = NOT(rs[63:0] OR rt[63:0])",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.93",
+      "class": "special"
+    },
+    {
+      "mnemonic": "MFSA",
+      "opcode": 0,
+      "funct": 40,
+      "format": "MFSA rd",
+      "operands": [
+        "rd"
+      ],
+      "semantics": "rd[63:0] = SA (encoded form; only meaningful when written back by MTSA)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.148",
+      "class": "special"
+    },
+    {
+      "mnemonic": "MTSA",
+      "opcode": 0,
+      "funct": 41,
+      "format": "MTSA rs",
+      "operands": [
+        "rs"
+      ],
+      "semantics": "SA = rs[63:0]; value must have been produced by MFSA, else QFSRV result undefined",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.151",
+      "class": "special"
+    },
+    {
+      "mnemonic": "SLT",
+      "opcode": 0,
+      "funct": 42,
+      "format": "SLT rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "rd[63:0] = (S64(rs) < S64(rt)) ? 1 : 0",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.106",
+      "class": "special"
+    },
+    {
+      "mnemonic": "SLTU",
+      "opcode": 0,
+      "funct": 43,
+      "format": "SLTU rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "rd[63:0] = (U64(rs) < U64(rt)) ? 1 : 0",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.109",
+      "class": "special"
+    },
+    {
+      "mnemonic": "DADD",
+      "opcode": 0,
+      "funct": 44,
+      "format": "DADD rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "rd[63:0] = rs[63:0] + rt[63:0]; signed 64-bit overflow -> IntegerOverflow, rd unchanged",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.47",
+      "class": "special"
+    },
+    {
+      "mnemonic": "DADDU",
+      "opcode": 0,
+      "funct": 45,
+      "format": "DADDU rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "rd[63:0] = rs[63:0] + rt[63:0]; no overflow trap",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.50",
+      "class": "special"
+    },
+    {
+      "mnemonic": "DSUB",
+      "opcode": 0,
+      "funct": 46,
+      "format": "DSUB rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "rd[63:0] = rs[63:0] - rt[63:0]; signed 64-bit overflow -> IntegerOverflow",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.63",
+      "class": "special"
+    },
+    {
+      "mnemonic": "DSUBU",
+      "opcode": 0,
+      "funct": 47,
+      "format": "DSUBU rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "rd[63:0] = rs[63:0] - rt[63:0]; no overflow trap",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.64",
+      "class": "special"
+    },
+    {
+      "mnemonic": "TGE",
+      "opcode": 0,
+      "funct": 48,
+      "format": "TGE rs, rt",
+      "operands": [
+        "rs",
+        "rt"
+      ],
+      "semantics": "if S64(rs) >= S64(rt) then SignalException(Trap)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.125",
+      "class": "special"
+    },
+    {
+      "mnemonic": "TGEU",
+      "opcode": 0,
+      "funct": 49,
+      "format": "TGEU rs, rt",
+      "operands": [
+        "rs",
+        "rt"
+      ],
+      "semantics": "if U64(rs) >= U64(rt) then SignalException(Trap)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.128",
+      "class": "special"
+    },
+    {
+      "mnemonic": "TLT",
+      "opcode": 0,
+      "funct": 50,
+      "format": "TLT rs, rt",
+      "operands": [
+        "rs",
+        "rt"
+      ],
+      "semantics": "if S64(rs) < S64(rt) then SignalException(Trap)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.129",
+      "class": "special"
+    },
+    {
+      "mnemonic": "TLTU",
+      "opcode": 0,
+      "funct": 51,
+      "format": "TLTU rs, rt",
+      "operands": [
+        "rs",
+        "rt"
+      ],
+      "semantics": "if U64(rs) < U64(rt) then SignalException(Trap)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.132",
+      "class": "special"
+    },
+    {
+      "mnemonic": "TEQ",
+      "opcode": 0,
+      "funct": 52,
+      "format": "TEQ rs, rt",
+      "operands": [
+        "rs",
+        "rt"
+      ],
+      "semantics": "if rs[63:0] == rt[63:0] then SignalException(Trap)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.123",
+      "class": "special"
+    },
+    {
+      "mnemonic": "TNE",
+      "opcode": 0,
+      "funct": 54,
+      "format": "TNE rs, rt",
+      "operands": [
+        "rs",
+        "rt"
+      ],
+      "semantics": "if rs[63:0] != rt[63:0] then SignalException(Trap)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.133",
+      "class": "special"
+    },
+    {
+      "mnemonic": "DSLL",
+      "opcode": 0,
+      "funct": 56,
+      "format": "DSLL rd, rt, sa",
+      "operands": [
+        "rd",
+        "rt",
+        "sa"
+      ],
+      "semantics": "rd[63:0] = rt[63:0] << sa; sa = bits 10..6 (0..31)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.54",
+      "class": "special"
+    },
+    {
+      "mnemonic": "DSRL",
+      "opcode": 0,
+      "funct": 58,
+      "format": "DSRL rd, rt, sa",
+      "operands": [
+        "rd",
+        "rt",
+        "sa"
+      ],
+      "semantics": "rd[63:0] = rt[63:0] >> sa logical; sa = bits 10..6",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.60",
+      "class": "special"
+    },
+    {
+      "mnemonic": "DSRA",
+      "opcode": 0,
+      "funct": 59,
+      "format": "DSRA rd, rt, sa",
+      "operands": [
+        "rd",
+        "rt",
+        "sa"
+      ],
+      "semantics": "rd[63:0] = rt[63:0] >> sa arithmetic; sa = bits 10..6",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.57",
+      "class": "special"
+    },
+    {
+      "mnemonic": "DSLL32",
+      "opcode": 0,
+      "funct": 60,
+      "format": "DSLL32 rd, rt, sa",
+      "operands": [
+        "rd",
+        "rt",
+        "sa"
+      ],
+      "semantics": "rd[63:0] = rt[63:0] << (sa + 32)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.55",
+      "class": "special"
+    },
+    {
+      "mnemonic": "DSRL32",
+      "opcode": 0,
+      "funct": 62,
+      "format": "DSRL32 rd, rt, sa",
+      "operands": [
+        "rd",
+        "rt",
+        "sa"
+      ],
+      "semantics": "rd[63:0] = rt[63:0] >> (sa + 32) logical",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.61",
+      "class": "special"
+    },
+    {
+      "mnemonic": "DSRA32",
+      "opcode": 0,
+      "funct": 63,
+      "format": "DSRA32 rd, rt, sa",
+      "operands": [
+        "rd",
+        "rt",
+        "sa"
+      ],
+      "semantics": "rd[63:0] = rt[63:0] >> (sa + 32) arithmetic",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.58",
+      "class": "special"
+    },
+    {
+      "mnemonic": "BLTZ",
+      "opcode": 1,
+      "funct": 0,
+      "format": "BLTZ rs, offset",
+      "operands": [
+        "rs",
+        "offset"
+      ],
+      "semantics": "if S64(rs) < 0 then PC = PC+4 + (SEXT(offset)<<2); delay slot always executes",
+      "writes_hi_lo": false,
+      "delay_slot": true,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.40 (REGIMM rt=0x00)",
+      "class": "regimm"
+    },
+    {
+      "mnemonic": "BGEZ",
+      "opcode": 1,
+      "funct": 1,
+      "format": "BGEZ rs, offset",
+      "operands": [
+        "rs",
+        "offset"
+      ],
+      "semantics": "if S64(rs) >= 0 then PC = PC+4 + (SEXT(offset)<<2); delay slot always executes",
+      "writes_hi_lo": false,
+      "delay_slot": true,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.32 (REGIMM rt=0x01)",
+      "class": "regimm"
+    },
+    {
+      "mnemonic": "BLTZL",
+      "opcode": 1,
+      "funct": 2,
+      "format": "BLTZL rs, offset",
+      "operands": [
+        "rs",
+        "offset"
+      ],
+      "semantics": "if S64(rs) < 0 then PC = PC+4 + (SEXT(offset)<<2) else nullify delay slot",
+      "writes_hi_lo": false,
+      "delay_slot": true,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.43 (REGIMM rt=0x02)",
+      "class": "regimm"
+    },
+    {
+      "mnemonic": "BGEZL",
+      "opcode": 1,
+      "funct": 3,
+      "format": "BGEZL rs, offset",
+      "operands": [
+        "rs",
+        "offset"
+      ],
+      "semantics": "if S64(rs) >= 0 then PC = PC+4 + (SEXT(offset)<<2) else nullify delay slot",
+      "writes_hi_lo": false,
+      "delay_slot": true,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.35 (REGIMM rt=0x03)",
+      "class": "regimm"
+    },
+    {
+      "mnemonic": "TGEI",
+      "opcode": 1,
+      "funct": 8,
+      "format": "TGEI rs, immediate",
+      "operands": [
+        "rs",
+        "immediate"
+      ],
+      "semantics": "if S64(rs) >= SEXT64(immediate) then SignalException(Trap)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.126 (REGIMM rt=0x08)",
+      "class": "regimm"
+    },
+    {
+      "mnemonic": "TGEIU",
+      "opcode": 1,
+      "funct": 9,
+      "format": "TGEIU rs, immediate",
+      "operands": [
+        "rs",
+        "immediate"
+      ],
+      "semantics": "if U64(rs) >= U64(SEXT64(immediate)) then SignalException(Trap)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.127 (REGIMM rt=0x09)",
+      "class": "regimm"
+    },
+    {
+      "mnemonic": "TLTI",
+      "opcode": 1,
+      "funct": 10,
+      "format": "TLTI rs, immediate",
+      "operands": [
+        "rs",
+        "immediate"
+      ],
+      "semantics": "if S64(rs) < SEXT64(immediate) then SignalException(Trap)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.130 (REGIMM rt=0x0A)",
+      "class": "regimm"
+    },
+    {
+      "mnemonic": "TLTIU",
+      "opcode": 1,
+      "funct": 11,
+      "format": "TLTIU rs, immediate",
+      "operands": [
+        "rs",
+        "immediate"
+      ],
+      "semantics": "if U64(rs) < U64(SEXT64(immediate)) then SignalException(Trap)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.131 (REGIMM rt=0x0B)",
+      "class": "regimm"
+    },
+    {
+      "mnemonic": "TEQI",
+      "opcode": 1,
+      "funct": 12,
+      "format": "TEQI rs, immediate",
+      "operands": [
+        "rs",
+        "immediate"
+      ],
+      "semantics": "if S64(rs) == SEXT64(immediate) then SignalException(Trap)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.124 (REGIMM rt=0x0C)",
+      "class": "regimm"
+    },
+    {
+      "mnemonic": "TNEI",
+      "opcode": 1,
+      "funct": 14,
+      "format": "TNEI rs, immediate",
+      "operands": [
+        "rs",
+        "immediate"
+      ],
+      "semantics": "if S64(rs) != SEXT64(immediate) then SignalException(Trap)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.134 (REGIMM rt=0x0E)",
+      "class": "regimm"
+    },
+    {
+      "mnemonic": "BLTZAL",
+      "opcode": 1,
+      "funct": 16,
+      "format": "BLTZAL rs, offset",
+      "operands": [
+        "rs",
+        "offset"
+      ],
+      "semantics": "GPR[31] = PC+8; if S64(rs) < 0 then PC = PC+4 + (SEXT(offset)<<2); delay slot always executes; rs must not be 31",
+      "writes_hi_lo": false,
+      "delay_slot": true,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.41 (REGIMM rt=0x10)",
+      "class": "regimm"
+    },
+    {
+      "mnemonic": "BGEZAL",
+      "opcode": 1,
+      "funct": 17,
+      "format": "BGEZAL rs, offset",
+      "operands": [
+        "rs",
+        "offset"
+      ],
+      "semantics": "GPR[31] = PC+8; if S64(rs) >= 0 then PC = PC+4 + (SEXT(offset)<<2); delay slot always executes; rs must not be 31",
+      "writes_hi_lo": false,
+      "delay_slot": true,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.33 (REGIMM rt=0x11)",
+      "class": "regimm"
+    },
+    {
+      "mnemonic": "BLTZALL",
+      "opcode": 1,
+      "funct": 18,
+      "format": "BLTZALL rs, offset",
+      "operands": [
+        "rs",
+        "offset"
+      ],
+      "semantics": "GPR[31] = PC+8; if S64(rs) < 0 branch else nullify delay slot; rs must not be 31",
+      "writes_hi_lo": false,
+      "delay_slot": true,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.42 (REGIMM rt=0x12)",
+      "class": "regimm"
+    },
+    {
+      "mnemonic": "BGEZALL",
+      "opcode": 1,
+      "funct": 19,
+      "format": "BGEZALL rs, offset",
+      "operands": [
+        "rs",
+        "offset"
+      ],
+      "semantics": "GPR[31] = PC+8; if S64(rs) >= 0 branch else nullify delay slot; rs must not be 31",
+      "writes_hi_lo": false,
+      "delay_slot": true,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.34 (REGIMM rt=0x13)",
+      "class": "regimm"
+    },
+    {
+      "mnemonic": "MTSAB",
+      "opcode": 1,
+      "funct": 24,
+      "format": "MTSAB rs, immediate",
+      "operands": [
+        "rs",
+        "immediate"
+      ],
+      "semantics": "SA = ((rs[3:0] XOR immediate[3:0]) & 0xF) * 8 (byte shift count)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.152 (REGIMM rt=0x18)",
+      "class": "regimm"
+    },
+    {
+      "mnemonic": "MTSAH",
+      "opcode": 1,
+      "funct": 25,
+      "format": "MTSAH rs, immediate",
+      "operands": [
+        "rs",
+        "immediate"
+      ],
+      "semantics": "SA = ((rs[2:0] XOR immediate[2:0]) & 0x7) * 16 (halfword shift count)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.153 (REGIMM rt=0x19)",
+      "class": "regimm"
+    },
+    {
+      "mnemonic": "MADD",
+      "opcode": 28,
+      "funct": 0,
+      "format": "MADD rd, rs, rt (rd optional)",
+      "operands": [
+        "rd?",
+        "rs",
+        "rt"
+      ],
+      "semantics": "(HI||LO) accumulator += S32(rs) * S32(rt); low 32 bits also to rd[63:0] when rd != 0",
+      "writes_hi_lo": true,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.142 (MMI non-group, funct 0x00)",
+      "class": "special2"
+    },
+    {
+      "mnemonic": "MADDU",
+      "opcode": 28,
+      "funct": 1,
+      "format": "MADDU rd, rs, rt (rd optional)",
+      "operands": [
+        "rd?",
+        "rs",
+        "rt"
+      ],
+      "semantics": "(HI||LO) accumulator += U32(rs) * U32(rt); low 32 bits also to rd[63:0] when rd != 0",
+      "writes_hi_lo": true,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.144 (MMI non-group, funct 0x01)",
+      "class": "special2"
+    },
+    {
+      "mnemonic": "PLZCW",
+      "opcode": 28,
+      "funct": 4,
+      "format": "PLZCW rd, rs",
+      "operands": [
+        "rd",
+        "rs"
+      ],
+      "semantics": "for each 32-bit word of rs[63:0]: count leading bits equal to bit 31, subtract 1, store the 32-bit count in the corresponding rd word",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.215 (MMI non-group, funct 0x04)",
+      "class": "special2"
+    },
+    {
+      "mnemonic": "MFHI1",
+      "opcode": 28,
+      "funct": 16,
+      "format": "MFHI1 rd",
+      "operands": [
+        "rd"
+      ],
+      "semantics": "rd[63:0] = HI1 (HI[127:64])",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.146 (MMI non-group, funct 0x10)",
+      "class": "special2"
+    },
+    {
+      "mnemonic": "MTHI1",
+      "opcode": 28,
+      "funct": 17,
+      "format": "MTHI1 rs",
+      "operands": [
+        "rs"
+      ],
+      "semantics": "HI1 = rs[63:0]",
+      "writes_hi_lo": true,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.149 (MMI non-group, funct 0x11)",
+      "class": "special2"
+    },
+    {
+      "mnemonic": "MFLO1",
+      "opcode": 28,
+      "funct": 18,
+      "format": "MFLO1 rd",
+      "operands": [
+        "rd"
+      ],
+      "semantics": "rd[63:0] = LO1 (LO[127:64])",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.147 (MMI non-group, funct 0x12)",
+      "class": "special2"
+    },
+    {
+      "mnemonic": "MTLO1",
+      "opcode": 28,
+      "funct": 19,
+      "format": "MTLO1 rs",
+      "operands": [
+        "rs"
+      ],
+      "semantics": "LO1 = rs[63:0]",
+      "writes_hi_lo": true,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.150 (MMI non-group, funct 0x13)",
+      "class": "special2"
+    },
+    {
+      "mnemonic": "MULT1",
+      "opcode": 28,
+      "funct": 24,
+      "format": "MULT1 rs, rt",
+      "operands": [
+        "rs",
+        "rt"
+      ],
+      "semantics": "product of S32(rs)*S32(rt); LO1 = SEXT64(lo32), HI1 = SEXT64(hi32) (I1 pipeline)",
+      "writes_hi_lo": true,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.155 (MMI non-group, funct 0x18)",
+      "class": "special2"
+    },
+    {
+      "mnemonic": "MULTU1",
+      "opcode": 28,
+      "funct": 25,
+      "format": "MULTU1 rs, rt",
+      "operands": [
+        "rs",
+        "rt"
+      ],
+      "semantics": "product of U32(rs)*U32(rt); LO1 = SEXT64(lo32), HI1 = SEXT64(hi32)",
+      "writes_hi_lo": true,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.157 (MMI non-group, funct 0x19)",
+      "class": "special2"
+    },
+    {
+      "mnemonic": "DIV1",
+      "opcode": 28,
+      "funct": 26,
+      "format": "DIV1 rs, rt",
+      "operands": [
+        "rs",
+        "rt"
+      ],
+      "semantics": "LO1 = SEXT64(quotient), HI1 = SEXT64(remainder), signed; divisor 0 -> undefined, no exception",
+      "writes_hi_lo": true,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.138 (MMI non-group, funct 0x1A)",
+      "class": "special2"
+    },
+    {
+      "mnemonic": "DIVU1",
+      "opcode": 28,
+      "funct": 27,
+      "format": "DIVU1 rs, rt",
+      "operands": [
+        "rs",
+        "rt"
+      ],
+      "semantics": "LO1 = SEXT64(quotient), HI1 = SEXT64(remainder), unsigned; divisor 0 -> undefined, no exception",
+      "writes_hi_lo": true,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.140 (MMI non-group, funct 0x1B)",
+      "class": "special2"
+    },
+    {
+      "mnemonic": "MADD1",
+      "opcode": 28,
+      "funct": 32,
+      "format": "MADD1 rd, rs, rt (rd optional)",
+      "operands": [
+        "rd?",
+        "rs",
+        "rt"
+      ],
+      "semantics": "(HI1||LO1) += S32(rs)*S32(rt); low 32 bits also to rd when rd != 0",
+      "writes_hi_lo": true,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.143 (MMI non-group, funct 0x20)",
+      "class": "special2"
+    },
+    {
+      "mnemonic": "MADDU1",
+      "opcode": 28,
+      "funct": 33,
+      "format": "MADDU1 rd, rs, rt (rd optional)",
+      "operands": [
+        "rd?",
+        "rs",
+        "rt"
+      ],
+      "semantics": "(HI1||LO1) += U32(rs)*U32(rt)",
+      "writes_hi_lo": true,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.145 (MMI non-group, funct 0x21)",
+      "class": "special2"
+    },
+    {
+      "mnemonic": "PMFHL.LW",
+      "opcode": 28,
+      "funct": 48,
+      "format": "PMFHL.LW rd",
+      "operands": [
+        "rd"
+      ],
+      "semantics": "rd[31:0]=LO[31:0]; rd[63:32]=HI[31:0]; rd[95:64]=LO[95:64]; rd[127:96]=HI[95:64]",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.228 (MMI class funct 0x30, fmt=0x00 in bits 10..6)",
+      "class": "special2"
+    },
+    {
+      "mnemonic": "PMTHL.LW",
+      "opcode": 28,
+      "funct": 49,
+      "format": "PMTHL.LW rs",
+      "operands": [
+        "rs"
+      ],
+      "semantics": "LO[31:0]=rs[31:0]; HI[31:0]=rs[63:32]; LO[95:64]=rs[95:64]; HI[95:64]=rs[127:96]",
+      "writes_hi_lo": true,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.244 (MMI class funct 0x31, fmt=0 in bits 10..6)",
+      "class": "special2"
+    },
+    {
+      "mnemonic": "PSLLH",
+      "opcode": 28,
+      "funct": 52,
+      "format": "PSLLH rd, rt, sa",
+      "operands": [
+        "rd",
+        "rt",
+        "sa"
+      ],
+      "semantics": "per 16-bit lane: rd = rt << (sa & 0xF); sa must be 0..15 else undefined",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.261 (MMI class funct 0x34; sa operand in bits 10..6)",
+      "class": "special2"
+    },
+    {
+      "mnemonic": "PSRLH",
+      "opcode": 28,
+      "funct": 54,
+      "format": "PSRLH rd, rt, sa",
+      "operands": [
+        "rd",
+        "rt",
+        "sa"
+      ],
+      "semantics": "per 16-bit lane: rd = rt >> (sa & 0xF) logical; sa must be 0..15 else undefined",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.267 (MMI class funct 0x36; sa operand in bits 10..6)",
+      "class": "special2"
+    },
+    {
+      "mnemonic": "PSRAH",
+      "opcode": 28,
+      "funct": 55,
+      "format": "PSRAH rd, rt, sa",
+      "operands": [
+        "rd",
+        "rt",
+        "sa"
+      ],
+      "semantics": "per 16-bit lane: rd = rt >> (sa & 0xF) arithmetic; sa must be 0..15 else undefined",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.264 (MMI class funct 0x37; sa operand in bits 10..6)",
+      "class": "special2"
+    },
+    {
+      "mnemonic": "PSLLW",
+      "opcode": 28,
+      "funct": 60,
+      "format": "PSLLW rd, rt, sa",
+      "operands": [
+        "rd",
+        "rt",
+        "sa"
+      ],
+      "semantics": "per 32-bit lane: rd = rt << sa (sa in bits 10..6)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.263 (MMI class funct 0x3C; sa operand in bits 10..6)",
+      "class": "special2"
+    },
+    {
+      "mnemonic": "PSRLW",
+      "opcode": 28,
+      "funct": 62,
+      "format": "PSRLW rd, rt, sa",
+      "operands": [
+        "rd",
+        "rt",
+        "sa"
+      ],
+      "semantics": "per 32-bit lane: rd = rt >> sa logical",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.269 (MMI class funct 0x3E; sa operand in bits 10..6)",
+      "class": "special2"
+    },
+    {
+      "mnemonic": "PSRAW",
+      "opcode": 28,
+      "funct": 63,
+      "format": "PSRAW rd, rt, sa",
+      "operands": [
+        "rd",
+        "rt",
+        "sa"
+      ],
+      "semantics": "per 32-bit lane: rd = rt >> sa arithmetic",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.266 (MMI class funct 0x3F; sa operand in bits 10..6)",
+      "class": "special2"
+    },
+    {
+      "mnemonic": "PMFHL.UW",
+      "opcode": 28,
+      "funct": 112,
+      "format": "PMFHL.UW rd",
+      "operands": [
+        "rd"
+      ],
+      "semantics": "rd[31:0]=LO[63:32]; rd[63:32]=HI[63:32]; rd[95:64]=LO[127:96]; rd[127:96]=HI[127:96]",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.233 (MMI class funct 0x30, fmt=0x01 in bits 10..6)",
+      "class": "special2"
+    },
+    {
+      "mnemonic": "PMFHL.SLW",
+      "opcode": 28,
+      "funct": 176,
+      "format": "PMFHL.SLW rd",
+      "operands": [
+        "rd"
+      ],
+      "semantics": "two 64-bit halves: the 64-bit concatenation HI[k+31:k]||LO[k+31:k] is saturated to signed 32 bits and sign-extended into rd[63:0] (k=0) and rd[127:64] (k=64)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.231 (MMI class funct 0x30, fmt=0x02 in bits 10..6)",
+      "class": "special2"
+    },
+    {
+      "mnemonic": "PMFHL.LH",
+      "opcode": 28,
+      "funct": 240,
+      "format": "PMFHL.LH rd",
+      "operands": [
+        "rd"
+      ],
+      "semantics": "rd[15:0]=LO[15:0]; rd[31:16]=LO[47:32]; rd[47:32]=HI[15:0]; rd[63:48]=HI[47:32]; rd[79:64]=LO[79:64]; rd[95:80]=LO[111:96]; rd[111:96]=HI[79:64]; rd[127:112]=HI[111:96]",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.227 (MMI class funct 0x30, fmt=0x03 in bits 10..6)",
+      "class": "special2"
+    },
+    {
+      "mnemonic": "PMFHL.SH",
+      "opcode": 28,
+      "funct": 304,
+      "format": "PMFHL.SH rd",
+      "operands": [
+        "rd"
+      ],
+      "semantics": "same word order as PMFHL.LW but each 32-bit value is saturated to signed 16 bits and stored in the corresponding halfword lane",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.229 (MMI class funct 0x30, fmt=0x04 in bits 10..6)",
+      "class": "special2"
+    },
+    {
+      "mnemonic": "PADDW",
+      "opcode": 28,
+      "funct": 8,
+      "format": "PADDW rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "per 32-bit lane: rd = (rs + rt) mod 2^32",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.174 (MMI MMI0, sub-op 0x00)",
+      "class": "mmi0"
+    },
+    {
+      "mnemonic": "PSUBW",
+      "opcode": 28,
+      "funct": 72,
+      "format": "PSUBW rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "per 32-bit lane: rd = (rs - rt) mod 2^32",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.284 (MMI MMI0, sub-op 0x01)",
+      "class": "mmi0"
+    },
+    {
+      "mnemonic": "PCGTW",
+      "opcode": 28,
+      "funct": 136,
+      "format": "PCGTW rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "per 32-bit lane: rd = (S32(rs) > S32(rt)) ? 0xFFFFFFFF : 0",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.187 (MMI MMI0, sub-op 0x02)",
+      "class": "mmi0"
+    },
+    {
+      "mnemonic": "PMAXW",
+      "opcode": 28,
+      "funct": 200,
+      "format": "PMAXW rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "per 32-bit lane: rd = signed maximum of rs and rt",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.224 (MMI MMI0, sub-op 0x03)",
+      "class": "mmi0"
+    },
+    {
+      "mnemonic": "PADDH",
+      "opcode": 28,
+      "funct": 264,
+      "format": "PADDH rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "per 16-bit lane: rd = (rs + rt) mod 2^16",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.161 (MMI MMI0, sub-op 0x04)",
+      "class": "mmi0"
+    },
+    {
+      "mnemonic": "PSUBH",
+      "opcode": 28,
+      "funct": 328,
+      "format": "PSUBH rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "per 16-bit lane: rd = (rs - rt) mod 2^16",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.271 (MMI MMI0, sub-op 0x05)",
+      "class": "mmi0"
+    },
+    {
+      "mnemonic": "PCGTH",
+      "opcode": 28,
+      "funct": 392,
+      "format": "PCGTH rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "per 16-bit lane: rd = (S16(rs) > S16(rt)) ? 0xFFFF : 0",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.185 (MMI MMI0, sub-op 0x06)",
+      "class": "mmi0"
+    },
+    {
+      "mnemonic": "PMAXH",
+      "opcode": 28,
+      "funct": 456,
+      "format": "PMAXH rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "per 16-bit lane: rd = signed maximum of rs and rt",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.222 (MMI MMI0, sub-op 0x07)",
+      "class": "mmi0"
+    },
+    {
+      "mnemonic": "PADDB",
+      "opcode": 28,
+      "funct": 520,
+      "format": "PADDB rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "per 8-bit lane: rd = (rs + rt) mod 2^8",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.160 (MMI MMI0, sub-op 0x08)",
+      "class": "mmi0"
+    },
+    {
+      "mnemonic": "PSUBB",
+      "opcode": 28,
+      "funct": 584,
+      "format": "PSUBB rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "per 8-bit lane: rd = (rs - rt) mod 2^8",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.270 (MMI MMI0, sub-op 0x09)",
+      "class": "mmi0"
+    },
+    {
+      "mnemonic": "PCGTB",
+      "opcode": 28,
+      "funct": 648,
+      "format": "PCGTB rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "per 8-bit lane: rd = (S8(rs) > S8(rt)) ? 0xFF : 0",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.183 (MMI MMI0, sub-op 0x0A)",
+      "class": "mmi0"
+    },
+    {
+      "mnemonic": "PADDSW",
+      "opcode": 28,
+      "funct": 776,
+      "format": "PADDSW rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "per 32-bit lane: rd = signed_saturate(rs + rt, -2^31, 2^31-1)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.166 (MMI MMI0, sub-op 0x0C)",
+      "class": "mmi0"
+    },
+    {
+      "mnemonic": "PSUBSW",
+      "opcode": 28,
+      "funct": 840,
+      "format": "PSUBSW rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "per 32-bit lane: rd = signed_saturate(rs - rt, -2^31, 2^31-1)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.276 (MMI MMI0, sub-op 0x0D)",
+      "class": "mmi0"
+    },
+    {
+      "mnemonic": "PEXTLW",
+      "opcode": 28,
+      "funct": 904,
+      "format": "PEXTLW rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "rd = {rt[63:32], rs[63:32], rt[31:0], rs[31:0]} (interleave low doublewords by word, rs in even lanes)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.205 (MMI MMI0, sub-op 0x0E)",
+      "class": "mmi0"
+    },
+    {
+      "mnemonic": "PPACW",
+      "opcode": 28,
+      "funct": 968,
+      "format": "PPACW rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "rd = {rs[31:0], rs[95:64], rt[31:0], rt[95:64]} (pack low word of each doubleword; rs -> bits 127..64)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.258 (MMI MMI0, sub-op 0x0F)",
+      "class": "mmi0"
+    },
+    {
+      "mnemonic": "PADDSH",
+      "opcode": 28,
+      "funct": 1032,
+      "format": "PADDSH rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "per 16-bit lane: rd = signed_saturate(rs + rt, -2^15, 2^15-1)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.164 (MMI MMI0, sub-op 0x10)",
+      "class": "mmi0"
+    },
+    {
+      "mnemonic": "PSUBSH",
+      "opcode": 28,
+      "funct": 1096,
+      "format": "PSUBSH rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "per 16-bit lane: rd = signed_saturate(rs - rt, -2^15, 2^15-1). NB: manual Description text says 'just truncated' but the instruction name and Operation saturate; saturation trusted",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.274 (MMI MMI0, sub-op 0x11)",
+      "class": "mmi0"
+    },
+    {
+      "mnemonic": "PEXTLH",
+      "opcode": 28,
+      "funct": 1160,
+      "format": "PEXTLH rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "interleave the low 64 bits of rs and rt by 16-bit lanes, rs in even lanes",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.204 (MMI MMI0, sub-op 0x12)",
+      "class": "mmi0"
+    },
+    {
+      "mnemonic": "PPACH",
+      "opcode": 28,
+      "funct": 1224,
+      "format": "PPACH rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "pack the low halfword of each word: rd[127:64] from rs, rd[63:0] from rt",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.257 (MMI MMI0, sub-op 0x13)",
+      "class": "mmi0"
+    },
+    {
+      "mnemonic": "PADDSB",
+      "opcode": 28,
+      "funct": 1288,
+      "format": "PADDSB rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "per 8-bit lane: rd = signed_saturate(rs + rt, -128, 127)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.162 (MMI MMI0, sub-op 0x14)",
+      "class": "mmi0"
+    },
+    {
+      "mnemonic": "PSUBSB",
+      "opcode": 28,
+      "funct": 1352,
+      "format": "PSUBSB rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "per 8-bit lane: rd = signed_saturate(rs - rt, -128, 127)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.272 (MMI MMI0, sub-op 0x15)",
+      "class": "mmi0"
+    },
+    {
+      "mnemonic": "PEXTLB",
+      "opcode": 28,
+      "funct": 1416,
+      "format": "PEXTLB rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "interleave the low 64 bits of rs and rt by byte, rs in even lanes",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.203 (MMI MMI0, sub-op 0x16)",
+      "class": "mmi0"
+    },
+    {
+      "mnemonic": "PPACB",
+      "opcode": 28,
+      "funct": 1480,
+      "format": "PPACB rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "pack the low byte of each halfword: rd[127:64] from rs, rd[63:0] from rt",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.256 (MMI MMI0, sub-op 0x17)",
+      "class": "mmi0"
+    },
+    {
+      "mnemonic": "PEXT5",
+      "opcode": 28,
+      "funct": 1672,
+      "format": "PEXT5 rd, rt",
+      "operands": [
+        "rd",
+        "rt"
+      ],
+      "semantics": "each 16-bit field 1-5-5-5 of rt is expanded to 32-bit 0-8-8-8-8 (bit15 -> bit31, 5-bit groups shifted to 8-bit groups)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.202 (MMI MMI0, sub-op 0x1A)",
+      "class": "mmi0"
+    },
+    {
+      "mnemonic": "PPAC5",
+      "opcode": 28,
+      "funct": 1736,
+      "format": "PPAC5 rd, rt",
+      "operands": [
+        "rd",
+        "rt"
+      ],
+      "semantics": "each 32-bit word of rt is compressed to a 16-bit 1-5-5-5 field (bit31, then bits 23..19/15..11/7..3)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.254 (MMI MMI0, sub-op 0x1B)",
+      "class": "mmi0"
+    },
+    {
+      "mnemonic": "PABSW",
+      "opcode": 28,
+      "funct": 104,
+      "format": "PABSW rd, rt",
+      "operands": [
+        "rd",
+        "rt"
+      ],
+      "semantics": "per 32-bit lane: rd = |S32(rt)|; 0x80000000 wraps to 0x80000000 (truncated, no exception)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.159 (MMI MMI1, sub-op 0x01)",
+      "class": "mmi1"
+    },
+    {
+      "mnemonic": "PCEQW",
+      "opcode": 28,
+      "funct": 168,
+      "format": "PCEQW rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "per 32-bit lane: rd = (rs == rt) ? 0xFFFFFFFF : 0",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.181 (MMI MMI1, sub-op 0x02)",
+      "class": "mmi1"
+    },
+    {
+      "mnemonic": "PMINW",
+      "opcode": 28,
+      "funct": 232,
+      "format": "PMINW rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "per 32-bit lane: rd = signed minimum of rs and rt",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.237 (MMI MMI1, sub-op 0x03)",
+      "class": "mmi1"
+    },
+    {
+      "mnemonic": "PADSBH",
+      "opcode": 28,
+      "funct": 296,
+      "format": "PADSBH rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "low four 16-bit lanes: rd = rs - rt; high four 16-bit lanes: rd = rs + rt; wraparound",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.175 (MMI MMI1, sub-op 0x04)",
+      "class": "mmi1"
+    },
+    {
+      "mnemonic": "PABSH",
+      "opcode": 28,
+      "funct": 360,
+      "format": "PABSH rd, rt",
+      "operands": [
+        "rd",
+        "rt"
+      ],
+      "semantics": "per 16-bit lane: rd = |S16(rt)|; 0x8000 wraps to 0x8000",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.158 (MMI MMI1, sub-op 0x05)",
+      "class": "mmi1"
+    },
+    {
+      "mnemonic": "PCEQH",
+      "opcode": 28,
+      "funct": 424,
+      "format": "PCEQH rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "per 16-bit lane: rd = (rs == rt) ? 0xFFFF : 0",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.179 (MMI MMI1, sub-op 0x06)",
+      "class": "mmi1"
+    },
+    {
+      "mnemonic": "PMINH",
+      "opcode": 28,
+      "funct": 488,
+      "format": "PMINH rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "per 16-bit lane: rd = signed minimum of rs and rt",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.235 (MMI MMI1, sub-op 0x07)",
+      "class": "mmi1"
+    },
+    {
+      "mnemonic": "PCEQB",
+      "opcode": 28,
+      "funct": 680,
+      "format": "PCEQB rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "per 8-bit lane: rd = (rs == rt) ? 0xFF : 0",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.177 (MMI MMI1, sub-op 0x0A)",
+      "class": "mmi1"
+    },
+    {
+      "mnemonic": "PADDUW",
+      "opcode": 28,
+      "funct": 808,
+      "format": "PADDUW rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "per 32-bit lane: rd = unsigned_saturate(rs + rt, 0xFFFFFFFF)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.172 (MMI MMI1, sub-op 0x0C)",
+      "class": "mmi1"
+    },
+    {
+      "mnemonic": "PSUBUW",
+      "opcode": 28,
+      "funct": 872,
+      "format": "PSUBUW rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "per 32-bit lane: rd = unsigned_saturate(rs - rt, 0, 0xFFFFFFFF)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.282 (MMI MMI1, sub-op 0x0D)",
+      "class": "mmi1"
+    },
+    {
+      "mnemonic": "PEXTUW",
+      "opcode": 28,
+      "funct": 936,
+      "format": "PEXTUW rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "interleave the high 64 bits of rs and rt by 32-bit lanes, rs in even lanes",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.208 (MMI MMI1, sub-op 0x0E)",
+      "class": "mmi1"
+    },
+    {
+      "mnemonic": "PADDUH",
+      "opcode": 28,
+      "funct": 1064,
+      "format": "PADDUH rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "per 16-bit lane: rd = unsigned_saturate(rs + rt, 0xFFFF)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.170 (MMI MMI1, sub-op 0x10)",
+      "class": "mmi1"
+    },
+    {
+      "mnemonic": "PSUBUH",
+      "opcode": 28,
+      "funct": 1128,
+      "format": "PSUBUH rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "per 16-bit lane: rd = unsigned_saturate(rs - rt, 0, 0xFFFF)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.280 (MMI MMI1, sub-op 0x11)",
+      "class": "mmi1"
+    },
+    {
+      "mnemonic": "PEXTUH",
+      "opcode": 28,
+      "funct": 1192,
+      "format": "PEXTUH rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "interleave the high 64 bits of rs and rt by 16-bit lanes, rs in even lanes",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.207 (MMI MMI1, sub-op 0x12)",
+      "class": "mmi1"
+    },
+    {
+      "mnemonic": "PADDUB",
+      "opcode": 28,
+      "funct": 1320,
+      "format": "PADDUB rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "per 8-bit lane: rd = unsigned_saturate(rs + rt, 0xFF)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.168 (MMI MMI1, sub-op 0x14)",
+      "class": "mmi1"
+    },
+    {
+      "mnemonic": "PSUBUB",
+      "opcode": 28,
+      "funct": 1384,
+      "format": "PSUBUB rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "per 8-bit lane: rd = unsigned_saturate(rs - rt, 0, 0xFF)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.278 (MMI MMI1, sub-op 0x15)",
+      "class": "mmi1"
+    },
+    {
+      "mnemonic": "PEXTUB",
+      "opcode": 28,
+      "funct": 1448,
+      "format": "PEXTUB rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "interleave the high 64 bits of rs and rt by byte, rs in even lanes",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.206 (MMI MMI1, sub-op 0x16)",
+      "class": "mmi1"
+    },
+    {
+      "mnemonic": "QFSRV",
+      "opcode": 28,
+      "funct": 1512,
+      "format": "QFSRV rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "rd = low 128 bits of ((rs[127:0] || rt[127:0]) >> SA); SA set by MTSAB/MTSAH/MTSA",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.286 (MMI MMI1, sub-op 0x17)",
+      "class": "mmi1"
+    },
+    {
+      "mnemonic": "PMADDW",
+      "opcode": 28,
+      "funct": 9,
+      "format": "PMADDW rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "two signed 32x32 products (words 0 and 2) are added to the 64-bit accumulators (HI31:0||LO31:0) and (HI95:64||LO95:64); each full 64-bit result goes to the corresponding HI/LO word pair and to rd[63:0] / rd[127:64]",
+      "writes_hi_lo": true,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.220 (MMI MMI2, sub-op 0x00)",
+      "class": "mmi2"
+    },
+    {
+      "mnemonic": "PSLLVW",
+      "opcode": 28,
+      "funct": 137,
+      "format": "PSLLVW rd, rt, rs",
+      "operands": [
+        "rd",
+        "rt",
+        "rs"
+      ],
+      "semantics": "per doubleword: rd word = SEXT64(rt_word << (rs_word[4:0]))",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.262 (MMI MMI2, sub-op 0x02)",
+      "class": "mmi2"
+    },
+    {
+      "mnemonic": "PSRLVW",
+      "opcode": 28,
+      "funct": 201,
+      "format": "PSRLVW rd, rt, rs",
+      "operands": [
+        "rd",
+        "rt",
+        "rs"
+      ],
+      "semantics": "per doubleword: rd word = SEXT64(rt_word >> (rs_word[4:0]) logical)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.268 (MMI MMI2, sub-op 0x03)",
+      "class": "mmi2"
+    },
+    {
+      "mnemonic": "PMSUBW",
+      "opcode": 28,
+      "funct": 265,
+      "format": "PMSUBW rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "like PMADDW but subtracts the two signed 32x32 products from the 64-bit accumulators",
+      "writes_hi_lo": true,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.241 (MMI MMI2, sub-op 0x04)",
+      "class": "mmi2"
+    },
+    {
+      "mnemonic": "PMFHI",
+      "opcode": 28,
+      "funct": 521,
+      "format": "PMFHI rd",
+      "operands": [
+        "rd"
+      ],
+      "semantics": "rd[127:0] = HI[127:0] (copies HI1:HI0)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.226 (MMI MMI2, sub-op 0x08)",
+      "class": "mmi2"
+    },
+    {
+      "mnemonic": "PMFLO",
+      "opcode": 28,
+      "funct": 585,
+      "format": "PMFLO rd",
+      "operands": [
+        "rd"
+      ],
+      "semantics": "rd[127:0] = LO[127:0] (copies LO1:LO0)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.234 (MMI MMI2, sub-op 0x09)",
+      "class": "mmi2"
+    },
+    {
+      "mnemonic": "PINTH",
+      "opcode": 28,
+      "funct": 649,
+      "format": "PINTH rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "rd = interleave of rs[127:64] and rt[63:0] by 16-bit lanes",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.214 (MMI MMI2, sub-op 0x0A)",
+      "class": "mmi2"
+    },
+    {
+      "mnemonic": "PMULTW",
+      "opcode": 28,
+      "funct": 777,
+      "format": "PMULTW rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "two signed 32x32 products (words 0 and 2) -> each 64-bit product stored in its LO/HI word pair and copied whole to rd[63:0] / rd[127:64]",
+      "writes_hi_lo": true,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.250 (MMI MMI2, sub-op 0x0C)",
+      "class": "mmi2"
+    },
+    {
+      "mnemonic": "PDIVW",
+      "opcode": 28,
+      "funct": 841,
+      "format": "PDIVW rs, rt",
+      "operands": [
+        "rs",
+        "rt"
+      ],
+      "semantics": "two signed 32-bit divides: quotients -> LO words 0 and 2, remainders -> HI words 0 and 2 (sign-extended to 64-bit halves)",
+      "writes_hi_lo": true,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.196 (MMI MMI2, sub-op 0x0D)",
+      "class": "mmi2"
+    },
+    {
+      "mnemonic": "PCPYLD",
+      "opcode": 28,
+      "funct": 905,
+      "format": "PCPYLD rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "rd[127:64] = rs[63:0]; rd[63:0] = rt[63:0]",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.190 (MMI MMI2, sub-op 0x0E)",
+      "class": "mmi2"
+    },
+    {
+      "mnemonic": "PMADDH",
+      "opcode": 28,
+      "funct": 1033,
+      "format": "PMADDH rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "eight signed 16x16 products added to 32-bit accumulator lanes in (HI,LO); even lanes also written to rd",
+      "writes_hi_lo": true,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.216 (MMI MMI2, sub-op 0x10)",
+      "class": "mmi2"
+    },
+    {
+      "mnemonic": "PHMADH",
+      "opcode": 28,
+      "funct": 1097,
+      "format": "PHMADH rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "eight signed 16x16 products; adjacent pairs summed into four 32-bit results written to (LO31,HI31,LO95,HI95) and rd words 0..3",
+      "writes_hi_lo": true,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.209 (MMI MMI2, sub-op 0x11)",
+      "class": "mmi2"
+    },
+    {
+      "mnemonic": "PAND",
+      "opcode": 28,
+      "funct": 1161,
+      "format": "PAND rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "rd[127:0] = rs AND rt (bitwise)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.176 (MMI MMI2, sub-op 0x12)",
+      "class": "mmi2"
+    },
+    {
+      "mnemonic": "PXOR",
+      "opcode": 28,
+      "funct": 1225,
+      "format": "PXOR rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "rd[127:0] = rs XOR rt (bitwise)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.285 (MMI MMI2, sub-op 0x13)",
+      "class": "mmi2"
+    },
+    {
+      "mnemonic": "PMSUBH",
+      "opcode": 28,
+      "funct": 1289,
+      "format": "PMSUBH rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "eight signed 16x16 products subtracted from 32-bit accumulator lanes in (HI,LO); even lanes also written to rd",
+      "writes_hi_lo": true,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.239 (MMI MMI2, sub-op 0x14)",
+      "class": "mmi2"
+    },
+    {
+      "mnemonic": "PHMSBH",
+      "opcode": 28,
+      "funct": 1353,
+      "format": "PHMSBH rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "eight signed 16x16 products; adjacent pairs subtracted into four 32-bit results written to (LO31,HI31,LO95,HI95) and rd words 0..3",
+      "writes_hi_lo": true,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.211 (MMI MMI2, sub-op 0x15)",
+      "class": "mmi2"
+    },
+    {
+      "mnemonic": "PEXEH",
+      "opcode": 28,
+      "funct": 1673,
+      "format": "PEXEH rd, rt",
+      "operands": [
+        "rd",
+        "rt"
+      ],
+      "semantics": "swap the halfword pairs within each doubleword: rd = {rt[79:64],rt[95:80],rt[111:96],rt[127:112], ...} per manual p.200 diagram",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.200 (MMI MMI2, sub-op 0x1A)",
+      "class": "mmi2"
+    },
+    {
+      "mnemonic": "PREVH",
+      "opcode": 28,
+      "funct": 1737,
+      "format": "PREVH rd, rt",
+      "operands": [
+        "rd",
+        "rt"
+      ],
+      "semantics": "reverse the order of the eight 16-bit halfwords",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.259 (MMI MMI2, sub-op 0x1B)",
+      "class": "mmi2"
+    },
+    {
+      "mnemonic": "PMULTH",
+      "opcode": 28,
+      "funct": 1801,
+      "format": "PMULTH rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "eight signed 16x16 products -> 32-bit values in LO words 0,1, LO words 2,3, HI words 0,1, HI words 2,3; even-lane products also to rd",
+      "writes_hi_lo": true,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.246 (MMI MMI2, sub-op 0x1C)",
+      "class": "mmi2"
+    },
+    {
+      "mnemonic": "PDIVBW",
+      "opcode": 28,
+      "funct": 1865,
+      "format": "PDIVBW rs, rt",
+      "operands": [
+        "rs",
+        "rt"
+      ],
+      "semantics": "four signed 32-bit lanes of rs divided by S16(rt[15:0]); quotients -> LO words, 16-bit remainders zero-extended -> HI words; divisor 0 -> undefined",
+      "writes_hi_lo": true,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.192 (MMI MMI2, sub-op 0x1D)",
+      "class": "mmi2"
+    },
+    {
+      "mnemonic": "PEXEW",
+      "opcode": 28,
+      "funct": 1929,
+      "format": "PEXEW rd, rt",
+      "operands": [
+        "rd",
+        "rt"
+      ],
+      "semantics": "swap the two low-order words of each doubleword",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.201 (MMI MMI2, sub-op 0x1E)",
+      "class": "mmi2"
+    },
+    {
+      "mnemonic": "PROT3W",
+      "opcode": 28,
+      "funct": 1993,
+      "format": "PROT3W rd, rt",
+      "operands": [
+        "rd",
+        "rt"
+      ],
+      "semantics": "rotate the low three 32-bit words left by one position; word 3 unchanged",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.260 (MMI MMI2, sub-op 0x1F)",
+      "class": "mmi2"
+    },
+    {
+      "mnemonic": "PMADDUW",
+      "opcode": 28,
+      "funct": 41,
+      "format": "PMADDUW rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "two unsigned 32x32 products (words 0 and 2) added to the 64-bit accumulators (HI31:0||LO31:0) and (HI95:64||LO95:64); each full 64-bit result goes to the HI/LO word pair and to rd[63:0] / rd[127:64]",
+      "writes_hi_lo": true,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.218 (MMI MMI3, sub-op 0x00)",
+      "class": "mmi3"
+    },
+    {
+      "mnemonic": "PSRAVW",
+      "opcode": 28,
+      "funct": 233,
+      "format": "PSRAVW rd, rt, rs",
+      "operands": [
+        "rd",
+        "rt",
+        "rs"
+      ],
+      "semantics": "per doubleword: rd word = SEXT64(arithmetic_shift_right(rt_word, rs_word[4:0]))",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.265 (MMI MMI3, sub-op 0x03)",
+      "class": "mmi3"
+    },
+    {
+      "mnemonic": "PMTHI",
+      "opcode": 28,
+      "funct": 553,
+      "format": "PMTHI rs",
+      "operands": [
+        "rs"
+      ],
+      "semantics": "HI[127:0] = rs[127:0]",
+      "writes_hi_lo": true,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.243 (MMI MMI3, sub-op 0x08)",
+      "class": "mmi3"
+    },
+    {
+      "mnemonic": "PMTLO",
+      "opcode": 28,
+      "funct": 617,
+      "format": "PMTLO rs",
+      "operands": [
+        "rs"
+      ],
+      "semantics": "LO[127:0] = rs[127:0]",
+      "writes_hi_lo": true,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.245 (MMI MMI3, sub-op 0x09)",
+      "class": "mmi3"
+    },
+    {
+      "mnemonic": "PINTEH",
+      "opcode": 28,
+      "funct": 681,
+      "format": "PINTEH rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "interleave the low halfword of each word of rs and rt",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.213 (MMI MMI3, sub-op 0x0A)",
+      "class": "mmi3"
+    },
+    {
+      "mnemonic": "PMULTUW",
+      "opcode": 28,
+      "funct": 809,
+      "format": "PMULTUW rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "two unsigned 32x32 products (words 0 and 2) -> each 64-bit product stored in its LO/HI word pair and copied whole to rd[63:0] / rd[127:64]",
+      "writes_hi_lo": true,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.248 (MMI MMI3, sub-op 0x0C)",
+      "class": "mmi3"
+    },
+    {
+      "mnemonic": "PDIVUW",
+      "opcode": 28,
+      "funct": 873,
+      "format": "PDIVUW rs, rt",
+      "operands": [
+        "rs",
+        "rt"
+      ],
+      "semantics": "two unsigned 32-bit divides: quotients -> LO words 0 and 2, remainders -> HI words 0 and 2",
+      "writes_hi_lo": true,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.194 (MMI MMI3, sub-op 0x0D)",
+      "class": "mmi3"
+    },
+    {
+      "mnemonic": "PCPYUD",
+      "opcode": 28,
+      "funct": 937,
+      "format": "PCPYUD rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "rd[127:64] = rs[127:64]; rd[63:0] = rt[127:64]",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.191 (MMI MMI3, sub-op 0x0E)",
+      "class": "mmi3"
+    },
+    {
+      "mnemonic": "POR",
+      "opcode": 28,
+      "funct": 1193,
+      "format": "POR rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "rd[127:0] = rs OR rt (bitwise)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.253 (MMI MMI3, sub-op 0x12)",
+      "class": "mmi3"
+    },
+    {
+      "mnemonic": "PNOR",
+      "opcode": 28,
+      "funct": 1257,
+      "format": "PNOR rd, rs, rt",
+      "operands": [
+        "rd",
+        "rs",
+        "rt"
+      ],
+      "semantics": "rd[127:0] = NOT(rs OR rt) (bitwise)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.252 (MMI MMI3, sub-op 0x13)",
+      "class": "mmi3"
+    },
+    {
+      "mnemonic": "PEXCH",
+      "opcode": 28,
+      "funct": 1705,
+      "format": "PEXCH rd, rt",
+      "operands": [
+        "rd",
+        "rt"
+      ],
+      "semantics": "exchange the two central halfwords of each doubleword",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.198 (MMI MMI3, sub-op 0x1A)",
+      "class": "mmi3"
+    },
+    {
+      "mnemonic": "PCPYH",
+      "opcode": 28,
+      "funct": 1769,
+      "format": "PCPYH rd, rt",
+      "operands": [
+        "rd",
+        "rt"
+      ],
+      "semantics": "replicate the low halfword of each 64-bit half across that half",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.189 (MMI MMI3, sub-op 0x1B)",
+      "class": "mmi3"
+    },
+    {
+      "mnemonic": "PEXCW",
+      "opcode": 28,
+      "funct": 1961,
+      "format": "PEXCW rd, rt",
+      "operands": [
+        "rd",
+        "rt"
+      ],
+      "semantics": "exchange the two central words (words 1 and 2)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.199 (MMI MMI3, sub-op 0x1E)",
+      "class": "mmi3"
+    },
+    {
+      "mnemonic": "LQ",
+      "opcode": 30,
+      "funct": null,
+      "format": "LQ rt, offset(base)",
+      "operands": [
+        "rt",
+        "offset",
+        "base"
+      ],
+      "semantics": "rt[127:0] = mem128[EA & ~0xF]; the four low address bits are masked, so no alignment exception is raised",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.141",
+      "class": "lqsq"
+    },
+    {
+      "mnemonic": "SQ",
+      "opcode": 31,
+      "funct": null,
+      "format": "SQ rt, offset(base)",
+      "operands": [
+        "rt",
+        "offset",
+        "base"
+      ],
+      "semantics": "mem128[EA & ~0xF] = rt[127:0]; the four low address bits are masked, so no alignment exception is raised",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.287",
+      "class": "lqsq"
+    },
+    {
+      "mnemonic": "QMFC2",
+      "opcode": 18,
+      "funct": 1,
+      "format": "QMFC2 rt, vf",
+      "operands": [
+        "rt",
+        "vf"
+      ],
+      "semantics": "rt[127:0] = CPR[2,vf] (VF[vf] of VU0); 128-bit move, no interlock unless .I suffix (bit 0 = I)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "VU User's Manual v6.0 p.237 (COP2 transfer, MacroOP type 11)",
+      "class": "cop2"
+    },
+    {
+      "mnemonic": "CFC2",
+      "opcode": 18,
+      "funct": 2,
+      "format": "CFC2 rt, id",
+      "operands": [
+        "rt",
+        "id"
+      ],
+      "semantics": "rt[63:0] = SEXT64(CCR[2,id]); VI registers are 16-bit in CCR[2,0..15]",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "VU User's Manual v6.0 p.234 (COP2 transfer, MacroOP type 11)",
+      "class": "cop2"
+    },
+    {
+      "mnemonic": "QMTC2",
+      "opcode": 18,
+      "funct": 5,
+      "format": "QMTC2 rt, vf",
+      "operands": [
+        "rt",
+        "vf"
+      ],
+      "semantics": "CPR[2,vf] = rt[127:0]; 128-bit move to VU0; bit 0 = I (1 = stall until pending VCALLMS completes)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "VU User's Manual v6.0 p.238 (COP2 transfer, MacroOP type 11)",
+      "class": "cop2"
+    },
+    {
+      "mnemonic": "CTC2",
+      "opcode": 18,
+      "funct": 6,
+      "format": "CTC2 rt, id",
+      "operands": [
+        "rt",
+        "id"
+      ],
+      "semantics": "CCR[2,id] = rt[31:0]",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "VU User's Manual v6.0 p.235 (COP2 transfer, MacroOP type 11)",
+      "class": "cop2"
+    },
+    {
+      "mnemonic": "BC2F",
+      "opcode": 18,
+      "funct": 8,
+      "format": "BC2F offset",
+      "operands": [
+        "offset"
+      ],
+      "semantics": "if CPCOND == false then PC = PC+4 + (SEXT(offset)<<2)",
+      "writes_hi_lo": false,
+      "delay_slot": true,
+      "verified": true,
+      "citation": "VU User's Manual v6.0 p.230 (COP2 rs=0b01000, rt=0b00000)",
+      "class": "cop2"
+    },
+    {
+      "mnemonic": "BC2FL",
+      "opcode": 18,
+      "funct": 8,
+      "format": "BC2FL offset",
+      "operands": [
+        "offset"
+      ],
+      "semantics": "if CPCOND == false then PC = PC+4 + (SEXT(offset)<<2) else nullify delay slot",
+      "writes_hi_lo": false,
+      "delay_slot": true,
+      "verified": true,
+      "citation": "VU User's Manual v6.0 p.232 (COP2 rs=0b01000, rt=0b00010)",
+      "class": "cop2"
+    },
+    {
+      "mnemonic": "BC2T",
+      "opcode": 18,
+      "funct": 8,
+      "format": "BC2T offset",
+      "operands": [
+        "offset"
+      ],
+      "semantics": "if CPCOND == true then PC = PC+4 + (SEXT(offset)<<2)",
+      "writes_hi_lo": false,
+      "delay_slot": true,
+      "verified": true,
+      "citation": "VU User's Manual v6.0 p.231 (COP2 rs=0b01000, rt=0b00001)",
+      "class": "cop2"
+    },
+    {
+      "mnemonic": "BC2TL",
+      "opcode": 18,
+      "funct": 8,
+      "format": "BC2TL offset",
+      "operands": [
+        "offset"
+      ],
+      "semantics": "if CPCOND == true then PC = PC+4 + (SEXT(offset)<<2) else nullify delay slot",
+      "writes_hi_lo": false,
+      "delay_slot": true,
+      "verified": true,
+      "citation": "VU User's Manual v6.0 p.233 (COP2 rs=0b01000, rt=0b00011)",
+      "class": "cop2"
+    },
+    {
+      "mnemonic": "LQC2",
+      "opcode": 54,
+      "funct": null,
+      "format": "LQC2 vf, offset(base)",
+      "operands": [
+        "vf",
+        "offset",
+        "base"
+      ],
+      "semantics": "CPR[2,vf][127:0] = mem128[EA]; effective address must be 16-byte aligned (AddressError otherwise)",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.396 (opcode 0x36); VU User's Manual v6.0 p.236",
+      "class": "cop2"
+    },
+    {
+      "mnemonic": "SQC2",
+      "opcode": 62,
+      "funct": null,
+      "format": "SQC2 vf, offset(base)",
+      "operands": [
+        "vf",
+        "offset",
+        "base"
+      ],
+      "semantics": "mem128[EA] = CPR[2,vf][127:0]; effective address must be 16-byte aligned",
+      "writes_hi_lo": false,
+      "delay_slot": false,
+      "verified": true,
+      "citation": "EE Core Instruction Set Manual v6.0 p.396 (opcode 0x3E); VU User's Manual v6.0 p.239",
+      "class": "cop2"
+    }
+  ]
+}
