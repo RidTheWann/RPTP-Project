@@ -38,6 +38,7 @@ Applies to every coding agent working in this repository. Read it fully at the s
 - Binary fixtures must be synthetic and registered in `tests/fixtures/MANIFEST` (hash, origin, license). `tools/check_forbidden_artifacts.py` must keep passing.
 - No dependency without a license audit recorded in `docs/LICENSES.md` and owner approval.
 - Game work: update `docs/games/<slug>/STATUS.md` and its index in the same session. Metadata and hashes only. An inspected ISO is not a compatible game.
+- **Documentation freshness (mandatory):** before merge, review every document affected by the change and update it; no document may keep a superseded date, PR/run pointer, count or status claim. [docs/README.md](docs/README.md) maps every document. `tests/test_doc_freshness.py` fails when the map is incomplete, when `docs/STATE.md`'s snapshot date is older than the newest `docs/VERIFICATION_LOG.md` entry, or when the STATE/HANDOFF PR pointer lags the latest merge recorded in the log. After moving a pointer, grep the repository for the old value.
 
 ## 4. Evidence and honesty
 

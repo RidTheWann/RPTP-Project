@@ -60,7 +60,7 @@ Recorded owner-authorized local evidence from main; documentation checked agains
 ### 2026-10-29 — read-only boot-code census refresh
 
 - `python tools/rptp_census.py <iso> --iso --json` completed in memory with exit 0 and status `CENSUSED_WITH_WARNINGS`; no file was extracted, modified or executed.
-- Census with the current decoder after `SLL` and `DADDU`: 1,420,864 aligned words across 10 PT_LOAD segment(s); 828,703 (58.3%) accepted; 592,161 raw-unsupported words. These figures supersede the earlier pre-`DADDU` count.
+- Census with the decoder after `SLL` and `DADDU`, before `SUBU` (`R-029`): 1,420,864 aligned words across 10 PT_LOAD segment(s); 828,703 (58.3%) accepted; 592,161 raw-unsupported words. These figures supersede the earlier pre-`DADDU` count.
 - Most frequent unsupported raw encodings: `opcode_0x11` (133,433); `opcode_0x31` (74,361); `opcode_0x39` (45,517).
 - Counts include data and padding and are not a function-level, runtime, boot or compatibility measurement. See [BOOT_CENSUS.md](../../BOOT_CENSUS.md).
 
