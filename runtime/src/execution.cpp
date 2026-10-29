@@ -22,10 +22,19 @@ constexpr std::uint32_t kOpcodeLw = 0x23U;
 constexpr std::uint32_t kOpcodeSw = 0x2BU;
 constexpr std::uint32_t kOpcodeLd = 0x37U;
 constexpr std::uint32_t kOpcodeSd = 0x3FU;
+constexpr std::uint32_t kOpcodeRegimm = 0x01U;
 constexpr std::uint32_t kOpcodeBeq = 0x04U;
 constexpr std::uint32_t kOpcodeBne = 0x05U;
+constexpr std::uint32_t kOpcodeBeql = 0x14U;
+constexpr std::uint32_t kOpcodeBnel = 0x15U;
+constexpr std::uint32_t kOpcodeBlezl = 0x16U;
+constexpr std::uint32_t kOpcodeBgtzl = 0x17U;
 constexpr std::uint32_t kOpcodeJ = 0x02U;
 constexpr std::uint32_t kOpcodeJal = 0x03U;
+constexpr std::uint32_t kRegimmBltzl = 0x02U;
+constexpr std::uint32_t kRegimmBgezl = 0x03U;
+constexpr std::uint32_t kRegimmBltzall = 0x12U;
+constexpr std::uint32_t kRegimmBgezall = 0x13U;
 constexpr std::uint32_t kFunctSll = 0x00U;
 constexpr std::uint32_t kFunctJr = 0x08U;
 constexpr std::uint32_t kFunctAddu = 0x21U;
@@ -64,6 +73,14 @@ enum class Op {
   Sd,
   Beq,
   Bne,
+  Beql,
+  Bnel,
+  Blezl,
+  Bgtzl,
+  Bltzl,
+  Bgezl,
+  Bltzall,
+  Bgezall,
   J,
   Jal,
   Jr,
@@ -199,6 +216,45 @@ bool decode(std::uint32_t word, std::uint32_t pc, Instruction& instruction) {
     case kOpcodeBne:
       instruction = {Op::Bne, rs, rt, 0, 0, sign_immediate, branch_target(pc, sign_immediate)};
       return true;
+    case kOpcodeBeql:
+      instruction = {Op::Beql, rs, rt, 0, 0, sign_immediate, branch_target(pc, sign_immediate)};
+      return true;
+    case kOpcodeBnel:
+      instruction = {Op::Bnel, rs, rt, 0, 0, sign_immediate, branch_target(pc, sign_immediate)};
+      return true;
+    case kOpcodeBlezl:
+      instruction = {Op::Blezl, rs, 0, 0, 0, sign_immediate, branch_target(pc, sign_immediate)};
+      return true;
+    case kOpcodeBgtzl:
+      instruction = {Op::Bgtzl, rs, 0, 0, 0, sign_immediate, branch_target(pc, sign_immediate)};
+      return true;
+    case kOpcodeRegimm: {
+      Op op = Op::Nop;
+      switch (rt) {
+        case kRegimmBltzl:
+          op = Op::Bltzl;
+          break;
+        case kRegimmBgezl:
+          op = Op::Bgezl;
+          break;
+        case kRegimmBltzall:
+          if (rs == 31) {
+            return false;
+          }
+          op = Op::Bltzall;
+          break;
+        case kRegimmBgezall:
+          if (rs == 31) {
+            return false;
+          }
+          op = Op::Bgezall;
+          break;
+        default:
+          return false;
+      }
+      instruction = {op, rs, 0, 0, 0, sign_immediate, branch_target(pc, sign_immediate)};
+      return true;
+    }
     case kOpcodeJ:
       instruction = {Op::J, 0, 0, 0, 0, 0, jump_target(pc, word)};
       return true;
@@ -253,7 +309,9 @@ bool decode(std::uint32_t word, std::uint32_t pc, Instruction& instruction) {
 }
 
 bool is_control(Op op) {
-  return op == Op::Beq || op == Op::Bne || op == Op::J || op == Op::Jal || op == Op::Jr;
+  return op == Op::Beq || op == Op::Bne || op == Op::Beql || op == Op::Bnel || op == Op::Blezl ||
+         op == Op::Bgtzl || op == Op::Bltzl || op == Op::Bgezl || op == Op::Bltzall ||
+         op == Op::Bgezall || op == Op::J || op == Op::Jal || op == Op::Jr;
 }
 
 }  // namespace
@@ -311,6 +369,7 @@ ExecOutcome execute_loaded(const LoadReport& report, GuestMemory& memory, const 
   std::map<std::uint32_t, std::uint32_t> writes;
   std::uint32_t pc = report.entry_point;
   std::optional<std::uint32_t> pending_target;
+  bool pending_nullify = false;
 
   while (true) {
     const LoadedSegment* segment = find_segment(report, pc);
@@ -338,7 +397,7 @@ ExecOutcome execute_loaded(const LoadReport& report, GuestMemory& memory, const 
       return fail(pending_target.has_value() ? ExecErrorCode::DelaySlotMissing : ExecErrorCode::PcUnaligned,
                   address_message("unaligned PC", pc));
     }
-    if (result.steps >= options.max_steps) {
+    if (!pending_nullify && result.steps >= options.max_steps) {
       char buffer[96] = {};
       std::snprintf(buffer, sizeof(buffer), "step limit %zu reached at 0x%08x", options.max_steps,
                     static_cast<unsigned>(pc));
@@ -358,12 +417,20 @@ ExecOutcome execute_loaded(const LoadReport& report, GuestMemory& memory, const 
       return fail(ExecErrorCode::DelaySlotControl,
                   address_message("control transfer in a delay slot", pc));
     }
+    if (pending_nullify) {
+      // A not-taken likely branch validates its delay slot but does not execute it.
+      pc = *pending_target;
+      pending_target.reset();
+      pending_nullify = false;
+      continue;
+    }
     if (options.trace) {
       result.trace.push_back(pc);
     }
     ++result.steps;
 
     std::optional<std::uint32_t> new_target;
+    bool new_nullify = false;
     const auto write_register = [&registers](std::uint32_t index, std::uint64_t value) {
       if (index != 0) {
         registers[index] = value;
@@ -519,6 +586,52 @@ ExecOutcome execute_loaded(const LoadReport& report, GuestMemory& memory, const 
         new_target = registers[instruction.rs] != registers[instruction.rt] ? instruction.target
                                                                             : (pc + 8U) & 0xFFFFFFFFU;
         break;
+      case Op::Beql: {
+        const bool taken = registers[instruction.rs] == registers[instruction.rt];
+        new_target = taken ? instruction.target : (pc + 8U) & 0xFFFFFFFFU;
+        new_nullify = !taken;
+        break;
+      }
+      case Op::Bnel: {
+        const bool taken = registers[instruction.rs] != registers[instruction.rt];
+        new_target = taken ? instruction.target : (pc + 8U) & 0xFFFFFFFFU;
+        new_nullify = !taken;
+        break;
+      }
+      case Op::Blezl: {
+        const std::uint64_t value = registers[instruction.rs];
+        const bool taken = value == 0 || (value & 0x8000000000000000ULL) != 0;
+        new_target = taken ? instruction.target : (pc + 8U) & 0xFFFFFFFFU;
+        new_nullify = !taken;
+        break;
+      }
+      case Op::Bgtzl: {
+        const std::uint64_t value = registers[instruction.rs];
+        const bool taken = value != 0 && (value & 0x8000000000000000ULL) == 0;
+        new_target = taken ? instruction.target : (pc + 8U) & 0xFFFFFFFFU;
+        new_nullify = !taken;
+        break;
+      }
+      case Op::Bltzl:
+      case Op::Bltzall: {
+        if (instruction.op == Op::Bltzall) {
+          registers[31] = (pc + 8U) & 0xFFFFFFFFU;
+        }
+        const bool taken = (registers[instruction.rs] & 0x8000000000000000ULL) != 0;
+        new_target = taken ? instruction.target : (pc + 8U) & 0xFFFFFFFFU;
+        new_nullify = !taken;
+        break;
+      }
+      case Op::Bgezl:
+      case Op::Bgezall: {
+        if (instruction.op == Op::Bgezall) {
+          registers[31] = (pc + 8U) & 0xFFFFFFFFU;
+        }
+        const bool taken = (registers[instruction.rs] & 0x8000000000000000ULL) == 0;
+        new_target = taken ? instruction.target : (pc + 8U) & 0xFFFFFFFFU;
+        new_nullify = !taken;
+        break;
+      }
       case Op::J:
         new_target = instruction.target;
         break;
@@ -535,9 +648,11 @@ ExecOutcome execute_loaded(const LoadReport& report, GuestMemory& memory, const 
     if (pending_target.has_value()) {
       pc = *pending_target;
       pending_target.reset();
+      pending_nullify = false;
     } else if (new_target.has_value()) {
       pc = (pc + 4U) & 0xFFFFFFFFU;
       pending_target = *new_target;
+      pending_nullify = new_nullify;
     } else {
       pc = (pc + 4U) & 0xFFFFFFFFU;
     }
