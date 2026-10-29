@@ -66,7 +66,9 @@ Every game RPTP works on gets a durable record under [docs/games](docs/games/REA
 
 RPTP now has its first native C++20 layer. `rptp_runtime` implements sparse guest memory and a fail-closed ELF32 little-endian `ET_EXEC`/`EM_MIPS` loader: `PT_LOAD` header, bounds, alignment, address-space, order and overlap checks, zero-fill for `p_memsz - p_filesz`, and an entry point that must be file-backed and executable. The `rptp-load` CLI reports a loaded image as deterministic `rptp.runtime.load.v1` JSON with stable `LOAD_*` error codes.
 
-This layer executes no guest instructions and implements no kernel, syscalls, IOP, DMA, VU, GS, SPU2, ISO ingestion or compatibility behavior. It has been tested only on synthetic images and the Gate 0 fixture. See [docs/RUNTIME.md](docs/RUNTIME.md) for the contract, limits and non-goals.
+A separate synthetic execution harness (`rptp-run`, `rptp.runtime.run.v1` JSON) executes only the accepted Gate 0 subset — `ADDIU`, `ADDU`, `LW`, `SW`, `BEQ`, `BNE`, `J`, `JAL`, `JR`, `NOP` and one delay slot — on top of the loader, and is checked against the Python oracle. It fails explicitly on unsupported instructions, unmapped memory, bad control flow and step-budget exhaustion.
+
+This layer is a differential-test vehicle, not the product runtime. It implements no kernel, syscalls, IOP, DMA, VU, GS, SPU2, ISO ingestion or compatibility behavior, and it has only been tested on synthetic images and the Gate 0 fixture. See [docs/RUNTIME.md](docs/RUNTIME.md) for the contract, limits and non-goals.
 
 ## Releases
 
@@ -78,7 +80,7 @@ Release tags and release artifacts are created only from release-ready commits w
 2. **B1a — Project foundation:** license and architecture decision recorded; the owner confirmed GPL-3.0-or-later on 2026-10-21. Clean-room handling is governed by the owner-approved sealed-source policy in ADR-0003; prior exposure remains documented.
 3. **B1b — Repository/toolchain baseline:** CMake, diagnostics, tests and CI are implemented; runs #44 and #45 passed Windows x64/MSVC and Linux/GCC for `SLTI`/`SLTIU`. The build/CI/doctor clean-room review remains open (`Review required`).
 4. **B1c — ISO Inspector prototype:** read-only ISO9660 and `SYSTEM.CNF` inspection, boot metadata, an explicit error taxonomy, ELF PT_LOAD checks, hashing and synthetic malformed-input tests are implemented. A broader owner-authorized real-disc sample is recorded; ISO-variant review, the independent ISO inspector provenance review and the read-only Gate 2 disposition remain open. Gate 2 is read-only per [ADR-0004](docs/DECISIONS/ADR-0004-gate2-read-only-scope.md); extraction is deferred future work.
-5. **B2a — Native runtime foundation (in progress):** sparse guest memory and a fail-closed synthetic-image ELF32 loader in C++20, with a deterministic CLI and CTest coverage. No instruction execution, kernel, syscall, boot or compatibility evidence yet.
+5. **B2a — Native runtime foundation (in progress):** sparse guest memory, a fail-closed synthetic-image ELF32 loader and a synthetic execution harness in C++20, with deterministic CLIs and CTest coverage. No product runtime, kernel, syscall, boot or compatibility evidence yet.
 6. **Recompiler MVP (in progress):** the synthetic instruction catalog, separate ORI/ANDI/XORI/LUI, AND/OR/XOR/NOR, SLT/SLTU/SLTI/SLTIU differential fixtures, the minimal IR/CFG contract with candidate-only function entries, conservative known-edge traversal, and deterministic synthetic IR-to-C++ lowering are recorded. Function discovery, real-game generation, runtime and game-boot evidence remain absent; Gate 3 is not passed.
 7. **First-game vertical slice:** boot, minimum runtime services, graphics, audio/input/save and repeatable gameplay.
 8. **Compatibility and release:** expand subsystem coverage using measured blockers, then validate clean-machine builds and release artifacts.

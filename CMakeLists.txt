@@ -43,6 +43,7 @@ add_library(
     rptp_runtime
     STATIC
     runtime/src/elf_loader.cpp
+    runtime/src/execution.cpp
     runtime/src/guest_memory.cpp
 )
 target_include_directories(rptp_runtime PUBLIC "${PROJECT_SOURCE_DIR}/runtime/include")
@@ -52,6 +53,10 @@ rptp_enable_strict_warnings(rptp_runtime)
 add_executable(rptp-load runtime/tools/rptp_load.cpp)
 target_link_libraries(rptp-load PRIVATE rptp_runtime)
 rptp_enable_strict_warnings(rptp-load)
+
+add_executable(rptp-run runtime/tools/rptp_run.cpp)
+target_link_libraries(rptp-run PRIVATE rptp_runtime)
+rptp_enable_strict_warnings(rptp-run)
 
 if(BUILD_TESTING)
     function(rptp_add_python_test name)
@@ -96,6 +101,15 @@ if(BUILD_TESTING)
         runtime_loader_cli
         PROPERTIES WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
     )
+    add_test(
+        NAME runtime_execution_cli
+        COMMAND "${CMAKE_COMMAND}" -E env "RPTP_RUN_BINARY=$<TARGET_FILE:rptp-run>"
+                "${Python3_EXECUTABLE}" -m unittest tests.test_runtime_execution -v
+    )
+    set_tests_properties(
+        runtime_execution_cli
+        PROPERTIES WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+    )
     set(_rptp_runtime_test_target rptp-runtime-tests)
 else()
     set(_rptp_runtime_test_target "")
@@ -104,7 +118,7 @@ endif()
 add_custom_target(
     rptp-ci
     COMMAND "${CMAKE_CTEST_COMMAND}" --output-on-failure
-    DEPENDS rptp-doctor rptp-load ${_rptp_runtime_test_target}
+    DEPENDS rptp-doctor rptp-load rptp-run ${_rptp_runtime_test_target}
     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
     COMMENT "Running artifact guard, unit tests and Gate 0 differential test"
     USES_TERMINAL
