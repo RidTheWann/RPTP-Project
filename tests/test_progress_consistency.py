@@ -42,6 +42,18 @@ class ProgressConsistencyTests(unittest.TestCase):
                     f"{relative} is stale; run python tools/rptp_progress.py.",
                 )
 
+    def test_readme_image_urls_are_cache_busted(self) -> None:
+        snapshot = progress.latest_log_date(ROOT / "docs")
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        for asset in ("badge-foundation.svg", "badge-runtime.svg", "progress.svg"):
+            with self.subTest(asset=asset):
+                self.assertIn(
+                    f"assets/{asset}?v={snapshot}",
+                    readme,
+                    "README image URLs must carry the snapshot date so GitHub's "
+                    "image proxy refetches them after each increment.",
+                )
+
     def test_readme_reports_catalogued_instruction_count(self) -> None:
         instructions = progress.catalogued_instructions(ROOT / "docs")
         self.assertGreater(len(instructions), 0, "The catalog must list synthetic instructions.")
