@@ -49,6 +49,7 @@ Every increment must review and update every document affected by its change bef
 ## Research notes
 
 - `docs/research/function-discovery.md` — trusted-seed function discovery, code/data ambiguity and the open jump-table gap.
+- `docs/research/runtime-hle-boundary.md` — inspector-to-runtime handoff, staged Gate 4a HLE increments, deferred extraction threat model and owner decisions.
 - `docs/research/r5900-isa.json` — R5900/MMI encoding catalog with per-entry page citations; provenance is pending owner review, so the catalog is not an approved reference and its claims are not verified semantics — see [isa-evidence.md](research/isa-evidence.md).
 - `docs/research/isa-evidence.md` — evidence levels for the R5900 ISA catalog: decoder cross-check, test-defined subset with approved references, and pending/unverified citations.
 
