@@ -34,6 +34,7 @@ RETURN_CANDIDATE = "return_candidate"
 SIGNED16 = "signed16"
 ZERO16 = "zero16"
 SHIFTED16 = "shifted16"
+SHIFT5 = "shift5"
 
 RA = 31
 
@@ -46,10 +47,11 @@ _CONTROLS = {
     RETURN_CANDIDATE,
 }
 _DIRECT_CONTROLS = {CONDITIONAL_BRANCH, DIRECT_JUMP, DIRECT_CALL}
-_REGISTER_DEST_OPS = {"addu", "and", "or", "xor", "nor", "slt", "sltu"}
-_SUPPORTED_OPS = {"nop", "addu", "and", "or", "xor", "nor", "slt", "sltu", "addiu", "daddiu", "slti", "sltiu", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne", "j", "jal", "jr"}
+_REGISTER_DEST_OPS = {"sll", "addu", "and", "or", "xor", "nor", "slt", "sltu"}
+_SUPPORTED_OPS = {"nop", "sll", "addu", "and", "or", "xor", "nor", "slt", "sltu", "addiu", "daddiu", "slti", "sltiu", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne", "j", "jal", "jr"}
 _FIXED_CONTROLS = {
     "nop": FALLTHROUGH,
+    "sll": FALLTHROUGH,
     "addu": FALLTHROUGH,
     "and": FALLTHROUGH,
     "or": FALLTHROUGH,
@@ -211,18 +213,20 @@ def _validate_instruction(instruction: Any, expected_pc: int) -> tuple[str, str,
     if not isinstance(control, str) or control not in _CONTROLS:
         raise LoweringError(LOWER_INVALID_CONTROL, "Unknown control-flow classification", pc=pc)
 
-    if op in {"addu", "and", "or", "xor", "nor", "slt", "sltu", "addiu", "daddiu", "slti", "sltiu", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne", "jr"}:
+    if op in {"sll", "addu", "and", "or", "xor", "nor", "slt", "sltu", "addiu", "daddiu", "slti", "sltiu", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne", "jr"}:
         rs = _register(instruction, "rs", required=True)
     else:
         _expect_none(instruction, "rs")
         rs = None
-    if op in {"addu", "and", "or", "xor", "nor", "slt", "sltu", "addiu", "daddiu", "slti", "sltiu", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne"}:
+    if op in {"sll", "addu", "and", "or", "xor", "nor", "slt", "sltu", "addiu", "daddiu", "slti", "sltiu", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne"}:
         rt = _register(instruction, "rt", required=True)
     else:
         _expect_none(instruction, "rt")
         rt = None
     if op == "lui" and rs != 0:
         raise LoweringError(LOWER_MALFORMED_INSTRUCTION, "LUI requires rs=0", pc=pc)
+    if op == "sll" and rs != 0:
+        raise LoweringError(LOWER_MALFORMED_INSTRUCTION, "SLL requires rs=0", pc=pc)
     if op in _REGISTER_DEST_OPS:
         rd = _register(instruction, "rd", required=True)
     else:
@@ -245,6 +249,9 @@ def _validate_instruction(instruction: Any, expected_pc: int) -> tuple[str, str,
     elif op == "lui":
         immediate_kind = SHIFTED16
         minimum, maximum = 0, 0xFFFF
+    elif op == "sll":
+        immediate_kind = SHIFT5
+        minimum, maximum = 0, 31
     else:
         immediate_kind = None
         minimum = maximum = 0
@@ -481,6 +488,12 @@ def _instruction_case(instruction: Any) -> list[str]:
     lines = [f"        case 0x{pc:08X}u:", "            s.trace.push_back(current_pc);"]
     if op == "nop":
         lines.append("            break;")
+    elif op == "sll":
+        lines.append(
+            f"            write_register(s, {_register_literal(instruction.rd)}, "
+            f"sll32(s.registers[{_register_literal(instruction.rt)}], {instruction.immediate}u));"
+        )
+        lines.append("            break;")
     elif op == "addiu":
         lines.append(
             f"            write_register(s, {_register_literal(instruction.rt)}, "
@@ -609,6 +622,11 @@ def lower_to_cpp(
         "    return lhs + static_cast<std::uint64_t>(static_cast<std::int64_t>(immediate));\n"
         "}\n\n"
     ) if any(instruction.op == "daddiu" for instruction in instructions) else ""
+    sll_helper = (
+        "std::uint64_t sll32(std::uint64_t value, std::uint32_t shift) {\n"
+        "    return sign_extend_32(static_cast<std::uint32_t>(static_cast<std::uint32_t>(value) << shift));\n"
+        "}\n\n"
+    ) if any(instruction.op == "sll" for instruction in instructions) else ""
     lui_helper = (
         "std::uint64_t lui32(std::uint32_t immediate) {\n"
         "    return sign_extend_32(static_cast<std::uint32_t>(immediate << 16));\n"
@@ -667,7 +685,7 @@ std::uint64_t addu32(std::uint64_t lhs, std::uint64_t rhs) {{
     return sign_extend_32(value);
 }}
 
-{daddiu_helper}{logical_helper}{lui_helper}{comparison_helper}std::uint32_t effective_address(std::uint64_t base, std::int32_t offset) {{
+{daddiu_helper}{sll_helper}{logical_helper}{lui_helper}{comparison_helper}std::uint32_t effective_address(std::uint64_t base, std::int32_t offset) {{
     return static_cast<std::uint32_t>(static_cast<std::uint32_t>(base) + static_cast<std::uint32_t>(offset));
 }}
 
