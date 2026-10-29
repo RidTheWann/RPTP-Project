@@ -128,7 +128,7 @@ These are structural counts of the JSON data and the decoder, not semantic claim
 | Level B instructions | 42 | §3 table; 41 are catalog entries, plus `NOP`. |
 | Catalog entries at Level C | 183 | Everything outside §3. |
 
-Class distribution of the 224 entries (from the JSON only): `special` 52, `mips3` 41, `special2` 25, `mmi0` 25, `mmi2` 22, `mmi1` 18, `regimm` 16, `mmi3` 13, `cop2` 10, `lqsq` 2. The decoder declares 142 supported mnemonics after the branch-likely increment (134 before it), and 141 of the 224 catalog entries are among them. The decoder-label distribution for the 216 entries that match a decoder spec by mnemonic is `generic-mips-cross-checked` 71, `manual-cross-checked` 137 and `provisional` 8; the decoder docstring now documents these labels as metadata, and they are not evidence (§2, Level C).
+Class distribution of the 224 entries (from the JSON only): `special` 52, `mips3` 41, `special2` 25, `mmi0` 25, `mmi2` 22, `mmi1` 18, `regimm` 16, `mmi3` 13, `cop2` 10, `lqsq` 2. The decoder declares 142 supported mnemonics after the branch-likely increment (134 before it), and 141 of the 224 catalog entries are among them. The ordinary-branch increment moved six existing specs from generic to manual without changing the supported set. The decoder-label distribution for the 216 entries that match a decoder spec by mnemonic is `generic-mips-cross-checked` 71, `manual-cross-checked` 137 and `provisional` 8; the decoder docstring now documents these labels as metadata, and they are not evidence (§2, Level C).
 
 ## 5. The eight COP2 entries (pending schema decision)
 
