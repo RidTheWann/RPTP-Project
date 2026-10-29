@@ -11,19 +11,47 @@ namespace rptp::runtime {
 namespace {
 
 constexpr std::uint32_t kOpcodeAddiu = 0x09U;
+constexpr std::uint32_t kOpcodeSlti = 0x0AU;
+constexpr std::uint32_t kOpcodeSltiu = 0x0BU;
+constexpr std::uint32_t kOpcodeAndi = 0x0CU;
+constexpr std::uint32_t kOpcodeOri = 0x0DU;
+constexpr std::uint32_t kOpcodeXori = 0x0EU;
+constexpr std::uint32_t kOpcodeLui = 0x0FU;
+constexpr std::uint32_t kOpcodeDaddiu = 0x19U;
 constexpr std::uint32_t kOpcodeLw = 0x23U;
 constexpr std::uint32_t kOpcodeSw = 0x2BU;
 constexpr std::uint32_t kOpcodeBeq = 0x04U;
 constexpr std::uint32_t kOpcodeBne = 0x05U;
 constexpr std::uint32_t kOpcodeJ = 0x02U;
 constexpr std::uint32_t kOpcodeJal = 0x03U;
-constexpr std::uint32_t kFunctAddu = 0x21U;
+constexpr std::uint32_t kFunctSll = 0x00U;
 constexpr std::uint32_t kFunctJr = 0x08U;
+constexpr std::uint32_t kFunctAddu = 0x21U;
+constexpr std::uint32_t kFunctAnd = 0x24U;
+constexpr std::uint32_t kFunctOr = 0x25U;
+constexpr std::uint32_t kFunctXor = 0x26U;
+constexpr std::uint32_t kFunctNor = 0x27U;
+constexpr std::uint32_t kFunctSlt = 0x2AU;
+constexpr std::uint32_t kFunctSltu = 0x2BU;
 
 enum class Op {
   Nop,
   Addiu,
   Addu,
+  Slti,
+  Sltiu,
+  Daddiu,
+  Andi,
+  Ori,
+  Xori,
+  Lui,
+  And,
+  Or,
+  Xor,
+  Nor,
+  Slt,
+  Sltu,
+  Sll,
   Lw,
   Sw,
   Beq,
@@ -38,6 +66,7 @@ struct Instruction {
   std::uint32_t rs = 0;
   std::uint32_t rt = 0;
   std::uint32_t rd = 0;
+  std::uint32_t shamt = 0;
   std::uint32_t immediate = 0;
   std::uint32_t target = 0;
 };
@@ -113,36 +142,86 @@ bool decode(std::uint32_t word, std::uint32_t pc, Instruction& instruction) {
   const std::uint32_t rt = (word >> 16U) & 0x1FU;
   const std::uint32_t rd = (word >> 11U) & 0x1FU;
   const std::uint32_t shamt = (word >> 6U) & 0x1FU;
-  const std::uint32_t immediate = sign_extend_16(word & 0xFFFFU);
+  const std::uint32_t funct = word & 0x3FU;
+  const std::uint32_t sign_immediate = sign_extend_16(word & 0xFFFFU);
+  const std::uint32_t zero_immediate = word & 0xFFFFU;
   switch (opcode) {
     case kOpcodeAddiu:
-      instruction = {Op::Addiu, rs, rt, 0, immediate, 0};
+      instruction = {Op::Addiu, rs, rt, 0, 0, sign_immediate, 0};
+      return true;
+    case kOpcodeSlti:
+      instruction = {Op::Slti, rs, rt, 0, 0, sign_immediate, 0};
+      return true;
+    case kOpcodeSltiu:
+      instruction = {Op::Sltiu, rs, rt, 0, 0, sign_immediate, 0};
+      return true;
+    case kOpcodeAndi:
+      instruction = {Op::Andi, rs, rt, 0, 0, zero_immediate, 0};
+      return true;
+    case kOpcodeOri:
+      instruction = {Op::Ori, rs, rt, 0, 0, zero_immediate, 0};
+      return true;
+    case kOpcodeXori:
+      instruction = {Op::Xori, rs, rt, 0, 0, zero_immediate, 0};
+      return true;
+    case kOpcodeLui:
+      if (rs != 0) {
+        return false;
+      }
+      instruction = {Op::Lui, rs, rt, 0, 0, zero_immediate, 0};
+      return true;
+    case kOpcodeDaddiu:
+      instruction = {Op::Daddiu, rs, rt, 0, 0, sign_immediate, 0};
       return true;
     case kOpcodeLw:
-      instruction = {Op::Lw, rs, rt, 0, immediate, 0};
+      instruction = {Op::Lw, rs, rt, 0, 0, sign_immediate, 0};
       return true;
     case kOpcodeSw:
-      instruction = {Op::Sw, rs, rt, 0, immediate, 0};
+      instruction = {Op::Sw, rs, rt, 0, 0, sign_immediate, 0};
       return true;
     case kOpcodeBeq:
-      instruction = {Op::Beq, rs, rt, 0, immediate, branch_target(pc, immediate)};
+      instruction = {Op::Beq, rs, rt, 0, 0, sign_immediate, branch_target(pc, sign_immediate)};
       return true;
     case kOpcodeBne:
-      instruction = {Op::Bne, rs, rt, 0, immediate, branch_target(pc, immediate)};
+      instruction = {Op::Bne, rs, rt, 0, 0, sign_immediate, branch_target(pc, sign_immediate)};
       return true;
     case kOpcodeJ:
-      instruction = {Op::J, 0, 0, 0, 0, jump_target(pc, word)};
+      instruction = {Op::J, 0, 0, 0, 0, 0, jump_target(pc, word)};
       return true;
     case kOpcodeJal:
-      instruction = {Op::Jal, 0, 0, 0, 0, jump_target(pc, word)};
+      instruction = {Op::Jal, 0, 0, 0, 0, 0, jump_target(pc, word)};
       return true;
     case 0:
-      if (shamt == 0 && (word & 0x3FU) == kFunctAddu) {
-        instruction = {Op::Addu, rs, rt, rd, 0, 0};
+      if (funct == kFunctAddu && shamt == 0) {
+        instruction = {Op::Addu, rs, rt, rd, 0, 0, 0};
         return true;
       }
-      if (rt == 0 && rd == 0 && shamt == 0 && (word & 0x3FU) == kFunctJr) {
-        instruction = {Op::Jr, rs, 0, 0, 0, 0};
+      if ((funct == kFunctAnd || funct == kFunctOr || funct == kFunctXor || funct == kFunctNor) &&
+          shamt == 0) {
+        const Op op = funct == kFunctAnd   ? Op::And
+                      : funct == kFunctOr  ? Op::Or
+                      : funct == kFunctXor ? Op::Xor
+                                           : Op::Nor;
+        instruction = {op, rs, rt, rd, 0, 0, 0};
+        return true;
+      }
+      if (funct == kFunctSlt && shamt == 0) {
+        instruction = {Op::Slt, rs, rt, rd, 0, 0, 0};
+        return true;
+      }
+      if (funct == kFunctSltu && shamt == 0) {
+        instruction = {Op::Sltu, rs, rt, rd, 0, 0, 0};
+        return true;
+      }
+      if (funct == kFunctJr && rt == 0 && rd == 0 && shamt == 0) {
+        instruction = {Op::Jr, rs, 0, 0, 0, 0, 0};
+        return true;
+      }
+      if (funct == kFunctSll) {
+        if (rs != 0) {
+          return false;
+        }
+        instruction = {Op::Sll, rs, rt, rd, shamt, 0, 0};
         return true;
       }
       return false;
@@ -281,6 +360,64 @@ ExecOutcome execute_loaded(const LoadReport& report, GuestMemory& memory, const 
         const auto sum = static_cast<std::uint32_t>(static_cast<std::uint32_t>(registers[instruction.rs]) +
                                                     static_cast<std::uint32_t>(registers[instruction.rt]));
         write_register(instruction.rd, sign_extend_32(sum));
+        break;
+      }
+      case Op::Slti: {
+        const bool less = static_cast<std::int64_t>(registers[instruction.rs]) <
+                          static_cast<std::int64_t>(sign_extend_32(instruction.immediate));
+        write_register(instruction.rt, less ? 1U : 0U);
+        break;
+      }
+      case Op::Sltiu: {
+        const bool less = registers[instruction.rs] < sign_extend_32(instruction.immediate);
+        write_register(instruction.rt, less ? 1U : 0U);
+        break;
+      }
+      case Op::Daddiu:
+        write_register(instruction.rt, registers[instruction.rs] + sign_extend_32(instruction.immediate));
+        break;
+      case Op::Andi:
+        write_register(instruction.rt, (registers[instruction.rs] & 0xFFFFFFFFULL) &
+                                           static_cast<std::uint64_t>(instruction.immediate));
+        break;
+      case Op::Ori:
+        write_register(instruction.rt, registers[instruction.rs] |
+                                           static_cast<std::uint64_t>(instruction.immediate));
+        break;
+      case Op::Xori:
+        write_register(instruction.rt, registers[instruction.rs] ^
+                                           static_cast<std::uint64_t>(instruction.immediate));
+        break;
+      case Op::Lui:
+        write_register(instruction.rt, sign_extend_32((instruction.immediate << 16U) & 0xFFFFFFFFU));
+        break;
+      case Op::And:
+        write_register(instruction.rd, registers[instruction.rs] & registers[instruction.rt]);
+        break;
+      case Op::Or:
+        write_register(instruction.rd, registers[instruction.rs] | registers[instruction.rt]);
+        break;
+      case Op::Xor:
+        write_register(instruction.rd, registers[instruction.rs] ^ registers[instruction.rt]);
+        break;
+      case Op::Nor:
+        write_register(instruction.rd, ~(registers[instruction.rs] | registers[instruction.rt]));
+        break;
+      case Op::Slt: {
+        const bool less = static_cast<std::int64_t>(registers[instruction.rs]) <
+                          static_cast<std::int64_t>(registers[instruction.rt]);
+        write_register(instruction.rd, less ? 1U : 0U);
+        break;
+      }
+      case Op::Sltu: {
+        const bool less = registers[instruction.rs] < registers[instruction.rt];
+        write_register(instruction.rd, less ? 1U : 0U);
+        break;
+      }
+      case Op::Sll: {
+        const auto value = static_cast<std::uint32_t>(static_cast<std::uint32_t>(registers[instruction.rt])
+                                                      << instruction.shamt);
+        write_register(instruction.rd, sign_extend_32(value));
         break;
       }
       case Op::Lw: {

@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Differential tests for the rptp-run synthetic execution harness.
 
-The harness executes only the Gate 0 instruction subset on top of the native
-loader. These tests build synthetic images independently and compare the CLI
-result with the Python oracle. They are skipped unless CTest provides the
+The harness executes only the documented synthetic instruction subset on top of
+the native loader. These tests build synthetic images independently and compare
+the CLI result with the Python oracle. They are skipped unless CTest provides the
 binary.
 """
 
@@ -70,6 +70,34 @@ def main_words() -> list[int]:
     ]
 
 
+def extended_words() -> list[int]:
+    return [
+        encode_r(0, 0, 31, 0, 0x21),  # 0x00 addu ra, zero, zero (normalize the oracle's ra)
+        encode_i(0x09, 0, 8, 1),  # 0x04 addiu t0, zero, 1
+        encode_i(0x0F, 0, 9, 0x8000),  # 0x08 lui t1, 0x8000
+        encode_i(0x0F, 0, 10, 0x1234),  # 0x0c lui t2, 0x1234
+        encode_i(0x0D, 10, 10, 0x5678),  # 0x10 ori t2, t2, 0x5678
+        encode_i(0x0C, 10, 11, 0x00FF),  # 0x14 andi t3, t2, 0x00ff
+        encode_i(0x0E, 10, 12, 0xFFFF),  # 0x18 xori t4, t2, 0xffff
+        encode_r(0, 10, 13, 4, 0x00),  # 0x1c sll t5, t2, 4
+        encode_r(9, 8, 14, 0, 0x2A),  # 0x20 slt t6, t1, t0
+        encode_r(8, 9, 15, 0, 0x2B),  # 0x24 sltu t7, t0, t1
+        encode_i(0x0A, 9, 16, -1),  # 0x28 slti s0, t1, -1
+        encode_i(0x0B, 8, 17, -1),  # 0x2c sltiu s1, t0, -1
+        encode_i(0x19, 9, 18, -1),  # 0x30 daddiu s2, t1, -1
+        encode_r(10, 12, 19, 0, 0x24),  # 0x34 and s3, t2, t4
+        encode_r(11, 13, 20, 0, 0x25),  # 0x38 or s4, t3, t5
+        encode_r(9, 8, 21, 0, 0x26),  # 0x3c xor s5, t1, t0
+        encode_r(8, 8, 22, 0, 0x27),  # 0x40 nor s6, t0, t0
+        encode_i(0x09, 0, 23, 0x2000),  # 0x44 addiu s7, zero, 0x2000
+        encode_i(0x2B, 23, 10, 0),  # 0x48 sw t2, 0(s7)
+        encode_i(0x23, 23, 24, 0),  # 0x4c lw t8, 0(s7)
+        encode_i(0x0F, 0, 25, 0x4000),  # 0x50 lui t9, 0x4000
+        encode_r(0, 25, 26, 1, 0x00),  # 0x54 sll k0, t9, 1
+        encode_r(0, 0, 0, 0, 0),  # 0x58 nop
+    ]
+
+
 def build_program(words: list[int], entry: int = BASE) -> bytes:
     code = b"".join(struct.pack("<I", word & 0xFFFFFFFF) for word in words)
     payload = b"\x00" * (CODE_OFFSET - DATA_OFFSET) + code
@@ -96,6 +124,31 @@ class RuntimeExecutionCliTests(unittest.TestCase):
 
     def test_result_matches_the_python_oracle(self) -> None:
         words = main_words()
+        result, _ = self.run_cli(build_program(words), "--json", "--trace")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual("", result.stderr.strip())
+        document = json.loads(result.stdout)
+        self.assertEqual(SCHEMA, document["schema"])
+        self.assertEqual("ok", document["status"])
+        self.assertEqual("0x00100000", document["entry_point"])
+        self.assertEqual("unmapped-pc", document["halt_reason"])
+
+        oracle = execute_oracle(BASE, {BASE + 4 * index: word for index, word in enumerate(words)})
+        self.assertEqual(len(oracle["trace"]), document["steps"])
+        self.assertEqual(oracle["trace"], [int(value, 16) for value in document["trace"]])
+        self.assertEqual(oracle["pc"], int(document["final_pc"], 16))
+        self.assertEqual(32, len(document["registers"]))
+        for index, expected in enumerate(oracle["registers"]):
+            self.assertEqual(expected, int(document["registers"][index], 16), f"register {index}")
+
+        expected_memory = {int(address): value for address, value in oracle["memory"].items()}
+        actual_memory = {
+            int(entry["address"], 16): int(entry["value"], 16) for entry in document["memory_writes"]
+        }
+        self.assertEqual(expected_memory, actual_memory)
+
+    def test_extended_subset_matches_the_python_oracle(self) -> None:
+        words = extended_words()
         result, _ = self.run_cli(build_program(words), "--json", "--trace")
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertEqual("", result.stderr.strip())
