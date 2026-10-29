@@ -18,6 +18,9 @@ import unittest
 from pathlib import Path
 
 from tests.test_runtime_loader import build_elf
+from tools.rptp import oracle
+from tools.rptp.cfg import discover_program
+from tools.rptp.elf import parse_elf_bytes
 from tools.rptp_gate0_spike import execute_oracle
 
 BINARY = os.environ.get("RPTP_RUN_BINARY", "")
@@ -27,6 +30,18 @@ DATA = 0x00002000
 CODE_OFFSET = 0x200
 DATA_OFFSET = 0x100
 ROOT = Path(__file__).resolve().parents[1]
+
+LIKELY_FORMS = (
+    # mnemonic, opcode, rt/sub-opcode, condition, link
+    ("beql", 0x14, 0, "eq", False),
+    ("bnel", 0x15, 0, "ne", False),
+    ("blezl", 0x16, 0, "lez", False),
+    ("bgtzl", 0x17, 0, "gtz", False),
+    ("bltzl", 0x01, 0x02, "ltz", False),
+    ("bgezl", 0x01, 0x03, "gez", False),
+    ("bltzall", 0x01, 0x12, "ltz", True),
+    ("bgezall", 0x01, 0x13, "gez", True),
+)
 
 
 def encode_i(op: int, rs: int, rt: int, imm: int) -> int:
@@ -110,6 +125,80 @@ def extended_words() -> list[int]:
     ]
 
 
+def likely_form_words(opcode: int, rt_field: int, condition: str, taken: bool) -> list[int]:
+    t0 = 0
+    t1 = 0
+    if condition == "eq":
+        t0, t1 = 1, 1 if taken else 2
+    elif condition == "ne":
+        t0, t1 = 1, 2 if taken else 1
+    elif condition == "lez":
+        t0 = 0 if taken else 1
+    elif condition == "gtz":
+        t0 = 1 if taken else 0
+    elif condition == "ltz":
+        t0 = -1 if taken else 0
+    elif condition == "gez":
+        t0 = 0 if taken else -1
+    else:
+        raise AssertionError(f"unknown likely condition {condition}")
+    encoded_rt = 9 if condition in ("eq", "ne") else rt_field
+    return [
+        encode_r(31, 0, 23, 0, 0x21),  # 0x00 addu s7, ra, zero
+        encode_i(0x09, 0, 8, t0),  # 0x04 addiu t0, zero, condition value
+        encode_i(0x09, 0, 9, t1),  # 0x08 addiu t1, zero, compare value
+        encode_i(opcode, 8, encoded_rt, 2),  # 0x0c likely branch, target 0x18
+        encode_i(0x09, 0, 4, 0x11),  # 0x10 delay slot
+        encode_i(0x09, 0, 5, 0x22),  # 0x14 fall-through
+        encode_i(0x09, 0, 6, 0x33),  # 0x18 target
+        encode_r(23, 0, 0, 0, 0x08),  # 0x1c jr s7
+        encode_r(0, 0, 0, 0, 0),  # 0x20 nop (delay slot)
+    ]
+
+
+def likely_combined_words() -> list[int]:
+    return [
+        encode_r(31, 0, 23, 0, 0x21),  # 0x00 addu s7, ra, zero
+        encode_i(0x09, 0, 12, DATA),  # 0x04 addiu t4, zero, 0x2000
+        encode_i(0x09, 0, 8, 1),  # 0x08 addiu t0, zero, 1
+        encode_i(0x09, 0, 9, 1),  # 0x0c addiu t1, zero, 1
+        encode_i(0x14, 8, 9, 2),  # 0x10 beql t0, t1, 0x1c (taken)
+        encode_i(0x2B, 12, 9, 0),  # 0x14 sw t1, 0(t4) (delay slot)
+        encode_i(0x09, 0, 2, 0x12),  # 0x18 addiu v0, zero, 0x12 (skipped)
+        encode_i(0x09, 0, 8, 1),  # 0x1c addiu t0, zero, 1
+        encode_i(0x09, 0, 9, 1),  # 0x20 addiu t1, zero, 1
+        encode_i(0x15, 8, 9, 2),  # 0x24 bnel t0, t1, 0x30 (not taken)
+        encode_i(0x2B, 12, 9, 4),  # 0x28 sw t1, 4(t4) (nullified)
+        encode_i(0x09, 0, 3, 0x22),  # 0x2c addiu v1, zero, 0x22
+        encode_i(0x09, 0, 8, 0),  # 0x30 addiu t0, zero, 0
+        encode_i(0x16, 8, 0, 2),  # 0x34 blezl t0, 0x40 (taken)
+        encode_i(0x09, 0, 4, 0x11),  # 0x38 addiu a0, zero, 0x11 (delay slot)
+        encode_i(0x09, 0, 10, 0x12),  # 0x3c addiu t2, zero, 0x12 (skipped)
+        encode_i(0x09, 0, 8, 0),  # 0x40 addiu t0, zero, 0
+        encode_i(0x17, 8, 0, 2),  # 0x44 bgtzl t0, 0x50 (not taken)
+        encode_i(0x09, 0, 5, 0x21),  # 0x48 addiu a1, zero, 0x21 (nullified)
+        encode_i(0x09, 0, 11, 0x22),  # 0x4c addiu t3, zero, 0x22
+        encode_i(0x09, 0, 8, 0),  # 0x50 addiu t0, zero, 0
+        encode_i(0x01, 8, 0x02, 2),  # 0x54 bltzl t0, 0x60 (not taken)
+        encode_i(0x09, 0, 6, 0x31),  # 0x58 addiu a2, zero, 0x31 (nullified)
+        encode_i(0x09, 0, 13, 0x32),  # 0x5c addiu t5, zero, 0x32
+        encode_i(0x09, 0, 8, 0),  # 0x60 addiu t0, zero, 0
+        encode_i(0x01, 8, 0x03, 2),  # 0x64 bgezl t0, 0x70 (taken)
+        encode_i(0x09, 0, 0, 7),  # 0x68 addiu zero, zero, 7 (delay slot)
+        encode_i(0x09, 0, 14, 0x62),  # 0x6c addiu t6, zero, 0x62 (skipped)
+        encode_i(0x09, 0, 8, -1),  # 0x70 addiu t0, zero, -1
+        encode_i(0x01, 8, 0x12, 2),  # 0x74 bltzall t0, 0x80 (taken)
+        encode_i(0x09, 0, 7, 0x41),  # 0x78 addiu a3, zero, 0x41 (delay slot)
+        encode_i(0x09, 0, 15, 0x42),  # 0x7c addiu t7, zero, 0x42 (skipped)
+        encode_i(0x09, 0, 8, -1),  # 0x80 addiu t0, zero, -1
+        encode_i(0x01, 8, 0x13, 2),  # 0x84 bgezall t0, 0x90 (not taken)
+        encode_i(0x09, 0, 16, 0x51),  # 0x88 addiu s0, zero, 0x51 (nullified)
+        encode_i(0x09, 0, 24, 0x52),  # 0x8c addiu t8, zero, 0x52
+        encode_r(23, 0, 0, 0, 0x08),  # 0x90 jr s7
+        encode_r(0, 0, 0, 0, 0),  # 0x94 nop (delay slot)
+    ]
+
+
 def build_program(words: list[int], entry: int = BASE, data_memsz: int = 16) -> bytes:
     code = b"".join(struct.pack("<I", word & 0xFFFFFFFF) for word in words)
     payload = b"\x00" * (CODE_OFFSET - DATA_OFFSET) + code
@@ -133,6 +222,45 @@ class RuntimeExecutionCliTests(unittest.TestCase):
         path.write_bytes(image)
         command = [BINARY, *arguments, str(path)]
         return subprocess.run(command, capture_output=True, text=True, encoding="utf-8", errors="replace", check=False), path
+
+    def assert_likely_matches_oracle(self, words: list[int]) -> dict:
+        """Run one synthetic image through both paths and compare every observable."""
+        image = build_program(words)
+        result, _ = self.run_cli(image, "--json", "--trace")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual("", result.stderr.strip())
+        document = json.loads(result.stdout)
+        self.assertEqual(SCHEMA, document["schema"])
+        self.assertEqual("ok", document["status"])
+        self.assertEqual("unmapped-pc", document["halt_reason"])
+
+        program = discover_program(parse_elf_bytes(image))
+        expected = oracle.run_oracle(
+            program,
+            max_steps=100_000,
+            # The native harness starts with a zeroed register file; the oracle
+            # otherwise seeds r31 with its return sentinel.
+            initial_registers={31: 0},
+        )
+        self.assertEqual(expected["steps"], document["steps"])
+        self.assertEqual(expected["trace"], [int(value, 16) for value in document["trace"]])
+        self.assertEqual(expected["pc"], int(document["final_pc"], 16))
+        self.assertEqual(32, len(document["registers"]))
+        for index, (low, _high) in enumerate(expected["registers"]):
+            self.assertEqual(
+                low & 0xFFFFFFFFFFFFFFFF,
+                int(document["registers"][index], 16),
+                f"register {index}",
+            )
+        expected_memory = {int(address): value for address, value in expected["memory"]}
+        actual_memory: dict[int, int] = {}
+        for entry in document["memory_writes"]:
+            address = int(entry["address"], 16)
+            value = int(entry["value"], 16)
+            for offset in range(4):
+                actual_memory[address + offset] = (value >> (8 * offset)) & 0xFF
+        self.assertEqual(expected_memory, actual_memory)
+        return document
 
     def test_result_matches_the_python_oracle(self) -> None:
         words = main_words()
@@ -196,6 +324,101 @@ class RuntimeExecutionCliTests(unittest.TestCase):
         self.assertEqual(0x00000000, actual_memory[0x00002004])
         self.assertEqual(0x00000000, actual_memory[0x00002008])
         self.assertEqual(0xFFFFFFFF, actual_memory[0x0000200C])
+
+    def test_likely_branch_forms_match_the_python_oracle(self) -> None:
+        for mnemonic, opcode, rt_field, condition, link in LIKELY_FORMS:
+            for taken in (False, True):
+                with self.subTest(mnemonic=mnemonic, taken=taken):
+                    document = self.assert_likely_matches_oracle(
+                        likely_form_words(opcode, rt_field, condition, taken)
+                    )
+                    self.assertEqual(8, document["steps"])
+                    self.assertEqual(0, int(document["final_pc"], 16))
+                    self.assertEqual(0x11 if taken else 0, int(document["registers"][4], 16))
+                    self.assertEqual(0 if taken else 0x22, int(document["registers"][5], 16))
+                    self.assertEqual(0x33, int(document["registers"][6], 16))
+                    expected_link = 0x00100014 if link else 0
+                    self.assertEqual(expected_link, int(document["registers"][31], 16))
+                    self.assertEqual(0, int(document["registers"][0], 16))
+
+    def test_likely_combined_program_matches_the_python_oracle(self) -> None:
+        document = self.assert_likely_matches_oracle(likely_combined_words())
+        self.assertEqual(30, document["steps"])
+        self.assertEqual(0, int(document["final_pc"], 16))
+        expected = {
+            0: 0,
+            2: 0,
+            3: 0x22,
+            4: 0x11,
+            5: 0,
+            6: 0,
+            7: 0x41,
+            8: 0xFFFFFFFFFFFFFFFF,
+            9: 1,
+            10: 0,
+            11: 0x22,
+            12: 0x2000,
+            13: 0x32,
+            14: 0,
+            15: 0,
+            16: 0,
+            23: 0,
+            24: 0x52,
+            31: 0x0010008C,
+        }
+        for index, value in expected.items():
+            self.assertEqual(value, int(document["registers"][index], 16), f"register {index}")
+        # The taken BEQL delay slot stores one word; the nullified BNEL store is absent.
+        self.assertEqual(
+            {DATA: 1},
+            {
+                int(entry["address"], 16): int(entry["value"], 16)
+                for entry in document["memory_writes"]
+            },
+        )
+
+    def test_likely_fail_closed_encodings(self) -> None:
+        cases = (
+            ("bltzall with rs=31", encode_i(0x01, 31, 0x12, 1)),
+            ("bgezall with rs=31", encode_i(0x01, 31, 0x13, 1)),
+            ("undefined REGIMM neighbour", encode_i(0x01, 0, 0x04, 0)),
+        )
+        for label, word in cases:
+            with self.subTest(label=label):
+                result, _ = self.run_cli(
+                    build_program([word, encode_r(0, 0, 0, 0, 0)]), "--json"
+                )
+                self.assertEqual(2, result.returncode)
+                self.assertEqual("", result.stderr.strip())
+                document = json.loads(result.stdout)
+                self.assertEqual("error", document["status"])
+                self.assertEqual("EXEC_UNSUPPORTED_INSTRUCTION", document["error"]["code"])
+
+    def test_likely_nullified_delay_slot_does_not_fault(self) -> None:
+        words = [
+            encode_r(31, 0, 23, 0, 0x21),  # 0x00 addu s7, ra, zero
+            encode_i(0x09, 0, 8, 1),  # 0x04 addiu t0, zero, 1
+            encode_i(0x09, 0, 9, 0x3000),  # 0x08 addiu t1, zero, 0x3000
+            encode_i(0x15, 8, 8, 1),  # 0x0c bnel t0, t0, 0x14 (not taken)
+            encode_i(0x2B, 9, 8, 0),  # 0x10 sw t0, 0(t1) (nullified, unmapped)
+            encode_i(0x09, 0, 4, 0x22),  # 0x14 addiu a0, zero, 0x22
+            encode_r(23, 0, 0, 0, 0x08),  # 0x18 jr s7
+            encode_r(0, 0, 0, 0, 0),  # 0x1c nop (delay slot)
+        ]
+        document = self.assert_likely_matches_oracle(words)
+        self.assertEqual(7, document["steps"])
+        self.assertEqual(0x22, int(document["registers"][4], 16))
+        self.assertEqual([], document["memory_writes"])
+
+    def test_likely_nullified_delay_slot_does_not_consume_the_step_budget(self) -> None:
+        words = [encode_i(0x15, 8, 8, 1), encode_r(0, 0, 0, 0, 0)]
+        result, _ = self.run_cli(build_program(words), "--json", "--trace", "--max-steps", "1")
+        self.assertEqual(0, result.returncode, result.stderr)
+        document = json.loads(result.stdout)
+        self.assertEqual("ok", document["status"])
+        self.assertEqual(1, document["steps"])
+        self.assertEqual([BASE], [int(value, 16) for value in document["trace"]])
+        self.assertEqual(BASE + 8, int(document["final_pc"], 16))
 
     def test_output_is_deterministic(self) -> None:
         image = build_program(main_words())
