@@ -99,16 +99,16 @@ This phase is an inspector only. It does not launch a game, implement the PS2 ru
 
 ## B2 — Native runtime foundation (in progress)
 
-**Status: first native C++20 runtime layer implemented, CI-verified and merged through PR #13 (merge commit `5a5debf`, main CI run `40830858381` green). `rptp_runtime` provides sparse guest memory and a fail-closed ELF32 little-endian `ET_EXEC`/`EM_MIPS` `PT_LOAD` loader; `rptp-load` reports the loaded image as deterministic `rptp.runtime.load.v1` JSON with stable `LOAD_*` errors. The contract is [RUNTIME.md](RUNTIME.md). The layer executes no guest instruction, implements no kernel, syscall, IOP, DMA, VU, GS, SPU2 or ISO ingestion, and makes no boot or compatibility claim. Not a Gate 3 increment and not Gate 4 evidence.**
+**Status: native C++20 runtime foundation implemented, CI-verified and merged through PR #13 (merge commit `5a5debf`, main CI run `40830858381` green); the synthetic execution harness merged through PR #15 (merge commit `ebcc2b0`, main CI run `40832620535` green). `rptp_runtime` provides sparse guest memory, a fail-closed ELF32 little-endian `ET_EXEC`/`EM_MIPS` `PT_LOAD` loader (`rptp-load`, `rptp.runtime.load.v1`, stable `LOAD_*` errors) and a test-only harness (`rptp-run`, `rptp.runtime.run.v1`) for the accepted Gate 0 subset with one delay slot, `EXEC_*` errors and a step budget. The contract is [RUNTIME.md](RUNTIME.md). It implements no kernel, syscall, IOP, DMA, VU, GS, SPU2 or ISO ingestion, and makes no boot or compatibility claim. Not a Gate 3 increment and not Gate 4 evidence.**
 
 - [x] Sparse guest memory with explicit bounds, single-region access, overlap rejection and allocation budgets.
 - [x] Fail-closed ELF32/EM_MIPS loader: header, program-header table, `PT_LOAD` sizes/bounds/alignment/order/overlap, 32-bit address-space bounds, entry file-backed/executable checks and explicit limits.
 - [x] Stable error taxonomy and deterministic CLI JSON; exit `0` accepted, `2` load error, `1` usage/read failure.
 - [x] Direct synthetic C++ checks plus an independent Python ELF builder driving the CLI; CTest `runtime_loader_tests` and `runtime_loader_cli`.
-- [ ] Execution harness for a documented synthetic instruction subset, with the same differential-oracle discipline (next, separate increment).
+- [x] Execution harness for the documented synthetic instruction subset, with the same differential-oracle discipline (PR #15, `ebcc2b0`, run `40832620535`): arithmetic, memory, branches, calls, delay slots, `EXEC_*` failures, step budget and determinism.
 - [ ] Retail boot-executable ingestion and the first kernel/syscall services (future; each needs separate evidence and a Gate disposition).
 
-**Evidence and limits:** `runtime/tests/runtime_tests.cpp`, `tests/test_runtime_loader.py`, [RUNTIME.md](RUNTIME.md); local runs are recorded in [VERIFICATION_LOG.md](VERIFICATION_LOG.md). Only synthetic images and the Gate 0 fixture have been loaded. A successfully loaded image is not a bootable or compatible game.
+**Evidence and limits:** `runtime/tests/runtime_tests.cpp`, `tests/test_runtime_loader.py`, `tests/test_runtime_execution.py`, [RUNTIME.md](RUNTIME.md); local runs are recorded in [VERIFICATION_LOG.md](VERIFICATION_LOG.md). Only synthetic images and the Gate 0 fixture have been loaded or executed. The Gate 0 fixture's data store falls outside its single RX segment, so the harness rejects it with `EXEC_MEMORY_FAULT`; differential execution tests use synthetic two-segment images. A loaded or executed synthetic image is not a bootable or compatible game.
 
 ## Gate 3 — Recompiler MVP
 
