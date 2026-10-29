@@ -167,6 +167,27 @@ def likely_form_words(opcode: int, rt_field: int, condition: str, taken: bool) -
     ]
 
 
+def plain_high_bit_words(
+    opcode: int, rt_field: int, pattern: str
+) -> tuple[list[int], int, bytes]:
+    value = 0x00000000FFFFFFFF if pattern == "low32_negative" else 0xFFFFFFFF00000001
+    words = [
+        encode_r(31, 0, 23, 0, 0x21),  # 0x00 addu s7, ra, zero
+        encode_i(0x09, 0, 9, DATA),  # 0x04 addiu t1, zero, data base
+        encode_i(0x37, 9, 8, 0),  # 0x08 ld t0, 0(t1)
+    ]
+    branch_index = len(words)
+    words.extend([
+        encode_i(opcode, 8, rt_field, 2),  # branch over the fall-through
+        encode_i(0x09, 0, 4, 0x11),  # delay slot
+        encode_i(0x09, 0, 5, 0x22),  # fall-through
+        encode_i(0x09, 0, 6, 0x33),  # target
+        encode_r(23, 0, 0, 0, 0x08),  # jr s7
+        encode_r(0, 0, 0, 0, 0),  # nop (delay slot)
+    ])
+    return words, branch_index, struct.pack("<Q", value)
+
+
 def likely_combined_words() -> list[int]:
     return [
         encode_r(31, 0, 23, 0, 0x21),  # 0x00 addu s7, ra, zero
@@ -210,13 +231,17 @@ def likely_combined_words() -> list[int]:
     ]
 
 
-def build_program(words: list[int], entry: int = BASE, data_memsz: int = 16) -> bytes:
+def build_program(
+    words: list[int], entry: int = BASE, data_memsz: int = 16,
+    data: bytes = b"\x00" * 4,
+) -> bytes:
     code = b"".join(struct.pack("<I", word & 0xFFFFFFFF) for word in words)
-    payload = b"\x00" * (CODE_OFFSET - DATA_OFFSET) + code
+    data_memsz = max(data_memsz, len(data))
+    payload = data + b"\x00" * (CODE_OFFSET - DATA_OFFSET - len(data)) + code
     return build_elf(
         entry,
         [
-            {"offset": DATA_OFFSET, "vaddr": DATA, "filesz": 4, "memsz": data_memsz, "flags": 6},
+            {"offset": DATA_OFFSET, "vaddr": DATA, "filesz": len(data), "memsz": data_memsz, "flags": 6},
             {"offset": CODE_OFFSET, "vaddr": BASE, "filesz": len(code), "memsz": len(code), "flags": 5},
         ],
         payload=payload,
@@ -234,9 +259,11 @@ class RuntimeExecutionCliTests(unittest.TestCase):
         command = [BINARY, *arguments, str(path)]
         return subprocess.run(command, capture_output=True, text=True, encoding="utf-8", errors="replace", check=False), path
 
-    def assert_likely_matches_oracle(self, words: list[int]) -> dict:
+    def assert_likely_matches_oracle(
+        self, words: list[int], data: bytes = b"\x00" * 4,
+    ) -> dict:
         """Run one synthetic image through both paths and compare every observable."""
-        image = build_program(words)
+        image = build_program(words, data=data)
         result, _ = self.run_cli(image, "--json", "--trace")
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertEqual("", result.stderr.strip())
@@ -373,6 +400,35 @@ class RuntimeExecutionCliTests(unittest.TestCase):
                         self.assertNotIn(BASE + 0x14, trace)
                     else:
                         self.assertIn(BASE + 0x14, trace)
+
+    def test_plain_branch_high_bits_use_signed_64_bit_values(self) -> None:
+        cases = ((0x06, 0, "lez"), (0x07, 0, "gtz"),
+                 (0x01, 0x00, "ltz"), (0x01, 0x01, "gez"))
+        expectations = {
+            "low32_negative": {"lez": False, "gtz": True, "ltz": False, "gez": True},
+            "high32_negative": {"lez": True, "gtz": False, "ltz": True, "gez": False},
+        }
+        for pattern, expected in expectations.items():
+            for opcode, rt_field, condition in cases:
+                with self.subTest(pattern=pattern, condition=condition):
+                    words, branch_index, data = plain_high_bit_words(
+                        opcode, rt_field, pattern)
+                    document = self.assert_likely_matches_oracle(words, data)
+                    taken = expected[condition]
+                    branch_pc = BASE + 4 * branch_index
+                    self.assertEqual(branch_index + (5 if taken else 6),
+                                     document["steps"])
+                    self.assertEqual(0, int(document["final_pc"], 16))
+                    self.assertEqual(0x11, int(document["registers"][4], 16))
+                    self.assertEqual(0 if taken else 0x22,
+                                     int(document["registers"][5], 16))
+                    self.assertEqual(0x33, int(document["registers"][6], 16))
+                    trace = [int(value, 16) for value in document["trace"]]
+                    self.assertIn(branch_pc + 4, trace)
+                    if taken:
+                        self.assertNotIn(branch_pc + 8, trace)
+                    else:
+                        self.assertIn(branch_pc + 8, trace)
 
     def test_plain_link_forms_with_rs_31_fail_closed(self) -> None:
         for label, rt_field in (("bltzal", 0x10), ("bgezal", 0x11)):

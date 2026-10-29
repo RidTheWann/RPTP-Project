@@ -65,7 +65,7 @@ The runtime harness is a test vehicle, not a product runtime. [RUNTIME.md](../RU
 | `IRL` | `tests/test_ir_lowering.py` | Ran: 11 tests, 8 passed and 3 native lowerings skipped because the test helper could not find `cl`/`c++`. |
 | `RT†` | `tests/test_runtime_execution.py` and `runtime/tests/runtime_tests.cpp` | **Not executed.** The 16 Python runtime tests skipped because `RPTP_RUN_BINARY` was unset and no build was present; the C++ test binary was not built. |
 | `BL` | `tests/test_instruction_branch_likely.py` | Ran: 12 tests, all passed, including the MSVC native differential. |
-| `PB` | `tests/test_instruction_branch_plain.py` | Ran in the ordinary-branch increment session: 10 tests, all passed, including the native differential. |
+| `PB` | `tests/test_instruction_branch_plain.py` | Ran in the ordinary-branch increment session: 12 tests after review hardening, all passed, including the native differential and the signed-low-64-bit cases. |
 | `ISA` | `tests/test_isa_encodings.py` | Ran: all tests passed. Structural decode/lowering coverage only; not semantic proof. |
 | `T-DADDIU` | `tests/test_instruction_daddiu.py` | Ran in the per-instruction batch; Python/oracle and lowering-source assertions passed; native parts skipped where recorded. |
 | `T-DADDU` | `tests/test_instruction_daddu.py` | Same batch status as `T-DADDIU`. |
@@ -193,7 +193,7 @@ The per-instruction batch ran 156 tests: 130 passed and 26 native cases skipped 
 | 41 | `BLTZAL` | `RPTP-REF-015` p. 86 | `PB` | `P-PB` | `GPR[31] = pc + 8` is written unconditionally, including when the branch is not taken; delay slot always executes; `rs=31` is rejected fail-closed because the reference marks it UNPREDICTABLE, and both `N` and `R` decode paths apply that policy. `N + R`; legacy has no implementation. |
 | 42 | `BGEZAL` | `RPTP-REF-015` p. 77 | `PB` | `P-PB` | Same unconditional link, always-executed delay slot and `rs=31` rejection as `BLTZAL`. `N + R`; legacy has no implementation. |
 
-`Terverifikasi` for the reference mapping: each approved-reference cell was checked against [REFERENCES.md](../REFERENCES.md) and [isa-evidence.md](isa-evidence.md) §3. `Belum diverifikasi` for the `RT†` cells: the runtime harness was not executed in the original matrix session. The reference pins support the encoding/operation model within the recorded limits; they do not establish complete R5900 semantics. The `PB` cells were executed in the ordinary-branch increment session (10 tests, all passed); the runtime half of rows 37-42 was executed through `tests/test_runtime_execution.py` in the same increment session, as recorded in §4.2 and [VERIFICATION_LOG.md](../VERIFICATION_LOG.md).
+`Terverifikasi` for the reference mapping: each approved-reference cell was checked against [REFERENCES.md](../REFERENCES.md) and [isa-evidence.md](isa-evidence.md) §3. `Belum diverifikasi` for the `RT†` cells: the runtime harness was not executed in the original matrix session. The reference pins support the encoding/operation model within the recorded limits; they do not establish complete R5900 semantics. The `PB` cells were executed in the ordinary-branch increment session (12 tests after review hardening, all passed); the runtime half of rows 37-42 was executed through `tests/test_runtime_execution.py` in the same increment session, as recorded in §4.2 and [VERIFICATION_LOG.md](../VERIFICATION_LOG.md).
 
 ### 4.1 Branch-likely rows in detail
 
@@ -206,7 +206,7 @@ The eight likely forms are rows 25-32. Their shared implementation contract is:
 - `BLTZALL` and `BGEZALL` write `GPR[31] = pc + 8` unconditionally, including when the branch is not taken.
 - `rs = 31` on either link form is rejected fail-closed as RPTP policy because the approved reference marks the result UNPREDICTABLE.
 
-`Terverifikasi` by source reading: `tools/rptp/isa.py` (`LIKELY_MNEMONICS`, `LINK_LIKELY_MNEMONICS`, target calculation and `rs=31` rejection), `tools/rptp/oracle.py` (`nullify_delay` and unconditional link write), `tools/rptp/ir.py` (`Control.likely`, `link_reg`) and `tools/rptp/codegen.py` (`if (taken) {` around delay operations). `Terverifikasi` by execution: `BL` passed 12 of 12 tests, including the MSVC native differential against the new oracle. `ISA` also decodes and statically lowers all eight forms, but it is structural evidence, not semantic execution evidence.
+`Terverifikasi` by source reading: `tools/rptp/isa.py` (`LIKELY_MNEMONICS`, `LINK_MNEMONICS`, target calculation and `rs=31` rejection), `tools/rptp/oracle.py` (`nullify_delay` and unconditional link write), `tools/rptp/ir.py` (`Control.likely`, `link_reg`) and `tools/rptp/codegen.py` (`if (taken) {` around delay operations). `Terverifikasi` by execution: `BL` passed 12 of 12 tests, including the MSVC native differential against the new oracle. `ISA` also decodes and statically lowers all eight forms, but it is structural evidence, not semantic execution evidence.
 
 `Terverifikasi` by source reading at the revision baseline: `runtime/src/execution.cpp` decodes the same eight forms (`kOpcodeBeql`-`kOpcodeBgtzl` and REGIMM `kRegimmBltzl`/`kRegimmBgezl`/`kRegimmBltzall`/`kRegimmBgezall`), rejects `rs=31` on both link forms, and implements nullified delay slots. `runtime/tests/runtime_tests.cpp` has `test_execution_likely_branch_forms`, `test_execution_likely_combined_program`, `test_execution_likely_nullification_and_failures` and `test_execution_likely_pc_masking`; `tests/test_runtime_execution.py` has the matching Python-side cases. Those runtime tests were **not executed** in the original session (`RT†`), so they are source evidence here, not execution evidence.
 
@@ -223,9 +223,9 @@ The six non-likely branch forms are rows 37-42. Their shared implementation cont
 - `BLTZAL` and `BGEZAL` write `GPR[31] = pc + 8` unconditionally, including when the branch is not taken.
 - `rs = 31` on either link form is rejected fail-closed as RPTP policy because the approved reference marks the result UNPREDICTABLE.
 
-`Terverifikasi` by source reading: `tools/rptp/isa.py` (`BRANCH_MNEMONICS`, `LINK_MNEMONICS` and the `rs=31` rejection), `tools/rptp/oracle.py` (the `blez`/`bgtz`/`bltz`/`bgez` conditions and the unconditional link write), `tools/rptp/ir.py` (`Control.cond`, `link_reg`, `likely=False`) and `tools/rptp/codegen.py` (no `if (taken) {` around the delay block). `Terverifikasi` by execution: `PB` passed 10 of 10 tests, including the native differential against the oracle.
+`Terverifikasi` by source reading: `tools/rptp/isa.py` (`BRANCH_MNEMONICS`, `LINK_MNEMONICS` and the `rs=31` rejection), `tools/rptp/oracle.py` (the `blez`/`bgtz`/`bltz`/`bgez` conditions and the unconditional link write), `tools/rptp/ir.py` (`Control.cond`, `link_reg`, `likely=False`) and `tools/rptp/codegen.py` (no `if (taken) {` around the delay block). `Terverifikasi` by execution: `PB` passed 12 of 12 tests after review hardening, including the native differential against the oracle and the signed-low-64-bit cases.
 
-`Terverifikasi` by execution in the ordinary-branch increment session: `tests/test_runtime_execution.py` ran 25 tests, all passed with the built `rptp-run` binary, including `test_plain_branch_forms_match_the_python_oracle` and `test_plain_link_forms_with_rs_31_fail_closed`. `runtime/tests/runtime_tests.cpp` adds `test_execution_plain_branch_forms` and `test_execution_plain_branch_failures`; the CTest result is recorded in [VERIFICATION_LOG.md](../VERIFICATION_LOG.md).
+`Terverifikasi` by execution in the ordinary-branch increment session: `tests/test_runtime_execution.py` ran 26 tests after review hardening, all passed with the built `rptp-run` binary, including `test_plain_branch_forms_match_the_python_oracle` and `test_plain_link_forms_with_rs_31_fail_closed`. `runtime/tests/runtime_tests.cpp` adds `test_execution_plain_branch_forms` and `test_execution_plain_branch_failures`; the CTest result is recorded in [VERIFICATION_LOG.md](../VERIFICATION_LOG.md).
 
 **Asymmetry:** none of the six forms exists in `tools/rptp_gate0_spike.py`, `tools/rptp_ir.py` or `tools/rptp_lower.py`; the legacy pipeline's only conditional branches are `BEQ`/`BNE`. The `N` path, the C++ harness and `tests/test_cross_path_equivalence.py` now cover all six forms on one shared synthetic program.
 
@@ -395,8 +395,8 @@ Observed in the original matrix session:
 
 Observed in the ordinary-branch increment session (2026-10-30):
 
-- `tests.test_instruction_branch_plain`: **10 tests, OK**, including the native differential.
-- `tests.test_runtime_execution` with `RPTP_RUN_BINARY`: **25 tests, OK**.
+- `tests.test_instruction_branch_plain`: **12 tests, OK**, including the native differential and signed-low-64-bit cases.
+- `tests.test_runtime_execution` with `RPTP_RUN_BINARY`: **26 tests, OK**, including the signed-low-64-bit cases.
 - `tests.test_cross_path_equivalence` with `RPTP_RUN_BINARY`: **4 tests, OK**, all three legs active.
 - The full suite, CTest, artifact guard and documentation checks are recorded in [VERIFICATION_LOG.md](../VERIFICATION_LOG.md).
 
@@ -420,7 +420,7 @@ The census is deliberately not rerun here; [BOOT_CENSUS.md](../BOOT_CENSUS.md) i
 
 ## 9. What remains unverified
 
-- **C++ runtime execution of the 42 Level B instructions:** source-read at the revision baseline; `RT†` tests and `runtime/tests/runtime_tests.cpp` were not executed in the original session. The ordinary-branch increment session did execute `tests/test_runtime_execution.py` (25 tests) against a built `rptp-run`; the CTest result is recorded in [VERIFICATION_LOG.md](../VERIFICATION_LOG.md).
+- **C++ runtime execution of the 42 Level B instructions:** source-read at the revision baseline; `RT†` tests and `runtime/tests/runtime_tests.cpp` were not executed in the original session. The ordinary-branch increment session did execute `tests/test_runtime_execution.py` (26 tests after review hardening) against a built `rptp-run`; the CTest result is recorded in [VERIFICATION_LOG.md](../VERIFICATION_LOG.md).
 - **Legacy native differentials:** 26 per-instruction native cases and 3 `IRL` native cases skipped for compiler-discovery reasons; their Python/oracle assertions passed.
 - **New-path Level B differentials other than ordinary and likely branches:** no new-path native differential was run for the remaining 28 non-likely rows. `ISA` proves decode and static lowering, not execution.
 - **Branch-likely in the runtime harness:** implemented since PR #41 with four likely test functions, but those tests are source-read only in this note; `BL`'s native differential still uses generated C++, not `runtime/src/execution.cpp`.

@@ -9,6 +9,7 @@ fail-closed because the approved reference marks it UNPREDICTABLE.
 """
 from __future__ import annotations
 
+import struct
 import sys
 import unittest
 from pathlib import Path
@@ -24,9 +25,16 @@ from tools.rptp.fixtures import (
     A0,
     A1,
     A2,
+    A3,
     CODE_BASE,
     DATA_BASE,
     RA,
+    S0,
+    S1,
+    S2,
+    S3,
+    S4,
+    S5,
     S7,
     T0,
     T1,
@@ -55,6 +63,24 @@ CONDITION_VALUES = {
     "bgez": (0, -1),
     "bltzal": (-1, 0),
     "bgezal": (0, -1),
+}
+HIGH_BIT_CASES = {
+    # 0x00000000FFFFFFFF is positive as a signed 64-bit value.
+    "low32_negative": {
+        "value": 0x00000000FFFFFFFF,
+        "taken": {"blez": False, "bgtz": True, "bltz": False, "bgez": True},
+    },
+    # 0xFFFFFFFF00000001 is negative as a signed 64-bit value.
+    "high32_negative": {
+        "value": 0xFFFFFFFF00000001,
+        "taken": {"blez": True, "bgtz": False, "bltz": True, "bgez": False},
+    },
+}
+HIGH_BIT_REGS = {
+    "blez": (A0, A1, A2),
+    "bgtz": (A3, V0, V1),
+    "bltz": (S0, S1, S2),
+    "bgez": (S3, S4, S5),
 }
 
 
@@ -160,6 +186,27 @@ def _case_pcs(asm: Assembler) -> dict[str, int]:
     }
 
 
+def _high_bit_program(
+    pattern: str,
+) -> tuple[Assembler, dict[str, tuple[int, int]], bytes]:
+    asm = Assembler()
+    asm.lui(T1, DATA_BASE >> 16)
+    asm.ld(T0, 0, T1)
+    pcs: dict[str, tuple[int, int]] = {}
+    for form, (delay, fallthrough, target) in HIGH_BIT_REGS.items():
+        label = f"high_bit_{form}"
+        branch_pc = asm.pc
+        getattr(asm, form)(T0, label)
+        pcs[form] = (branch_pc, asm.pc)
+        asm.addiu(delay, ZERO, 0x11)
+        asm.addiu(fallthrough, ZERO, 0x22)
+        asm.label(label)
+        asm.addiu(target, ZERO, 0x33)
+    asm.jr(RA)
+    asm.nop()
+    return asm, pcs, struct.pack("<Q", HIGH_BIT_CASES[pattern]["value"])
+
+
 class PlainBranchSemanticsTests(unittest.TestCase):
     def test_taken_and_not_taken_for_every_form(self):
         for form in PLAIN_FORMS:
@@ -211,6 +258,42 @@ class PlainBranchSemanticsTests(unittest.TestCase):
             [[DATA_BASE, 1], [DATA_BASE + 1, 0],
              [DATA_BASE + 2, 0], [DATA_BASE + 3, 0]],
         )
+
+    def test_conditions_compare_the_signed_low_64_bits(self):
+        for pattern, spec in HIGH_BIT_CASES.items():
+            asm, pcs, data = _high_bit_program(pattern)
+            state = execute(asm, data)
+            self.assertEqual(
+                state["registers"][T0][0] & MASK64, spec["value"])
+            for form in HIGH_BIT_REGS:
+                with self.subTest(pattern=pattern, form=form):
+                    taken = spec["taken"][form]
+                    delay, fallthrough, target = HIGH_BIT_REGS[form]
+                    branch_pc, delay_pc = pcs[form]
+                    self.assertEqual(state["registers"][delay], pair(0x11))
+                    self.assertEqual(
+                        state["registers"][fallthrough],
+                        pair(0 if taken else 0x22))
+                    self.assertEqual(state["registers"][target], pair(0x33))
+                    self.assertIn(delay_pc, state["trace"])
+                    if taken:
+                        self.assertNotIn(branch_pc + 8, state["trace"])
+                    else:
+                        self.assertIn(branch_pc + 8, state["trace"])
+
+    def test_signed_low_64_bits_match_the_generated_native_path(self):
+        try:
+            native.find_msvc()
+        except native.HarnessError as exc:
+            self.skipTest(f"MSVC is genuinely unavailable: {exc}")
+        for pattern in HIGH_BIT_CASES:
+            with self.subTest(pattern=pattern):
+                asm, _pcs, data = _high_bit_program(pattern)
+                image = parse_elf_bytes(build_elf(asm.resolve(), data))
+                program = discover_program(image)
+                expected = oracle.run_oracle(program, max_steps=MAX_STEPS)
+                actual = native.run_differential(image, max_steps=MAX_STEPS)
+                self.assertEqual(actual, expected)
 
     def test_zero_stays_zero_when_a_delay_slot_targets_it(self):
         asm = Assembler()
