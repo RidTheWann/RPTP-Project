@@ -1079,7 +1079,7 @@ class IsoFormatContractTests(unittest.TestCase):
     def test_opaque_system_use_bytes_do_not_replace_primary_names(self):
         image = _iso()
         record = bytearray(_record(21, len(_elf()), b"SLUS_123.45;1"))
-        record.extend(b"OPAQUE SYSTEM USE")
+        record.extend(b"OPAQUE SYSTEM USE!")
         record[0] = len(record)
         offset = 19 * BLOCK + 68 + len(_record(20, len(DEFAULT_CONFIG), b"SYSTEM.CNF;1"))
         image[offset:offset + len(record)] = record
@@ -1258,6 +1258,233 @@ class IsoReviewRegressionTests(unittest.TestCase):
                 report = inspector.inspect_bytes(bytes(_iso(executable=executable)))
                 self.assertEqual(report["status"], "INSPECTED")
                 self.assertEqual(report["boot_executable"]["elf"]["load_segments"][0]["alignment"], alignment)
+
+
+class IsoHardeningTests(unittest.TestCase):
+    @staticmethod
+    def _image_with_boot(executable: bytes) -> bytes:
+        image = _iso(executable=executable)
+        end = 21 * BLOCK + len(executable)
+        blocks = max(VOLUME_BLOCKS, (end + BLOCK - 1) // BLOCK)
+        image.extend(bytes(blocks * BLOCK - len(image)))
+        image[21 * BLOCK:end] = executable
+        image[16 * BLOCK + 80:16 * BLOCK + 88] = _both32(blocks)
+        return bytes(image)
+
+    @staticmethod
+    def _image_with_config(config: bytes) -> bytes:
+        image = _iso(config=None)
+        records = (
+            _record(19, BLOCK, b"\x00", 0x02)
+            + _record(19, BLOCK, b"\x01", 0x02)
+            + _record(100, len(config), b"SYSTEM.CNF;1")
+            + _record(21, len(_elf()), b"SLUS_123.45;1")
+        )
+        image[19 * BLOCK:20 * BLOCK] = records.ljust(BLOCK, b"\x00")
+        end = 100 * BLOCK + len(config)
+        blocks = (end + BLOCK - 1) // BLOCK
+        image.extend(bytes(blocks * BLOCK - len(image)))
+        image[100 * BLOCK:end] = config
+        image[16 * BLOCK + 80:16 * BLOCK + 88] = _both32(blocks)
+        return bytes(image)
+
+    @staticmethod
+    def _minimal_descriptor_image() -> bytes:
+        image = bytearray(18 * BLOCK)
+        pvd = bytearray(BLOCK)
+        pvd[0], pvd[1:6], pvd[6] = 1, b"CD001", 1
+        pvd[80:88] = _both32(18)
+        pvd[120:124] = _both16(1)
+        pvd[124:128] = _both16(1)
+        pvd[128:132] = _both16(BLOCK)
+        pvd[881] = 1
+        pvd[156:190] = _record(0, BLOCK, b"\x00", 0x02)
+        image[16 * BLOCK:17 * BLOCK] = pvd
+        terminator = bytearray(BLOCK)
+        terminator[0], terminator[1:6], terminator[6] = 255, b"CD001", 1
+        image[17 * BLOCK:18 * BLOCK] = terminator
+        root = bytearray(BLOCK)
+        root[0:34] = _record(0, BLOCK, b"\x00", 0x02)
+        root[34:68] = _record(0, BLOCK, b"\x01", 0x02)
+        image[0:BLOCK] = root
+        return bytes(image)
+
+    def test_image_size_gate_requires_descriptor_and_terminator_blocks(self):
+        for method in ("inspect", "survey"):
+            with self.subTest(method=method):
+                reader = inspector.IsoReader(BytesIO(bytes(17 * BLOCK)), 17 * BLOCK, "small.iso")
+                with self.assertRaises(inspector.InspectError) as ctx:
+                    getattr(reader, method)()
+                self.assertEqual(ctx.exception.code, "IMAGE_TOO_SMALL")
+        data = self._minimal_descriptor_image()
+        self.assertEqual(inspector.IsoReader(BytesIO(data), len(data), "minimum.iso").survey()["status"], "SURVEYED")
+        with self.assertRaises(inspector.InspectError) as ctx:
+            inspector.inspect_bytes(data)
+        self.assertEqual(ctx.exception.code, "SYSTEM_CNF_NOT_FOUND")
+
+    def test_rejects_invalid_directory_data_lengths(self):
+        config = b"BOOT2 = cdrom0:\\SUBDIR;1\\SLUS_123.45;1\n"
+        for size in (0, 46, BLOCK + 1):
+            image = _iso(config=config, subdir_flags=0)
+            image[19 * BLOCK + 68 + 10:19 * BLOCK + 68 + 18] = _both32(size)
+            data = bytes(image)
+            for method in ("inspect", "survey"):
+                with self.subTest(size=size, method=method):
+                    reader = inspector.IsoReader(BytesIO(data), len(data), "directory-size.iso")
+                    with self.assertRaises(inspector.InspectError) as ctx:
+                        getattr(reader, method)()
+                    self.assertEqual(ctx.exception.code, "DIRECTORY_SIZE_INVALID")
+
+    def test_rejects_review_root_directory_without_dot_entries(self):
+        image = _iso()
+        image[16 * BLOCK + 156 + 10:16 * BLOCK + 156 + 18] = _both32(92)
+        records = _record(20, 1, b"SYSTEM.CNF;1") + _record(21, 1, b"SLUS_123.45;1")
+        self.assertEqual(len(records), 92)
+        image[19 * BLOCK:20 * BLOCK] = records.ljust(BLOCK, b"\x00")
+        data = bytes(image)
+        for method in ("inspect", "survey"):
+            with self.subTest(method=method):
+                reader = inspector.IsoReader(BytesIO(data), len(data), "no-dots.iso")
+                with self.assertRaises(inspector.InspectError) as ctx:
+                    getattr(reader, method)()
+                self.assertEqual(ctx.exception.code, "DIRECTORY_SIZE_INVALID")
+
+    def test_rejects_directory_without_dot_and_dotdot_records(self):
+        variants = {
+            "missing": _record(20, 1, b"FIRST.BIN;1") + _record(21, 1, b"SECOND.BIN;1"),
+            "swapped": _record(19, BLOCK, b"\x01", 0x02) + _record(19, BLOCK, b"\x00", 0x02),
+            "no-dotdot": _record(19, BLOCK, b"\x00", 0x02) + _record(20, 1, b"FIRST.BIN;1"),
+        }
+        for label, records in variants.items():
+            image = _iso(config=None)
+            image[19 * BLOCK:20 * BLOCK] = bytes(BLOCK)
+            image[19 * BLOCK:19 * BLOCK + len(records)] = records
+            data = bytes(image)
+            for method in ("inspect", "survey"):
+                with self.subTest(case=label, method=method):
+                    reader = inspector.IsoReader(BytesIO(data), len(data), "dot-entries.iso")
+                    with self.assertRaises(inspector.InspectError) as ctx:
+                        getattr(reader, method)()
+                    self.assertEqual(ctx.exception.code, "DIRECTORY_DOT_ENTRY_INVALID")
+
+    def test_accepts_dot_record_with_system_use_bytes_before_dotdot(self):
+        dot = bytearray(_record(19, BLOCK, b"\x00", 0x02))
+        dot.extend(b"RR")
+        dot[0] = len(dot)
+        self.assertEqual(len(dot), 36)
+        records = (
+            bytes(dot)
+            + _record(19, BLOCK, b"\x01", 0x02)
+            + _record(20, len(DEFAULT_CONFIG), b"SYSTEM.CNF;1")
+            + _record(21, len(_elf()), b"SLUS_123.45;1")
+        )
+        image = _iso()
+        image[19 * BLOCK:20 * BLOCK] = records.ljust(BLOCK, b"\x00")
+        data = bytes(image)
+        self.assertEqual(inspector.IsoReader(BytesIO(data), len(data), "system-use.iso").survey()["status"], "SURVEYED")
+        self.assertEqual(inspector.inspect_bytes(data)["status"], "INSPECTED")
+
+    def test_rejects_odd_directory_record_lengths(self):
+        record = bytearray(_record(20, len(DEFAULT_CONFIG), b"SYSTEM.CNF;1"))
+        record.extend(b"\x4a")
+        record[0] = len(record)
+        self.assertEqual(len(record) % 2, 1)
+        image = _iso()
+        records = (_record(19, BLOCK, b"\x00", 0x02) + _record(19, BLOCK, b"\x01", 0x02)
+                   + bytes(record))
+        image[19 * BLOCK:20 * BLOCK] = records.ljust(BLOCK, b"\x00")
+        data = bytes(image)
+        for method in ("inspect", "survey"):
+            with self.subTest(method=method):
+                reader = inspector.IsoReader(BytesIO(data), len(data), "odd-record.iso")
+                with self.assertRaises(inspector.InspectError) as ctx:
+                    getattr(reader, method)()
+                self.assertEqual(ctx.exception.code, "DIRECTORY_RECORD_LENGTH_INVALID")
+
+    def test_rejects_nonstandard_elf32_header_and_program_entry_sizes(self):
+        for label, offset, value in (("header size", 40, 53), ("program header entry size", 42, 33)):
+            executable = bytearray(_elf())
+            executable[offset:offset + 2] = value.to_bytes(2, "little")
+            with self.subTest(case=label):
+                with self.assertRaises(inspector.InspectError) as ctx:
+                    inspector.inspect_bytes(bytes(_iso(executable=bytes(executable))))
+                self.assertEqual(ctx.exception.code, "ELF_HEADER_SIZE_INVALID")
+
+    def test_documented_fail_closed_codes_are_reachable(self):
+        def elf_with(index: int, value: int) -> bytes:
+            data = bytearray(_elf())
+            data[index] = value
+            return bytes(data)
+
+        duplicate = _iso(config=None)
+        records = (
+            _record(19, BLOCK, b"\x00", 0x02)
+            + _record(19, BLOCK, b"\x01", 0x02)
+            + _record(20, len(DEFAULT_CONFIG), b"SYSTEM.CNF;1")
+            + _record(20, len(DEFAULT_CONFIG), b"SYSTEM.CNF;2")
+            + _record(21, len(_elf()), b"SLUS_123.45;1")
+        )
+        duplicate[19 * BLOCK:20 * BLOCK] = records.ljust(BLOCK, b"\x00")
+        duplicate[20 * BLOCK:20 * BLOCK + len(DEFAULT_CONFIG)] = DEFAULT_CONFIG
+        cases = (
+            ("SYSTEM.CNF ambiguity", bytes(duplicate), "SYSTEM_CNF_AMBIGUOUS"),
+            ("empty BOOT path", bytes(_iso(config=b"BOOT2 = cdrom0:\n")), "BOOT_PATH_EMPTY"),
+            ("file in BOOT path",
+             bytes(_iso(config=b"BOOT2 = cdrom0:\\SYSTEM.CNF;1\\SLUS_123.45;1\n")),
+             "BOOT_PATH_NOT_DIRECTORY"),
+            ("directory BOOT target",
+             bytes(_iso(config=b"BOOT2 = cdrom0:\\SUBDIR;1\n", subdir_flags=0)),
+             "BOOT_TARGET_IS_DIRECTORY"),
+            ("truncated ELF", bytes(_iso(executable=bytes(51))), "BOOT_ELF_HEADER_TRUNCATED"),
+            ("ELF class", bytes(_iso(executable=elf_with(4, 2))), "UNSUPPORTED_ELF_CLASS"),
+            ("ELF endianness", bytes(_iso(executable=elf_with(5, 2))), "UNSUPPORTED_ELF_ENDIANNESS"),
+            ("ELF version", bytes(_iso(executable=elf_with(6, 0))), "ELF_VERSION_INVALID"),
+            ("program header limit", bytes(_iso(executable=_elf(phnum=inspector.MAX_PROGRAM_HEADERS + 1))),
+             "ELF_PROGRAM_HEADER_LIMIT"),
+        )
+        for label, data, code in cases:
+            with self.subTest(case=label):
+                reader = inspector.IsoReader(BytesIO(data), len(data), "fail-closed.iso")
+                with self.assertRaises(inspector.InspectError) as ctx:
+                    reader.inspect()
+                self.assertEqual(ctx.exception.code, code)
+
+    def test_not_a_directory_is_reachable(self):
+        data = bytes(_iso())
+        reader = inspector.IsoReader(BytesIO(data), len(data), "file.iso")
+        reader.parse_pvd(reader.scan_pvd())
+        child = reader.find_child(reader.root, "SYSTEM.CNF;1")
+        with self.assertRaises(inspector.InspectError) as ctx:
+            reader.list_dir(child)
+        self.assertEqual(ctx.exception.code, "NOT_A_DIRECTORY")
+
+    def test_boot_path_component_limit_exact_boundary(self):
+        for count, code in ((32, "BOOT_EXECUTABLE_NOT_FOUND"), (33, "BOOT_PATH_DEPTH_LIMIT")):
+            config = b"BOOT2 = cdrom0:" + b"\\A" * (count - 1) + b"\\SLUS_123.45;1\n"
+            with self.subTest(count=count):
+                with self.assertRaises(inspector.InspectError) as ctx:
+                    inspector.inspect_bytes(bytes(_iso(config=config)))
+                self.assertEqual(ctx.exception.code, code)
+
+    def test_program_header_count_limit_exact_boundary(self):
+        limit = inspector.MAX_PROGRAM_HEADERS
+        executable = _elf(phnum=limit, data_size=52 + limit * 32)
+        report = inspector.inspect_bytes(self._image_with_boot(executable))
+        self.assertEqual(report["boot_executable"]["elf"]["program_header_count"], limit)
+        with self.assertRaises(inspector.InspectError) as ctx:
+            inspector.inspect_bytes(bytes(_iso(executable=_elf(phnum=limit + 1))))
+        self.assertEqual(ctx.exception.code, "ELF_PROGRAM_HEADER_LIMIT")
+
+    def test_system_cnf_size_limit_exact_boundary(self):
+        limit = inspector.MAX_SYSTEM_CNF
+        base = b"BOOT2 = cdrom0:\\SLUS_123.45;1\n"
+        accepted = base + b"#" * (limit - len(base))
+        report = inspector.inspect_bytes(self._image_with_config(accepted))
+        self.assertEqual(report["system_cnf"]["size_bytes"], limit)
+        accepted += b"#"
+        with self.assertRaises(inspector.InspectError) as ctx:
+            inspector.inspect_bytes(self._image_with_config(accepted))
+        self.assertEqual(ctx.exception.code, "FILE_SIZE_LIMIT")
 
 
 class ElfLoadMapTests(unittest.TestCase):

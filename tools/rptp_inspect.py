@@ -14,6 +14,7 @@ from typing import BinaryIO
 
 BLOCK = 2048
 PVD_LBA = 16
+MIN_IMAGE_BLOCKS = PVD_LBA + 2  # Primary volume descriptor plus its terminator.
 MAX_DESCRIPTORS = 256
 MAX_SYSTEM_CNF = 1024 * 1024
 MAX_DIRECTORY_ENTRIES = 100_000
@@ -284,16 +285,44 @@ class IsoReader:
             },
         }
 
+    @staticmethod
+    def _validate_directory_length(size: int) -> None:
+        if size <= 0 or size % BLOCK:
+            raise InspectError(
+                "DIRECTORY_SIZE_INVALID",
+                f"Directory data length {size} is not a positive multiple of {BLOCK} bytes.",
+            )
+
+    @staticmethod
+    def _validate_dot_entries(
+        directory: dict[str, object],
+        first: dict[str, object] | None,
+        second: dict[str, object] | None,
+    ) -> None:
+        if first is None or first["id"] != b"\x00" or not first["directory"]:
+            raise InspectError(
+                "DIRECTORY_DOT_ENTRY_INVALID",
+                f"Directory {directory['name']} does not start with a '.' directory record.",
+            )
+        if second is None or second["id"] != b"\x01" or not second["directory"]:
+            raise InspectError(
+                "DIRECTORY_DOT_ENTRY_INVALID",
+                f"Directory {directory['name']} does not have a '..' directory record as its second entry.",
+            )
+
     def list_dir(self, entry: dict[str, object]) -> list[dict[str, object]]:
         if not entry["directory"]:
             raise InspectError("NOT_A_DIRECTORY", f"{entry['name']} is not a directory.")
         if entry["multi_extent"]:
             raise InspectError("MULTI_EXTENT_UNSUPPORTED", f"Multi-extent directory is unsupported: {entry['name']}.")
         start, size = self.extent(entry)
+        self._validate_directory_length(size)
         if size > MAX_DIRECTORY_BYTES:
             raise InspectError("DIRECTORY_SIZE_LIMIT", f"Directory exceeds the {MAX_DIRECTORY_BYTES}-byte safety limit.")
         position = 0
         scanned_records = 0
+        first_record: dict[str, object] | None = None
+        second_record: dict[str, object] | None = None
         items: list[dict[str, object]] = []
         while position < size:
             block_left = BLOCK - (position % BLOCK)
@@ -304,12 +333,16 @@ class IsoReader:
                     raise InspectError("DIRECTORY_PADDING_INVALID", "Directory sector padding is not zero.")
                 position += segment
                 continue
-            if rec_len < 34:
+            if rec_len < 34 or rec_len % 2:
                 raise InspectError("DIRECTORY_RECORD_LENGTH_INVALID", f"Invalid record length {rec_len} at directory offset {position}.")
             if rec_len > segment:
                 raise InspectError("DIRECTORY_RECORD_CROSSES_BLOCK", f"Directory record crosses a logical block at offset {position}.")
             rec = self.read_at(start + position, rec_len)
             child = self.parse_record(rec)
+            if scanned_records == 0:
+                first_record = child
+            elif scanned_records == 1:
+                second_record = child
             scanned_records += 1
             if scanned_records > MAX_DIRECTORY_ENTRIES:
                 raise InspectError("DIRECTORY_ENTRY_LIMIT", "Directory record safety limit exceeded.")
@@ -318,11 +351,15 @@ class IsoReader:
             if child["id"] not in (b"\x00", b"\x01"):
                 items.append(child)
             position += rec_len
+        self._validate_dot_entries(entry, first_record, second_record)
         return items
 
     def survey(self) -> dict[str, object]:
-        if self.size < (PVD_LBA + 1) * BLOCK:
-            raise InspectError("IMAGE_TOO_SMALL", "Image is too small to contain an ISO 9660 volume descriptor.")
+        if self.size < MIN_IMAGE_BLOCKS * BLOCK:
+            raise InspectError(
+                "IMAGE_TOO_SMALL",
+                f"Image is too small to contain a volume descriptor set; at least {MIN_IMAGE_BLOCKS} blocks are required.",
+            )
         if self.size % BLOCK:
             raise InspectError("IMAGE_ALIGNMENT_INVALID", f"Image size is not a multiple of {BLOCK} bytes.")
         self.parse_pvd(self.scan_pvd())
@@ -344,6 +381,7 @@ class IsoReader:
         while stack:
             directory, depth = stack.pop()
             start, size = self.extent(directory)
+            self._validate_directory_length(size)
             if depth > MAX_SURVEY_DEPTH:
                 raise InspectError("SURVEY_DEPTH_LIMIT", f"Directory depth exceeds {MAX_SURVEY_DEPTH}.")
             if len(scheduled) > MAX_SURVEY_DIRECTORIES:
@@ -356,6 +394,9 @@ class IsoReader:
             directory_count += 1
             max_depth = max(max_depth, depth)
             position = 0
+            directory_records = 0
+            first_record: dict[str, object] | None = None
+            second_record: dict[str, object] | None = None
             while position < size:
                 block_left = BLOCK - (position % BLOCK)
                 segment = min(block_left, size - position)
@@ -365,12 +406,17 @@ class IsoReader:
                         raise InspectError("DIRECTORY_PADDING_INVALID", "Directory sector padding is not zero.")
                     position += segment
                     continue
-                if rec_len < 34:
+                if rec_len < 34 or rec_len % 2:
                     raise InspectError("DIRECTORY_RECORD_LENGTH_INVALID", f"Invalid record length {rec_len} at directory offset {position}.")
                 if rec_len > segment:
                     raise InspectError("DIRECTORY_RECORD_CROSSES_BLOCK", f"Directory record crosses a logical block at offset {position}.")
                 rec = self.read_at(start + position, rec_len)
                 child = self.parse_record(rec, allow_unsupported=True)
+                if directory_records == 0:
+                    first_record = child
+                elif directory_records == 1:
+                    second_record = child
+                directory_records += 1
                 position += rec_len
                 scanned_records += 1
                 if scanned_records > MAX_SURVEY_RECORDS:
@@ -398,6 +444,7 @@ class IsoReader:
                     file_start, file_size = self.extent(child)
                     highest_file_extent_end = max(highest_file_extent_end, file_start + file_size)
                     largest_file_size = max(largest_file_size, file_size)
+            self._validate_dot_entries(directory, first_record, second_record)
         sector_count = self.size // BLOCK
         volume_bytes = self.volume_blocks * BLOCK
         if self.volume_blocks == sector_count:
@@ -525,12 +572,15 @@ class IsoReader:
         ehsize = int.from_bytes(h[40:42], "little")
         phentsize = int.from_bytes(h[42:44], "little")
         phnum = int.from_bytes(h[44:46], "little")
-        if ehsize < ELF_HEADER_SIZE or ehsize > size:
-            raise InspectError("ELF_HEADER_SIZE_INVALID", "ELF32 header size is invalid.")
+        if ehsize != ELF_HEADER_SIZE or phentsize != ELF_PROGRAM_HEADER_SIZE:
+            raise InspectError(
+                "ELF_HEADER_SIZE_INVALID",
+                f"ELF32 requires a {ELF_HEADER_SIZE}-byte header and {ELF_PROGRAM_HEADER_SIZE}-byte program-header entries.",
+            )
         if phnum > MAX_PROGRAM_HEADERS:
             raise InspectError("ELF_PROGRAM_HEADER_LIMIT", f"Program header count exceeds {MAX_PROGRAM_HEADERS}.")
         if phnum:
-            if phentsize < ELF_PROGRAM_HEADER_SIZE or phoff < ehsize or phoff + phentsize * phnum > size:
+            if phoff < ehsize or phoff + phentsize * phnum > size:
                 raise InspectError("ELF_PROGRAM_HEADERS_OUT_OF_BOUNDS", "ELF program header table is invalid or out of bounds.")
         load_segments: list[dict[str, object]] = []
         entry_point_mappings: list[dict[str, object]] = []
@@ -625,8 +675,11 @@ class IsoReader:
         }
 
     def inspect(self) -> dict[str, object]:
-        if self.size < (PVD_LBA + 1) * BLOCK:
-            raise InspectError("IMAGE_TOO_SMALL", "Image is too small to contain an ISO 9660 volume descriptor.")
+        if self.size < MIN_IMAGE_BLOCKS * BLOCK:
+            raise InspectError(
+                "IMAGE_TOO_SMALL",
+                f"Image is too small to contain a volume descriptor set; at least {MIN_IMAGE_BLOCKS} blocks are required.",
+            )
         if self.size % BLOCK:
             raise InspectError("IMAGE_ALIGNMENT_INVALID", f"Image size is not a multiple of {BLOCK} bytes.")
         iso = self.parse_pvd(self.scan_pvd())
