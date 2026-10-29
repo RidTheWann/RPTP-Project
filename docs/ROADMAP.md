@@ -99,7 +99,7 @@ This phase is an inspector only. It does not launch a game, implement the PS2 ru
 
 ## B2 — Native runtime foundation (in progress)
 
-**Status: first native C++20 runtime layer implemented and locally verified. `rptp_runtime` provides sparse guest memory and a fail-closed ELF32 little-endian `ET_EXEC`/`EM_MIPS` `PT_LOAD` loader; `rptp-load` reports the loaded image as deterministic `rptp.runtime.load.v1` JSON with stable `LOAD_*` errors. The contract is [RUNTIME.md](RUNTIME.md). The layer executes no guest instruction, implements no kernel, syscall, IOP, DMA, VU, GS, SPU2 or ISO ingestion, and makes no boot or compatibility claim. Not a Gate 3 increment and not Gate 4 evidence.**
+**Status: first native C++20 runtime layer implemented, CI-verified and merged through PR #13 (merge commit `5a5debf`, main CI run `40830858381` green). `rptp_runtime` provides sparse guest memory and a fail-closed ELF32 little-endian `ET_EXEC`/`EM_MIPS` `PT_LOAD` loader; `rptp-load` reports the loaded image as deterministic `rptp.runtime.load.v1` JSON with stable `LOAD_*` errors. The contract is [RUNTIME.md](RUNTIME.md). The layer executes no guest instruction, implements no kernel, syscall, IOP, DMA, VU, GS, SPU2 or ISO ingestion, and makes no boot or compatibility claim. Not a Gate 3 increment and not Gate 4 evidence.**
 
 - [x] Sparse guest memory with explicit bounds, single-region access, overlap rejection and allocation budgets.
 - [x] Fail-closed ELF32/EM_MIPS loader: header, program-header table, `PT_LOAD` sizes/bounds/alignment/order/overlap, 32-bit address-space bounds, entry file-backed/executable checks and explicit limits.
