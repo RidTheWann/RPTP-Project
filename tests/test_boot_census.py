@@ -106,6 +106,15 @@ class BootCensusTests(unittest.TestCase):
         report = census.census_elf_bytes(_elf(), name="synthetic.elf")
         self.assertEqual(report["status"], "CENSUSED")
         self.assertEqual(report["model"], "pt_load_word_census_v1")
+        self.assertEqual(report["decoder"]["module"], "tools/rptp/isa.py")
+        self.assertEqual(
+            report["decoder"]["supported_mnemonic_count"],
+            len(census.isa.SUPPORTED_MNEMONICS),
+        )
+        expected_digest = hashlib.sha256(
+            "\n".join(sorted(census.isa.SUPPORTED_MNEMONICS)).encode("ascii")
+        ).hexdigest()
+        self.assertEqual(report["decoder"]["supported_mnemonic_set_sha256"], expected_digest)
         self.assertEqual(report["source"]["size_bytes"], len(_elf()))
         self.assertEqual(report["source"]["sha256"], hashlib.sha256(_elf()).hexdigest())
         self.assertEqual(report["elf"]["entry_point"], BASE)
@@ -135,6 +144,19 @@ class BootCensusTests(unittest.TestCase):
         self.assertEqual(report["census"]["trailing_bytes"], 2)
         self.assertEqual(report["status"], "CENSUSED_WITH_WARNINGS")
         self.assertTrue(any("trailing byte" in warning for warning in report["warnings"]))
+
+    def test_census_uses_current_decoder_including_branch_likely(self):
+        rows = [
+            (BASE, "beql", 0x50000000),
+            (BASE + 4, "nop", 0),
+            (BASE + 8, "subu", 0x00000023),
+        ]
+        report = census.census_elf_bytes(spike.build_elf_from_rows(rows), name="likely.elf")
+        labels = {item["label"]: item for item in report["opcodes"]}
+        self.assertTrue(labels["beql"]["supported"])
+        self.assertTrue(labels["subu"]["supported"])
+        self.assertEqual(report["census"]["supported_word_count"], 3)
+        self.assertEqual(report["census"]["unsupported_word_count"], 0)
 
     def test_fails_closed_on_non_elf_and_size_limit(self):
         with self.assertRaises(inspector.InspectError) as raised:

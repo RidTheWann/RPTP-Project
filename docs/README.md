@@ -17,7 +17,7 @@ Every increment must review and update every document affected by its change bef
 ## Status and evidence
 
 - `docs/COMPATIBILITY.md` — platform and sample results; explicitly not a game-compatibility list.
-- `docs/BOOT_CENSUS.md` — read-only boot-code census contract, the dated eight-image pre-`SUBU` table and the measured one-image post-`SUBU` refresh (`R-029`).
+- `docs/BOOT_CENSUS.md` — read-only boot-code census contract, decoder identity, and the 2026-10-29 eight-image table measured with the current branch-likely decoder.
 - `docs/EXECUTION_CONTEXT.md` — compact context snapshot for a new session.
 - `docs/RISKS.md` — risk register, mitigations and revisit triggers.
 - `docs/GATE0_REVIEW.md` — recorded narrow Gate 0 technical disposition and limits.
