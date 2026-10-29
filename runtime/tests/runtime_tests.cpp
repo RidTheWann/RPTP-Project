@@ -563,7 +563,10 @@ void test_execution_extended_subset() {
       encode_i(0x23, 23, 24, 0),        // 0x4c lw t8, 0(s7)
       encode_i(0x0F, 0, 25, 0x4000),    // 0x50 lui t9, 0x4000
       encode_r(0, 25, 26, 1, 0x00),     // 0x54 sll k0, t9, 1
-      encode_r(0, 0, 0, 0, 0),          // 0x58 nop
+      encode_r(26, 25, 27, 0, 0x2D),    // 0x58 daddu k1, k0, t9
+      encode_r(26, 26, 28, 0, 0x2D),    // 0x5c daddu gp, k0, k0
+      encode_r(8, 9, 0, 0, 0x2D),       // 0x60 daddu zero, t0, t1
+      encode_r(0, 0, 0, 0, 0),          // 0x64 nop
   };
   const ExecOutcome outcome = run_code(code);
   CHECK(outcome.ok());
@@ -592,6 +595,9 @@ void test_execution_extended_subset() {
   CHECK(outcome.result.registers[24] == 0x12345678U);
   CHECK(outcome.result.registers[25] == 0x40000000U);
   CHECK(outcome.result.registers[26] == 0xFFFFFFFF80000000ULL);
+  CHECK(outcome.result.registers[27] == 0xFFFFFFFFC0000000ULL);
+  CHECK(outcome.result.registers[28] == 0xFFFFFFFF00000000ULL);
+  CHECK(outcome.result.registers[0] == 0U);
   CHECK(outcome.result.memory_writes.size() == 1U);
   if (outcome.result.memory_writes.size() == 1U) {
     CHECK(outcome.result.memory_writes[0].address == kDataBase);
@@ -607,6 +613,8 @@ void test_execution_failures() {
                     "sll with nonzero rs");
   expect_exec_error(run_code({encode_r(8, 9, 10, 1, 0x24)}), ExecErrorCode::UnsupportedInstruction,
                     "and with nonzero shamt");
+  expect_exec_error(run_code({encode_r(8, 9, 10, 1, 0x2D)}), ExecErrorCode::UnsupportedInstruction,
+                    "daddu with nonzero shamt");
   expect_exec_error(
       run_code({encode_i(0x09, 0, 11, 0x2000), encode_r(11, 0, 0, 0, 0x08), encode_r(0, 0, 0, 0, 0)}),
       ExecErrorCode::PcNotExecutable, "jr into data");
