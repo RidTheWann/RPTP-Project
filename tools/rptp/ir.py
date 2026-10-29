@@ -6,8 +6,13 @@ The IR makes the MIPS delay-slot contract explicit:
 * ``ops`` execute in program order before the control transfer;
 * ``control`` captures the branch condition, indirect target and link-register
   write using the register state *before* the delay slot;
-* ``delay_ops`` execute unconditionally after that capture;
+* ``delay_ops`` execute after that capture;
 * the next PC is selected only after ``delay_ops``.
+
+For a branch-likely instruction the condition also controls ``delay_ops``:
+they execute only when the branch is taken.  When it is not taken the model
+nullifies them and continues at ``fallthrough``.  CFG successors are unchanged:
+both the direct target and the fallthrough remain recorded.
 
 Splitting these phases is what prevents the classic recompiler bug where the
 delay slot overwrites a register that the branch was supposed to compare.
@@ -53,6 +58,7 @@ class Control:
     link_reg: int | None = None
     target_reg: int | None = None
     reason: str = ""
+    likely: bool = False
 
 
 @dataclass
@@ -188,6 +194,10 @@ def _branch_condition(instruction: Instruction) -> str:
         "blez": "le", "bgtz": "gt",
         "bltz": "lt", "bgez": "ge",
         "bltzal": "lt", "bgezal": "ge",
+        "beql": "eq", "bnel": "ne",
+        "blezl": "le", "bgtzl": "gt",
+        "bltzl": "lt", "bgezl": "ge",
+        "bltzall": "lt", "bgezall": "ge",
     }[instruction.mnemonic]
 
 
@@ -231,7 +241,7 @@ def lower_block(block: BasicBlock) -> BlockIR:
     mnemonic = control_instruction.mnemonic
     next_pc = (control_instruction.pc + 8) & 0xFFFFFFFF
     link_reg: int | None = None
-    if mnemonic in {"bltzal", "bgezal"}:
+    if mnemonic in {"bltzal", "bgezal", "bltzall", "bgezall"}:
         link_reg = 31
     control = Control(
         kind="unsupported",
@@ -241,7 +251,9 @@ def lower_block(block: BasicBlock) -> BlockIR:
         fallthrough=next_pc,
         link_reg=link_reg,
     )
-    if mnemonic in {"beq", "bne", "blez", "bgtz", "bltz", "bgez", "bltzal", "bgezal"}:
+    if mnemonic in {"beq", "bne", "blez", "bgtz", "bltz", "bgez", "bltzal", "bgezal",
+                    "beql", "bnel", "blezl", "bgtzl", "bltzl", "bgezl",
+                    "bltzall", "bgezall"}:
         control = Control(
             kind="branch", pc=control_instruction.pc, mnemonic=mnemonic,
             cond=_branch_condition(control_instruction),
@@ -249,6 +261,7 @@ def lower_block(block: BasicBlock) -> BlockIR:
             target=control_instruction.target or next_pc,
             fallthrough=next_pc,
             link_reg=link_reg,
+            likely=control_instruction.is_likely,
         )
     elif mnemonic == "j":
         control = Control("jump", control_instruction.pc, mnemonic=mnemonic,

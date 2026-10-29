@@ -2,11 +2,13 @@
 """Encoding conformance tests for the R5900 decoder.
 
 Every expectation is derived mechanically from
-``docs/research/r5900-isa.json``, the repository's verified research
-catalog (224 entries, all ``verified: true``).  Test words are built from
-the documented opcode/funct/operand fields rather than from the decoder's
-own tables, so a decoder table cell that disagrees with the research data
-fails here.
+``docs/research/r5900-isa.json``, the repository's research catalog (224
+entries).  The JSON ``verified`` flag is a catalog bookkeeping marker; it is
+not evidence of hardware verification, and R5900-specific citations in that
+file come from a manual that is PENDING an owner decision.  Test words are
+built from the documented opcode/funct/operand fields rather than from the
+decoder's own tables, so a decoder table cell that disagrees with the
+research data fails here.
 
 The suite also pins the MMI subtable layout, the full 11-bit standalone
 function space (including all PMFHL selectors), the sa-in-bits-10:6
@@ -323,7 +325,7 @@ class IsaEncodingTests(unittest.TestCase):
 
     # -- research fixture -------------------------------------------------
 
-    def test_research_catalog_is_verified_and_complete(self):
+    def test_research_catalog_entries_are_present_and_complete(self):
         self.assertEqual(RESEARCH["schema_version"], 1)
         self.assertEqual(len(RESEARCH["sources"]), 4)
         self.assertEqual(len(ENTRIES), 224)
@@ -333,6 +335,8 @@ class IsaEncodingTests(unittest.TestCase):
         )
         for entry in ENTRIES:
             with self.subTest(mnemonic=entry["mnemonic"]):
+                # Structural marker only: this checks the catalog JSON shape,
+                # not that the entry's semantics were hardware-verified.
                 self.assertIs(entry["verified"], True)
                 self.assertTrue(entry["citation"])
                 self.assertIsInstance(entry["operands"], list)
@@ -740,6 +744,14 @@ class IsaEncodingTests(unittest.TestCase):
             "bgez": "branch",
             "bltzal": "branch",
             "bgezal": "branch",
+            "beql": "branch",
+            "bnel": "branch",
+            "blezl": "branch",
+            "bgtzl": "branch",
+            "bltzl": "branch",
+            "bgezl": "branch",
+            "bltzall": "branch",
+            "bgezall": "branch",
             "j": "jump",
             "jal": "call",
             "jr": "indirect",

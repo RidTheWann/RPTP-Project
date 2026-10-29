@@ -1,10 +1,11 @@
 # RPTP minimal IR, CFG and lowering contract
 
-- **Status date:** 2026-10-29
+- **Status date:** 2026-10-30
 - **Scope:** synthetic ELF32/EM_MIPS input and the currently supported instruction subset only.
 - **Status:** Gate 3 remains in progress. This is not a product recompiler, a complete R5900 model, a function-boundary recovery pass, a runtime, or a compatibility claim.
 - **Implementation:** `tools/rptp_ir.py`; generated-code lowering: `tools/rptp_lower.py`
-- **Tests:** `tests/test_ir_cfg.py`; `tests/test_cfg_reachability.py`; `tests/test_ir_lowering.py`; `tests/test_instruction_logical.py`; `tests/test_instruction_logical_width.py`; `tests/test_instruction_lui.py`; `tests/test_instruction_register_logic.py`; `tests/test_instruction_nor.py`; `tests/test_instruction_slt.py`; `tests/test_instruction_sltu.py`; `tests/test_instruction_slti.py`; `tests/test_instruction_sltiu.py`; `tests/test_instruction_daddiu.py`; `tests/test_instruction_daddu.py`; `tests/test_instruction_sll.py`; `tests/test_instruction_subu.py`; `tests/test_instruction_ld_sd.py`
+- **Branch-likely implementation:** `tools/rptp/isa.py`, `tools/rptp/cfg.py`, `tools/rptp/ir.py`, `tools/rptp/oracle.py` and `tools/rptp/codegen.py`
+- **Tests:** `tests/test_ir_cfg.py`; `tests/test_cfg_reachability.py`; `tests/test_ir_lowering.py`; `tests/test_instruction_logical.py`; `tests/test_instruction_logical_width.py`; `tests/test_instruction_lui.py`; `tests/test_instruction_register_logic.py`; `tests/test_instruction_nor.py`; `tests/test_instruction_slt.py`; `tests/test_instruction_sltu.py`; `tests/test_instruction_slti.py`; `tests/test_instruction_sltiu.py`; `tests/test_instruction_daddiu.py`; `tests/test_instruction_daddu.py`; `tests/test_instruction_sll.py`; `tests/test_instruction_subu.py`; `tests/test_instruction_ld_sd.py`; `tests/test_instruction_branch_likely.py`; `tests/test_isa_encodings.py`
 
 ## Purpose
 
@@ -108,6 +109,38 @@ Each candidate is labeled `candidate` with the limitation text stored by the mod
 
 The lowerer raises `LoweringError` with a stable code: `LOWER_INVALID_RESULT`, `LOWER_UNSUPPORTED_OP`, `LOWER_MALFORMED_INSTRUCTION`, `LOWER_INVALID_CONTROL`, `LOWER_INVALID_TARGET`, `LOWER_INVALID_DELAY_SLOT`, `LOWER_INVALID_BLOCK`, `LOWER_LIMIT_EXCEEDED` or `LOWER_INVALID_OPTION`. It never substitutes a target, skips an instruction, or emits an approximation.
 
+## Branch-likely contract (`tools/rptp` package)
+
+The sections above describe the `tools/rptp_ir.py` / `tools/rptp_lower.py` pipeline. The newer `tools/rptp` package (decoder, CFG, host IR, oracle and C++ emitter) implements branch-likely in addition to that ordinary subset. The legacy pipeline is unchanged and does not claim these forms.
+
+Supported forms:
+
+- PRIMARY opcodes `0x14` `BEQL`, `0x15` `BNEL`, `0x16` `BLEZL` and `0x17` `BGTZL`.
+- REGIMM `rt` values `0x02` `BLTZL`, `0x03` `BGEZL`, `0x12` `BLTZALL` and `0x13` `BGEZALL`.
+
+Execution semantics:
+
+1. The condition is evaluated from register state before the delay slot. Equality and inequality compare only bits 63..0 of `rs` and `rt`; less-than/greater-than tests interpret the low 64 bits as signed.
+2. The direct target is `(pc + 4 + (sign_extend(imm16) << 2)) & 0xFFFFFFFF`.
+3. If taken, the delay slot executes exactly once and PC becomes the direct target.
+4. If not taken, the delay slot is nullified: it is not traced, does not increment the step count, and has no register, memory, HI/LO or other architectural effect. PC becomes `(pc + 8) & 0xFFFFFFFF`.
+5. `BLTZALL` and `BGEZALL` write `GPR[31] = (pc + 8) & 0xFFFFFFFF` unconditionally, including when the branch is not taken. `rs = 31` is rejected fail-closed with an explicit unsupported diagnostic; the approved reference defines that case as UNPREDICTABLE, and rejecting it is an RPTP policy rather than a modelled hardware exception.
+6. The condition and link write use state before the delay slot; they are not delayed or repeated by nullification.
+
+CFG and reachability contract:
+
+- A likely branch records both its direct target and its fallthrough as successors, target first and fallthrough second, exactly like an ordinary conditional branch.
+- Nullification is execution semantics, not a static reachability filter. CFG discovery does not prune the fallthrough because a branch is likely, does not add a separate edge to the delay slot, and does not mark a likely control block unsupported merely for being likely.
+- The delay slot remains part of the control block and is never an independent block start. When both successors are inside file-backed code, both are recorded and supported; an out-of-code target uses the existing target diagnostic and does not suppress a valid fallthrough successor.
+
+IR and native lowering:
+
+- `Control.likely` distinguishes a likely branch from an ordinary branch, while `delay_ops` remains the single attached delay slot.
+- The oracle skips the delay slot on a not-taken likely branch. The generated C++ emits the delay operations, including their trace calls, inside `if (taken) { ... }`. Both select the target or `pc + 8` only after the delay phase.
+- Unknown encodings remain `unknown_*`. A likely branch is never silently decoded, lowered or emitted as an ordinary branch.
+
+Evidence: `tests/test_instruction_branch_likely.py` covers taken and not-taken outcomes for all eight forms, register and memory delay-slot effects, `$zero`, unconditional link writes, `rs = 31` rejection, CFG successors, deterministic generated source and a native differential against the oracle. `tests/test_isa_encodings.py` checks decoding and lowering for every supported mnemonic. The encodings, PC-relative target, condition tests, take-only delay-slot execution with `NullifyCurrentInstruction()`, unconditional `GPR[31] = PC + 8` link and `rs = 31` UNPREDICTABLE restriction are cited to `RPTP-REF-015` (MIPS64 Revision 5.04 pages 75, 78, 80, 82, 84, 87, 89 and 91); the 32-bit PC masking, the low-64-bit register comparison width, trace/step accounting, `$zero` suppression, memory representation, the fail-closed `rs = 31` rejection and generated-source shape are RPTP test definitions.
+
 ## Fail-closed validation
 
 The analysis raises `AnalysisError` with a stable `code` and an optional address. Examples of rejected conditions include:
@@ -166,7 +199,7 @@ The DADDIU fixture in `tests/test_instruction_daddiu.py` checks positive and neg
 
 ## Limitations
 
-- The subset is the existing synthetic ten-opcode Gate 0 subset plus `ORI`, `ANDI`, `XORI`, `LUI`, `SLL`, `AND`, `OR`, `XOR`, `NOR`, `SLT`, `SLTU`, `SLTI`, `SLTIU`, `DADDIU`, `DADDU`, `SUBU`, `LD` and `SD`. No other opcode is added by these increments.
+- The subset is the existing synthetic ten-opcode Gate 0 subset plus `ORI`, `ANDI`, `XORI`, `LUI`, `SLL`, `AND`, `OR`, `XOR`, `NOR`, `SLT`, `SLTU`, `SLTI`, `SLTIU`, `DADDIU`, `DADDU`, `SUBU`, `LD` and `SD`. The `tools/rptp` package separately adds the eight branch-likely forms described above. No other opcode is added by these increments, and the legacy `tools/rptp_ir.py` pipeline does not implement branch-likely forms.
 - The CFG is a syntactic partition of the validated code range. Known-edge graph reachability is not runtime reachability, dead-code proof or function discovery.
 - Function entries are candidates only. There are no function extents, symbols, call graphs with return edges, or confident `JR $ra` return-path claims. The direct-call continuation caveat is explicit in the reachability report.
 - The IR is lowered only for the synthetic model. The generated C++ is not optimized, not a product recompiler or runtime, and not a substitute for the separate instruction differential tests.
@@ -178,6 +211,7 @@ The DADDIU fixture in `tests/test_instruction_daddiu.py` checks positive and neg
 - Generic instruction encodings and MIPS naming: `RPTP-REF-001`, `RPTP-REF-002`. `RPTP-REF-002` covers the `SLT` and `SLTU` function codes and comparison names; the modeled 64-bit widths and test behavior are RPTP definitions. `RPTP-REF-001` was not used for the `SLTU` function-code value because its current SLTU table row conflicts with `RPTP-REF-002`.
 - Generic ELF structure: `RPTP-REF-003`.
 - Delay-slot background: `RPTP-REF-005`, used only as a secondary cross-check for the existing synthetic model.
+- Branch-likely encoding, PC-relative target, condition, take-only delay-slot execution, nullification and link rules: `RPTP-REF-015`, MIPS64 Revision 5.04 pages 75 (BEQL), 78 (BGEZALL; entry continues on p. 79), 80 (BGEZL), 82 (BGTZL), 84 (BLEZL), 87 (BLTZALL; entry continues on p. 88), 89 (BLTZL) and 91 (BNEL). The `rs = 31` UNPREDICTABLE restriction on the two link forms is implemented as an explicit fail-closed rejection, an RPTP test definition. The low-64-bit register comparison width, 32-bit PC masking, trace/step accounting, `$zero` suppression, memory representation and generated-source shape are RPTP test definitions recorded in [REFERENCES.md](REFERENCES.md).
 - `LUI` shifted-immediate semantics: `RPTP-REF-013`, MIPS64 Revision 5.04 page 225. The Rev 6.03 LUI page was not directly accessible; the limitation is recorded in [REFERENCES.md](REFERENCES.md).
 - `SLL` 32-bit shift encoding and semantics: `RPTP-REF-002`; the sign-extension bridge into the modeled 64-bit register array is test-defined and recorded in [REFERENCES.md](REFERENCES.md).
 - `SUBU` 32-bit subtract encoding and semantics: `RPTP-REF-015`, MIPS64 Revision 5.04 page 355. That entry marks a non-word-value source UNPREDICTABLE; this model resolves that case deterministically by truncating both sources to their low 32 bits, matching the accepted `ADDU` model. The resolution is test-defined and recorded in [REFERENCES.md](REFERENCES.md).
@@ -198,6 +232,7 @@ python -m unittest tests.test_instruction_slt -v
 python -m unittest tests.test_instruction_sltu -v
 python -m unittest tests.test_instruction_subu -v
 python -m unittest tests.test_instruction_ld_sd -v
+python -m unittest tests.test_instruction_branch_likely -v
 python -m unittest tests.test_ir_cfg -v
 python -m unittest tests.test_cfg_reachability -v
 python -m unittest tests.test_ir_lowering -v
