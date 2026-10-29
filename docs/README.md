@@ -48,9 +48,13 @@ Every increment must review and update every document affected by its change bef
 
 ## Research notes
 
+- `docs/research/gs-vu-backend-plan.md` — GS backend and VU0/VU1 boundary design brief: renderer proposal, synthetic rendering milestone, VU service boundary and staged path; no implementation, reference approval or Gate disposition.
+- `docs/research/performance-baseline.md` — synthetic generated-C++ performance baseline: environment, method, re-measured numbers, corrections to the 2026-10-30 draft and a deferred optimization backlog.
 - `docs/research/function-discovery.md` — trusted-seed function discovery, code/data ambiguity and the open jump-table gap.
+- `docs/research/runtime-hle-boundary.md` — inspector-to-runtime handoff, staged Gate 4a HLE increments, deferred extraction threat model and owner decisions.
 - `docs/research/r5900-isa.json` — R5900/MMI encoding catalog with per-entry page citations; provenance is pending owner review, so the catalog is not an approved reference and its claims are not verified semantics — see [isa-evidence.md](research/isa-evidence.md).
 - `docs/research/isa-evidence.md` — evidence levels for the R5900 ISA catalog: decoder cross-check, test-defined subset with approved references, and pending/unverified citations.
+- `docs/research/instruction-semantics-matrix.md` — per-instruction semantic evidence matrix across decoder, oracle, CFG, IR/emitter, native runtime and approved references; path asymmetries and a planning recommendation.
 
 ## Game records
 
