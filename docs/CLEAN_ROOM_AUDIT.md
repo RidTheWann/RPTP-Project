@@ -1,7 +1,7 @@
 # Clean-room provenance audit
 
 - **Audit date:** 2026-10-21
-- **Last evidence update:** 2026-10-29 — PR #12 merged the read-only boot-code census (`88d7c68`, main CI run `40828451046` green) and PR #11 merged the synthetic `SLL` increment (`1ee2d4d`, run `40825838439` green). This branch adds the native runtime loader foundation: a C++20 `rptp_runtime` library and `rptp-load` CLI that materialize ELF32/EM_MIPS `PT_LOAD` images into sparse guest memory. It is authored from the recorded `elf(5)` field meanings (`RPTP-REF-003`), official CMake behavior (`RPTP-REF-017`) and independent synthetic tests. The loader executes no guest instruction, adds no compatibility claim and does not change any other component status; the inspector remains read-only metadata. No component is certified.
+- **Last evidence update:** 2026-10-29 — PR #12 merged the read-only boot-code census (`88d7c68`, main CI run `40828451046` green), PR #11 merged the synthetic `SLL` increment (`1ee2d4d`, run `40825838439` green) and PR #13 merged the native runtime loader foundation (`5a5debf`, run `40830858381` green): a C++20 `rptp_runtime` library and `rptp-load` CLI that materialize ELF32/EM_MIPS `PT_LOAD` images into sparse guest memory. It is authored from the recorded `elf(5)` field meanings (`RPTP-REF-003`), official CMake behavior (`RPTP-REF-017`) and independent synthetic tests. The loader executes no guest instruction, adds no compatibility claim and does not change any other component status; the inspector remains read-only metadata. No component is certified.
 - **Policy:** [ADR-0003](DECISIONS/ADR-0003-sealed-source-clean-room-policy.md)
 - **Execution plan:** [PROVENANCE_PLAN.md](PROVENANCE_PLAN.md)
 - **Exposure record:** [docs/REFERENCES.md](REFERENCES.md)
