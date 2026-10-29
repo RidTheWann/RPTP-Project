@@ -17,6 +17,42 @@ SPEC.loader.exec_module(progress)
 
 
 class ProgressConsistencyTests(unittest.TestCase):
+    def test_snapshot_date_comes_from_verification_log(self) -> None:
+        log_text = (ROOT / "docs/VERIFICATION_LOG.md").read_text(encoding="utf-8")
+        dates = re.findall(r"^## (\d{4}-\d{2}-\d{2})", log_text, flags=re.MULTILINE)
+        self.assertTrue(dates, "docs/VERIFICATION_LOG.md must contain dated sections.")
+        expected = max(dates)
+        self.assertEqual(
+            progress.latest_log_date(ROOT / "docs"),
+            expected,
+            "The progress snapshot date must be the newest dated VERIFICATION_LOG.md section.",
+        )
+        svg = (ROOT / "docs/assets/progress.svg").read_text(encoding="utf-8")
+        html = (ROOT / "docs/progress.html").read_text(encoding="utf-8")
+        self.assertIn(f"Updated {expected}", svg, "progress.svg carries a stale snapshot date.")
+        self.assertIn(f"Last updated {expected}", html, "progress.html carries a stale snapshot date.")
+
+    def test_generated_assets_match_the_generator(self) -> None:
+        for path, text in progress.rendered_files(ROOT / "docs").items():
+            relative = path.relative_to(ROOT)
+            with self.subTest(asset=str(relative)):
+                self.assertEqual(
+                    (ROOT / relative).read_text(encoding="utf-8"),
+                    text,
+                    f"{relative} is stale; run python tools/rptp_progress.py.",
+                )
+
+    def test_readme_reports_catalogued_instruction_count(self) -> None:
+        instructions = progress.catalogued_instructions(ROOT / "docs")
+        self.assertGreater(len(instructions), 0, "The catalog must list synthetic instructions.")
+        self.assertIn("SUBU", instructions, "The catalog has a SUBU row.")
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertIn(
+            f"{len(instructions)} catalogued synthetic instructions",
+            readme,
+            "README must report the catalogued synthetic instruction count.",
+        )
+
     def test_readme_matches_progress_checklist(self) -> None:
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         foundation_total = len(progress.FOUNDATION)
