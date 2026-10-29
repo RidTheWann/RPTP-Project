@@ -1030,3 +1030,12 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-msvc.ps1
 - Non-mutation: whole-image SHA-256, file size and mtime were identical before and after both runs (`diff` empty); the two JSON reports were byte-identical (`cmp` clean, report SHA-256 `f379549caa0dda045721466889611ed9a236d06f07f83dc683243f2331b953b4`); no file was extracted, written or executed. `python -m unittest tests.test_boot_census -v` reported `Ran 6 tests`, `OK` before and after the measurement.
 - Sample limit: only this one of the eight owner-authorized images is present on the current machine. The other seven rows in [BOOT_CENSUS.md](BOOT_CENSUS.md) were not remeasured and remain labelled pre-`SUBU`; no value was estimated or interpolated. Raw JSON reports are local artifacts under `build/census/` and are not committed.
 - Documentation updated: `BOOT_CENSUS.md` (new dated post-`SUBU` section with hashes, revision, timestamp, result and limits), `STATE.md`, `HANDOFF.md`, `EXECUTION_CONTEXT.md`, `RISKS.md` (`R-029`), `docs/games/downhill-domination/STATUS.md`, `docs/games/README.md` and `docs/README.md`. No Gate, provenance, dependency or compatibility claim changed; no retail code was executed.
+
+## 2026-10-29 — census evidence merge record (PR #30 and PR #31)
+
+- Scope: documentation-only evidence update. No decoder, IR, lowering, runtime, build, fixture or dependency change; no Gate, provenance or compatibility status changed.
+- PR #30 merged as `4c0df867663bf8610acdc2ebc2a9283a6701ae79`; it is the revision the post-`SUBU` census measured. Its exact-head runs are not restated because they were not observed in this session; only the merge SHA is claimed.
+- PR #31 merged with `--match-head-commit 1d5118a` at 2026-10-29T11:00:39Z as `330dfb4175cd7edceec49c1a26857f583aa2d557`. Head `1d5118ae64ab6c026ea0ea5945daa4a42672aca6` (`docs: record post-SUBU census refresh`) passed push run `40861735385` and pull-request run `40861760536`; `Windows x64 / MSVC` and `Linux / GCC` succeeded in both.
+- Main run `40862024274` (`RPTP CI`) completed with `Windows x64 / MSVC` and `Linux / GCC` success; pages run `40862023752` succeeded.
+- This entry makes PR #31 the latest merge recorded here; STATE and HANDOFF now cite `330dfb4` and the PR range through #31.
+- Limitation: the merge run verifies the tree at `330dfb4`, not later commits. The census figures remain the measured pre-`LD`/`SD` numbers dated in the entry above; nothing was re-estimated.
