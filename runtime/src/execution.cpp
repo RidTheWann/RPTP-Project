@@ -503,8 +503,10 @@ ExecOutcome execute_loaded(const LoadReport& report, GuestMemory& memory, const 
         }
         const std::array<std::uint8_t, 4> low = write_le32(static_cast<std::uint32_t>(value));
         const std::array<std::uint8_t, 4> high = write_le32(static_cast<std::uint32_t>(value >> 32U));
-        memory.write(address, low);
-        memory.write(address + 4U, high);
+        if (!memory.write(address, low) || !memory.write(address + 4U, high)) {
+          return fail(ExecErrorCode::MemoryFault,
+                      address_message("doubleword store outside mapped memory", address));
+        }
         writes[address] = static_cast<std::uint32_t>(value);
         writes[address + 4U] = static_cast<std::uint32_t>(value >> 32U);
         break;
