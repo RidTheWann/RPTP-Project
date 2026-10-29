@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 from pathlib import Path
 import re
@@ -14,6 +15,12 @@ if SPEC is None or SPEC.loader is None:
     raise RuntimeError("Cannot load tools/rptp_progress.py")
 progress = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(progress)
+
+
+def asset_digest(relative: str) -> str:
+    """Content digest after newline normalization so hosts agree on the value."""
+    text = (ROOT / relative).read_text(encoding="utf-8").replace("\r\n", "\n").replace("\r", "\n")
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
 
 
 class ProgressConsistencyTests(unittest.TestCase):
@@ -46,12 +53,13 @@ class ProgressConsistencyTests(unittest.TestCase):
         snapshot = progress.latest_log_date(ROOT / "docs")
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         for asset in ("badge-foundation.svg", "badge-runtime.svg", "progress.svg"):
+            digest = asset_digest(f"docs/assets/{asset}")
             with self.subTest(asset=asset):
                 self.assertIn(
-                    f"assets/{asset}?v={snapshot}",
+                    f"assets/{asset}?v={snapshot}-{digest}",
                     readme,
-                    "README image URLs must carry the snapshot date so GitHub's "
-                    "image proxy refetches them after each increment.",
+                    "README image URLs must carry the snapshot date and content digest "
+                    "so GitHub's image proxy refetches them after every change.",
                 )
 
     def test_readme_reports_catalogued_instruction_count(self) -> None:
