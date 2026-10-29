@@ -70,7 +70,7 @@ struct ExecOutcome {
   [[nodiscard]] bool ok() const noexcept;
 };
 
-// Executes the accepted Gate 0 synthetic instruction subset on a loaded image.
+// Executes the documented synthetic instruction subset on a loaded image.
 // This is a differential-test harness, not a product interpreter: the guest is
 // halted only when the next PC falls outside every loaded segment.
 [[nodiscard]] ExecOutcome execute_loaded(const LoadReport& report, GuestMemory& memory,

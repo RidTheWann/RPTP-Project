@@ -539,8 +539,74 @@ void test_execution_branches_delay_slots_and_calls() {
   CHECK(outcome.result.memory_writes.size() == 1U);
 }
 
+void test_execution_extended_subset() {
+  const std::vector<std::uint32_t> code{
+      encode_r(0, 0, 31, 0, 0x21),      // 0x00 addu ra, zero, zero
+      encode_i(0x09, 0, 8, 1),          // 0x04 addiu t0, zero, 1
+      encode_i(0x0F, 0, 9, 0x8000),     // 0x08 lui t1, 0x8000
+      encode_i(0x0F, 0, 10, 0x1234),    // 0x0c lui t2, 0x1234
+      encode_i(0x0D, 10, 10, 0x5678),   // 0x10 ori t2, t2, 0x5678
+      encode_i(0x0C, 10, 11, 0x00FF),   // 0x14 andi t3, t2, 0x00ff
+      encode_i(0x0E, 10, 12, 0xFFFF),   // 0x18 xori t4, t2, 0xffff
+      encode_r(0, 10, 13, 4, 0x00),     // 0x1c sll t5, t2, 4
+      encode_r(9, 8, 14, 0, 0x2A),      // 0x20 slt t6, t1, t0
+      encode_r(8, 9, 15, 0, 0x2B),      // 0x24 sltu t7, t0, t1
+      encode_i(0x0A, 9, 16, -1),        // 0x28 slti s0, t1, -1
+      encode_i(0x0B, 8, 17, -1),        // 0x2c sltiu s1, t0, -1
+      encode_i(0x19, 9, 18, -1),        // 0x30 daddiu s2, t1, -1
+      encode_r(10, 12, 19, 0, 0x24),    // 0x34 and s3, t2, t4
+      encode_r(11, 13, 20, 0, 0x25),    // 0x38 or s4, t3, t5
+      encode_r(9, 8, 21, 0, 0x26),      // 0x3c xor s5, t1, t0
+      encode_r(8, 8, 22, 0, 0x27),      // 0x40 nor s6, t0, t0
+      encode_i(0x09, 0, 23, 0x2000),    // 0x44 addiu s7, zero, 0x2000
+      encode_i(0x2B, 23, 10, 0),        // 0x48 sw t2, 0(s7)
+      encode_i(0x23, 23, 24, 0),        // 0x4c lw t8, 0(s7)
+      encode_i(0x0F, 0, 25, 0x4000),    // 0x50 lui t9, 0x4000
+      encode_r(0, 25, 26, 1, 0x00),     // 0x54 sll k0, t9, 1
+      encode_r(0, 0, 0, 0, 0),          // 0x58 nop
+  };
+  const ExecOutcome outcome = run_code(code);
+  CHECK(outcome.ok());
+  if (!outcome.ok()) {
+    return;
+  }
+  CHECK(outcome.result.steps == code.size());
+  CHECK(outcome.result.final_pc == kExecutableBase + 4U * static_cast<std::uint32_t>(code.size()));
+  CHECK(outcome.result.registers[31] == 0U);
+  CHECK(outcome.result.registers[8] == 1U);
+  CHECK(outcome.result.registers[9] == 0xFFFFFFFF80000000ULL);
+  CHECK(outcome.result.registers[10] == 0x12345678U);
+  CHECK(outcome.result.registers[11] == 0x78U);
+  CHECK(outcome.result.registers[12] == 0x1234A987U);
+  CHECK(outcome.result.registers[13] == 0x23456780U);
+  CHECK(outcome.result.registers[14] == 1U);
+  CHECK(outcome.result.registers[15] == 1U);
+  CHECK(outcome.result.registers[16] == 1U);
+  CHECK(outcome.result.registers[17] == 1U);
+  CHECK(outcome.result.registers[18] == 0xFFFFFFFF7FFFFFFFULL);
+  CHECK(outcome.result.registers[19] == 0x12340000U);
+  CHECK(outcome.result.registers[20] == 0x234567F8U);
+  CHECK(outcome.result.registers[21] == 0xFFFFFFFF80000001ULL);
+  CHECK(outcome.result.registers[22] == 0xFFFFFFFFFFFFFFFEULL);
+  CHECK(outcome.result.registers[23] == 0x2000U);
+  CHECK(outcome.result.registers[24] == 0x12345678U);
+  CHECK(outcome.result.registers[25] == 0x40000000U);
+  CHECK(outcome.result.registers[26] == 0xFFFFFFFF80000000ULL);
+  CHECK(outcome.result.memory_writes.size() == 1U);
+  if (outcome.result.memory_writes.size() == 1U) {
+    CHECK(outcome.result.memory_writes[0].address == kDataBase);
+    CHECK(outcome.result.memory_writes[0].value == 0x12345678U);
+  }
+}
+
 void test_execution_failures() {
   expect_exec_error(run_code({0xFC000000U}), ExecErrorCode::UnsupportedInstruction, "unsupported");
+  expect_exec_error(run_code({encode_i(0x0F, 1, 8, 0)}), ExecErrorCode::UnsupportedInstruction,
+                    "lui with nonzero rs");
+  expect_exec_error(run_code({encode_r(1, 8, 9, 0, 0x00)}), ExecErrorCode::UnsupportedInstruction,
+                    "sll with nonzero rs");
+  expect_exec_error(run_code({encode_r(8, 9, 10, 1, 0x24)}), ExecErrorCode::UnsupportedInstruction,
+                    "and with nonzero shamt");
   expect_exec_error(
       run_code({encode_i(0x09, 0, 11, 0x2000), encode_r(11, 0, 0, 0, 0x08), encode_r(0, 0, 0, 0, 0)}),
       ExecErrorCode::PcNotExecutable, "jr into data");
@@ -603,6 +669,7 @@ int main() {
   test_guest_memory_direct();
   test_execution_arithmetic_and_memory();
   test_execution_branches_delay_slots_and_calls();
+  test_execution_extended_subset();
   test_execution_failures();
   test_execution_is_deterministic();
   if (failures != 0) {
