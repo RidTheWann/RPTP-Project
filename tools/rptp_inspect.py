@@ -287,10 +287,10 @@ class IsoReader:
 
     @staticmethod
     def _validate_directory_length(size: int) -> None:
-        if size <= 0 or size % BLOCK:
+        if size <= 0:
             raise InspectError(
                 "DIRECTORY_SIZE_INVALID",
-                f"Directory data length {size} is not a positive multiple of {BLOCK} bytes.",
+                f"Directory data length {size} is not positive.",
             )
 
     @staticmethod

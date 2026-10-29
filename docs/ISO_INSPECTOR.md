@@ -63,7 +63,7 @@ JSON output is sorted by key and deterministic for the same supplied path and in
 
 Both inspection and survey apply the same structural directory rules to every directory they read:
 
-- The declared data length must be a non-zero multiple of the 2048-byte logical block; zero and non-multiples are rejected with `DIRECTORY_SIZE_INVALID`.
+- The declared data length must be positive. It need not be a multiple of the 2048-byte logical block: ECMA-119 §7.4.5 defines the data length as the bytes in which the file section is recorded and says remaining bytes in the data space are ignored in interchange. Zero is rejected with `DIRECTORY_SIZE_INVALID`; a positive length that cannot contain the encoded records still fails the structural checks below.
 - Each directory record must have an even length in addition to the existing minimum of 34 bytes and the logical-block boundary check. Opaque System Use bytes are permitted, but they must be included in an even record length; a 47-byte record is invalid even when its first 46 bytes are well formed.
 - The first record of a directory must be the `.` special identifier (`0x00`) with the directory flag, and the second record must be the `..` special identifier (`0x01`) with the directory flag (ECMA-119 §6.8.2). Order is what is checked, not a fixed byte offset: a `.` record with System Use bytes legally moves `..` past offset 34. Missing, swapped or non-directory entries are rejected with `DIRECTORY_DOT_ENTRY_INVALID`. The `..` check is bounded by the declared directory size.
 - Extent and size equality between `.`, `..` and the containing directory is not required. Multi-extent handling and unsupported-layout rules are unchanged.
@@ -83,7 +83,7 @@ The 2026-10-28 technical review uses ECMA-119 (`RPTP-REF-006`) and independent s
 | Opaque directory system-use and extended attributes | Only the recorded primary name and XA offset are used. `test_opaque_system_use_bytes_do_not_replace_primary_names` checks opaque bytes; this is not Rock Ridge recognition or alternate-name/link resolution. |
 | Multi-volume, non-2048 logical blocks, raw-sector/non-ISO images | Existing volume/block/alignment/signature errors reject synthetic cases. No raw-sector conversion or secondary-volume selection exists; raw-sector variants are not exhaustively tested. |
 | Sector tails and primary identifiers | Both modes reject nonzero tails, non-printable identifiers and special file identifiers; `IsoReviewRegressionTests` also accepts zero padding before a subsequent sector. |
-| Directory size, parity and dot entries | Both modes require a positive block-multiple data length, even record lengths and `.`/`..` as the first/second records; `IsoHardeningTests` encodes the review probes and accepts a minimal 18-block descriptor set. |
+| Directory size, parity and dot entries | Both modes require a positive data length (block-aligned or not, per ECMA-119 §7.4.5), even record lengths and `.`/`..` as the first/second records; `IsoHardeningTests` encodes the review probes, a 990-byte non-aligned retail-shaped directory and a minimal 18-block descriptor set. |
 | Explicit and omitted BOOT versions | Missing explicit versions fail; coexisting versions select the requested hash; versionless ambiguity fails. Named explicit/coexisting-version tests cover both paths. |
 | Directory fan-out, aliases and cycles | `test_survey_directory_budget_is_enforced_while_scheduling` proves early rejection; `test_survey_deduplicates_aliases_and_cycles` verifies unique traversal counts. |
 | ELF PT_LOAD alignment | Positive 0/1/4/4096 cases and an incongruent 4096-byte negative case use the neutral `p_align` definition, not a PS2 loader model. |
@@ -126,7 +126,7 @@ Expected failures use these stable codes.
 ### Directories and extents
 
 - `DIRECTORY_RECORD_LENGTH_INVALID`: a directory record length is below 34 bytes, odd, or otherwise invalid.
-- `DIRECTORY_SIZE_INVALID`: a directory data length is zero or not a multiple of the 2048-byte logical block.
+- `DIRECTORY_SIZE_INVALID`: a directory data length is zero or negative. A positive length is not required to be a multiple of the 2048-byte logical block (ECMA-119 §7.4.5); records that do not fit the declared length fail `DIRECTORY_RECORD_CROSSES_BLOCK` or a related structural check.
 - `DIRECTORY_DOT_ENTRY_INVALID`: a directory does not begin with `.` and `..` as its first two records, both with the directory flag.
 - `DIRECTORY_IDENTIFIER_EMPTY`: a directory record has an empty identifier.
 - `DIRECTORY_IDENTIFIER_TRUNCATED`: a directory identifier extends beyond its record.
