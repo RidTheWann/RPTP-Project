@@ -47,11 +47,11 @@ Recorded owner-authorized local evidence from main; documentation checked agains
 - Evidence: local `build/elf-retail-summary.json`, `build/elf-retail-resident-evil-4.inspect.json`, `build/elf-retail-resident-evil-4.survey.json` and `build/elf-retail-independent-check.json`.
 - No extraction, content analysis, function discovery, boot, runtime, recompilation or compatibility testing was performed.
 
-### 2026-10-29 — read-only boot-code census
+### 2026-10-29 — read-only boot-code census refresh
 
 - `python tools/rptp_census.py <iso> --iso --json` completed in memory with exit 0 and status `CENSUSED`; no file was extracted, modified or executed.
-- Census: 731,082 aligned words across 1 PT_LOAD segment(s); 376,290 (51.5%) accepted by the current synthetic decoder; 354,792 raw-unsupported words.
-- Most frequent unsupported raw encodings: `special_0x2d` (52,487); `opcode_0x11` (31,396); `opcode_0x37` (13,623).
+- Census with the current decoder after `SLL` and `DADDU`: 731,082 aligned words across 1 PT_LOAD segment(s); 435,621 (59.6%) accepted; 295,461 raw-unsupported words. These figures supersede the earlier pre-`DADDU` count.
+- Most frequent unsupported raw encodings: `opcode_0x11` (31,396); `opcode_0x37` (13,623); `opcode_0x1e` (12,620).
 - Counts include data and padding and are not a function-level, runtime, boot or compatibility measurement. See [BOOT_CENSUS.md](../../BOOT_CENSUS.md).
 
 ## What is not tested
