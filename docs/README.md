@@ -45,6 +45,11 @@ Every increment must review and update every document affected by its change bef
 - `docs/DECISIONS/ADR-0003-sealed-source-clean-room-policy.md` — accepted sealed-source policy.
 - `docs/DECISIONS/ADR-0004-gate2-read-only-scope.md` — read-only Gate 2 scope; extraction deferred.
 
+## Research notes
+
+- `docs/research/function-discovery.md` — trusted-seed function discovery, code/data ambiguity and the open jump-table gap.
+- `docs/research/r5900-isa.json` — verified R5900/MMI decoding and semantics notes derived from public neutral specifications.
+
 ## Game records
 
 - `docs/games/README.md` — game work index, rules and status ladder.
