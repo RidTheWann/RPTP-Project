@@ -4,13 +4,16 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
+import re
 from xml.sax.saxutils import escape
 
 
 ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
-ASSETS = DOCS / "assets"
-SNAPSHOT_DATE = "2026-10-24"
+
+LOG_DATE_PATTERN = re.compile(r"^## (\d{4}-\d{2}-\d{2})", flags=re.MULTILINE)
+CATALOG_ROW_PATTERN = re.compile(r"^\| `([A-Z0-9]+)` \|", flags=re.MULTILINE)
+CATALOG_SECTION = "## Supported synthetic subset"
 
 COLORS = {
     "verified": ("#238636", "#2ea043", "#f0f6fc"),
@@ -266,6 +269,24 @@ PAGE_CSS = """
 """
 
 
+def latest_log_date(docs: Path = DOCS) -> str:
+    dates = LOG_DATE_PATTERN.findall((docs / "VERIFICATION_LOG.md").read_text(encoding="utf-8"))
+    if not dates:
+        raise ValueError("docs/VERIFICATION_LOG.md has no '## YYYY-MM-DD' section.")
+    return max(dates)
+
+
+def catalogued_instructions(docs: Path = DOCS) -> list[str]:
+    text = (docs / "INSTRUCTION_CATALOG.md").read_text(encoding="utf-8")
+    if CATALOG_SECTION not in text:
+        raise ValueError("docs/INSTRUCTION_CATALOG.md has no supported-subset section.")
+    section = text.split(CATALOG_SECTION, 1)[1].split("\n## ", 1)[0]
+    names = CATALOG_ROW_PATTERN.findall(section)
+    if not names:
+        raise ValueError("The supported synthetic subset table has no instruction rows.")
+    return names
+
+
 def _count(items: list[tuple[str, str]], status: str) -> int:
     return sum(1 for _, item_status in items if item_status == status)
 
@@ -311,18 +332,18 @@ def _bar(x: int, y: int, label: str, items: list[tuple[str, str]], tone: str) ->
     )
 
 
-def render_progress_svg() -> str:
+def render_progress_svg(snapshot_date: str, instructions: list[str]) -> str:
     foundation_verified = _count(FOUNDATION, "verified")
     runtime_verified = _count(RUNTIME, "verified")
     foundation_percent = foundation_verified / len(FOUNDATION) * 100
     runtime_percent = runtime_verified / len(RUNTIME) * 100
-    return f'''<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="576" viewBox="0 0 1200 576" role="img" aria-labelledby="rptp-progress-title rptp-progress-desc">
+    return f'''<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600" role="img" aria-labelledby="rptp-progress-title rptp-progress-desc">
   <title id="rptp-progress-title">RPTP progress map</title>
-  <desc id="rptp-progress-desc">Foundation checklist {foundation_percent:.1f} percent verified; runtime checklist {runtime_percent:.1f} percent verified. Percentages are scope checklists, not game compatibility or overall completion.</desc>
-  <rect width="1200" height="576" rx="16" fill="#0d1117"/>
-  <rect x="0.5" y="0.5" width="1199" height="575" rx="16" fill="none" stroke="#30363d"/>
+  <desc id="rptp-progress-desc">Foundation checklist {foundation_percent:.1f} percent verified; runtime checklist {runtime_percent:.1f} percent verified; {len(instructions)} synthetic instructions catalogued. Percentages are scope checklists, not game compatibility or overall completion.</desc>
+  <rect width="1200" height="600" rx="16" fill="#0d1117"/>
+  <rect x="0.5" y="0.5" width="1199" height="599" rx="16" fill="none" stroke="#30363d"/>
   <g font-family="Segoe UI, Arial, sans-serif">
-    <text x="1168" y="24" text-anchor="end" font-size="12" fill="#8b949e">Updated {SNAPSHOT_DATE}</text>
+    <text x="1168" y="24" text-anchor="end" font-size="12" fill="#8b949e">Updated {snapshot_date}</text>
 
     {_bar(40, 44, "Foundation checklist", FOUNDATION, "verified")}
     {_bar(620, 44, "Runtime checklist", RUNTIME, "partial")}
@@ -330,7 +351,7 @@ def render_progress_svg() -> str:
     <text x="40" y="126" font-size="20" font-weight="700" fill="#f0f6fc">Foundation &amp; inspection</text>
     <text x="40" y="148" font-size="12" fill="#8b949e">{len(FOUNDATION)} checklist items: build, inspector and evidence</text>
     <text x="620" y="126" font-size="20" font-weight="700" fill="#f0f6fc">Runtime &amp; compatibility</text>
-    <text x="620" y="148" font-size="12" fill="#8b949e">{len(RUNTIME)} checklist items: decoder, recompiler and PS2 services</text>
+    <text x="620" y="148" font-size="12" fill="#8b949e">{len(RUNTIME)} checklist items · {len(instructions)} catalogued synthetic instructions</text>
 
     {_grid(40, 164, FOUNDATION)}
     {_grid(620, 164, RUNTIME)}
@@ -343,8 +364,9 @@ def render_progress_svg() -> str:
     <text x="362" y="464" font-size="12" fill="#c9d1d9">Not started</text>
 
     <text x="40" y="504" font-size="12" fill="#8b949e">Percentages count only the labeled items in each checklist. They are not overall completion, boot support or game compatibility.</text>
-    <text x="40" y="526" font-size="12" fill="#8b949e">Evidence: Python test suite passes · CTest results in the verification log · authorized retail ISOs inspected read-only · narrow Gate 0 technical pass recorded; independent reviews pending.</text>
-    <text x="40" y="548" font-size="12" fill="#8b949e">Next: ISO-variant review. Extraction is deferred; interleaved layouts remain unsupported. Synthetic IR lowering covers ORI, ANDI, XORI, LUI, register-logical AND, OR, XOR, NOR, SLT and SLTU; conservative known-edge reachability traverses existing CFG edges. Gate 3 remains open.</text>
+    <text x="40" y="526" font-size="12" fill="#8b949e">Evidence: Python suite and CTest pass · Gate 0 technical pass recorded · authorized retail ISOs inspected read-only; independent reviews pending.</text>
+    <text x="40" y="548" font-size="12" fill="#8b949e">Next: read-only eight-image census refresh (R-029) when all images are reachable; further increments follow census frequency evidence.</text>
+    <text x="40" y="570" font-size="12" fill="#8b949e">Extraction is deferred; interleaved layouts remain unsupported. Gate 3 remains open.</text>
   </g>
 </svg>
 '''
@@ -372,7 +394,7 @@ def _table_rows(items: list[tuple[str, str]]) -> str:
     )
 
 
-def render_html() -> str:
+def render_html(snapshot_date: str, instructions: list[str]) -> str:
     foundation_verified = _count(FOUNDATION, "verified")
     runtime_verified = _count(RUNTIME, "verified")
     foundation_percent = foundation_verified / len(FOUNDATION) * 100
@@ -395,8 +417,8 @@ def render_html() -> str:
       <p class="lede">Early research. These checklists measure implemented and verified scope, not game compatibility or overall completion.</p>
     </header>
 
-    <img class="map" src="assets/progress.svg" alt="RPTP progress map: foundation checklist {foundation_percent:.1f} percent verified; runtime checklist {runtime_percent:.1f} percent verified.">
-    <p class="updated">Last updated {SNAPSHOT_DATE}</p>
+    <img class="map" src="assets/progress.svg" alt="RPTP progress map: foundation checklist {foundation_percent:.1f} percent verified; runtime checklist {runtime_percent:.1f} percent verified; {len(instructions)} synthetic instructions catalogued.">
+    <p class="updated">Last updated {snapshot_date}</p>
     <p class="generated">Generated by <a href="https://github.com/RidTheWann/RPTP-Project">tools/rptp_progress.py</a>. Raw evidence is tracked in <a href="STATE.md">docs/STATE.md</a>.</p>
 
     <div class="details">
@@ -455,8 +477,9 @@ def render_html() -> str:
           <li>The Python test suite passes; CTest and Gate 0 results are recorded in <a href="VERIFICATION_LOG.md">docs/VERIFICATION_LOG.md</a>.</li>
           <li>The current authorized retail sample has been inspected read-only; records are in the <a href="games/README.md">game work index</a>. No boot, recompilation or gameplay exists.</li>
           <li>The narrow Gate 0 technical pass is recorded. Independent provenance reviews and the clean-room review of the build/CI/doctor layer remain pending.</li>
+          <li><strong>Synthetic scope:</strong> {len(instructions)} instructions are catalogued in <a href="INSTRUCTION_CATALOG.md">docs/INSTRUCTION_CATALOG.md</a>; the percentages above count checklist items, not instructions.</li>
         </ul>
-        <p>Next bounded work: ISO-variant review. Extraction design is deferred under ADR-0004. Interleaved layouts remain unsupported. Synthetic IR lowering covers ORI, ANDI, XORI, LUI, register-logical AND, OR, XOR, NOR, SLT and SLTU; conservative known-edge reachability traverses existing CFG edges. Gate 3 remains open.</p>
+        <p>Next bounded work: read-only eight-image census refresh (<a href="RISKS.md">R-029</a>) when all images are reachable; further increments follow census frequency evidence. Extraction design is deferred under ADR-0004. Interleaved layouts remain unsupported. Gate 3 remains open.</p>
       </section>
     </div>
 
@@ -473,29 +496,32 @@ def render_html() -> str:
 '''
 
 
+def rendered_files(docs: Path = DOCS) -> dict[Path, str]:
+    snapshot_date = latest_log_date(docs)
+    instructions = catalogued_instructions(docs)
+    foundation_verified = _count(FOUNDATION, "verified")
+    runtime_verified = _count(RUNTIME, "verified")
+    return {
+        docs / "progress.html": render_html(snapshot_date, instructions),
+        docs / "assets" / "progress.svg": render_progress_svg(snapshot_date, instructions),
+        docs / "assets" / "badge-foundation.svg": render_badge(
+            "foundation", f"{foundation_verified / len(FOUNDATION) * 100:.1f}%", "verified"
+        ),
+        docs / "assets" / "badge-runtime.svg": render_badge(
+            "runtime", f"{runtime_verified / len(RUNTIME) * 100:.1f}%", "partial"
+        ),
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Render the RPTP progress page and SVG assets.")
     parser.add_argument("--root", type=Path, default=ROOT)
     args = parser.parse_args()
 
     docs = args.root / "docs"
-    assets = docs / "assets"
-    assets.mkdir(parents=True, exist_ok=True)
+    (docs / "assets").mkdir(parents=True, exist_ok=True)
 
-    foundation_verified = _count(FOUNDATION, "verified")
-    runtime_verified = _count(RUNTIME, "verified")
-    files = {
-        docs / "progress.html": render_html(),
-        assets / "progress.svg": render_progress_svg(),
-        assets / "badge-foundation.svg": render_badge(
-            "foundation", f"{foundation_verified / len(FOUNDATION) * 100:.1f}%", "verified"
-        ),
-        assets / "badge-runtime.svg": render_badge(
-            "runtime", f"{runtime_verified / len(RUNTIME) * 100:.1f}%", "partial"
-        ),
-    }
-
-    for path, text in files.items():
+    for path, text in rendered_files(docs).items():
         path.write_text(text, encoding="utf-8", newline="\n")
         print(f"Wrote {path}")
 
