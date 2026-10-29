@@ -47,12 +47,13 @@ _CONTROLS = {
     RETURN_CANDIDATE,
 }
 _DIRECT_CONTROLS = {CONDITIONAL_BRANCH, DIRECT_JUMP, DIRECT_CALL}
-_REGISTER_DEST_OPS = {"sll", "addu", "daddu", "and", "or", "xor", "nor", "slt", "sltu"}
-_SUPPORTED_OPS = {"nop", "sll", "addu", "daddu", "and", "or", "xor", "nor", "slt", "sltu", "addiu", "daddiu", "slti", "sltiu", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne", "j", "jal", "jr"}
+_REGISTER_DEST_OPS = {"sll", "addu", "subu", "daddu", "and", "or", "xor", "nor", "slt", "sltu"}
+_SUPPORTED_OPS = {"nop", "sll", "addu", "subu", "daddu", "and", "or", "xor", "nor", "slt", "sltu", "addiu", "daddiu", "slti", "sltiu", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne", "j", "jal", "jr"}
 _FIXED_CONTROLS = {
     "nop": FALLTHROUGH,
     "sll": FALLTHROUGH,
     "addu": FALLTHROUGH,
+    "subu": FALLTHROUGH,
     "daddu": FALLTHROUGH,
     "and": FALLTHROUGH,
     "or": FALLTHROUGH,
@@ -214,12 +215,12 @@ def _validate_instruction(instruction: Any, expected_pc: int) -> tuple[str, str,
     if not isinstance(control, str) or control not in _CONTROLS:
         raise LoweringError(LOWER_INVALID_CONTROL, "Unknown control-flow classification", pc=pc)
 
-    if op in {"sll", "addu", "daddu", "and", "or", "xor", "nor", "slt", "sltu", "addiu", "daddiu", "slti", "sltiu", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne", "jr"}:
+    if op in {"sll", "addu", "subu", "daddu", "and", "or", "xor", "nor", "slt", "sltu", "addiu", "daddiu", "slti", "sltiu", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne", "jr"}:
         rs = _register(instruction, "rs", required=True)
     else:
         _expect_none(instruction, "rs")
         rs = None
-    if op in {"sll", "addu", "daddu", "and", "or", "xor", "nor", "slt", "sltu", "addiu", "daddiu", "slti", "sltiu", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne"}:
+    if op in {"sll", "addu", "subu", "daddu", "and", "or", "xor", "nor", "slt", "sltu", "addiu", "daddiu", "slti", "sltiu", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne"}:
         rt = _register(instruction, "rt", required=True)
     else:
         _expect_none(instruction, "rt")
@@ -513,6 +514,12 @@ def _instruction_case(instruction: Any) -> list[str]:
             f"addu32(s.registers[{_register_literal(instruction.rs)}], s.registers[{_register_literal(instruction.rt)}]));"
         )
         lines.append("            break;")
+    elif op == "subu":
+        lines.append(
+            f"            write_register(s, {_register_literal(instruction.rd)}, "
+            f"subu32(s.registers[{_register_literal(instruction.rs)}], s.registers[{_register_literal(instruction.rt)}]));"
+        )
+        lines.append("            break;")
     elif op == "daddu":
         lines.append(
             f"            write_register(s, {_register_literal(instruction.rd)}, "
@@ -634,6 +641,12 @@ def lower_to_cpp(
         "    return lhs + rhs;\n"
         "}\n\n"
     ) if any(instruction.op == "daddu" for instruction in instructions) else ""
+    subu_helper = (
+        "std::uint64_t subu32(std::uint64_t lhs, std::uint64_t rhs) {\n"
+        "    const auto value = static_cast<std::uint32_t>(lhs) - static_cast<std::uint32_t>(rhs);\n"
+        "    return sign_extend_32(value);\n"
+        "}\n\n"
+    ) if any(instruction.op == "subu" for instruction in instructions) else ""
     sll_helper = (
         "std::uint64_t sll32(std::uint64_t value, std::uint32_t shift) {\n"
         "    return sign_extend_32(static_cast<std::uint32_t>(static_cast<std::uint32_t>(value) << shift));\n"
@@ -697,7 +710,7 @@ std::uint64_t addu32(std::uint64_t lhs, std::uint64_t rhs) {{
     return sign_extend_32(value);
 }}
 
-{daddiu_helper}{daddu_helper}{sll_helper}{logical_helper}{lui_helper}{comparison_helper}std::uint32_t effective_address(std::uint64_t base, std::int32_t offset) {{
+{daddiu_helper}{daddu_helper}{subu_helper}{sll_helper}{logical_helper}{lui_helper}{comparison_helper}std::uint32_t effective_address(std::uint64_t base, std::int32_t offset) {{
     return static_cast<std::uint32_t>(static_cast<std::uint32_t>(base) + static_cast<std::uint32_t>(offset));
 }}
 

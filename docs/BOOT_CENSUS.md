@@ -54,6 +54,8 @@ The counts include data, padding and embedded tables, so they are an upper-bound
 
 This refresh uses the current decoder after the `SLL` and `DADDU` increments and supersedes the earlier pre-`DADDU` table. `special_0x2d` no longer appears among the top unsupported labels, and the acceptance range is now 58.3%–69.2%. These remain static coverage figures, not runtime results, and the data/padding caveat above still applies.
 
+These figures were measured with the decoder revision before `SUBU` (`SPECIAL` funct `0x23`) support. Once that increment is merged, words with that encoding become decoder-accepted and the percentages will rise; a read-only refresh is a separate evidence increment, and the numbers above remain dated to the pre-`SUBU` revision.
+
 ## Commands and tests
 
 ```powershell

@@ -4,7 +4,7 @@
 - **Scope:** synthetic ELF32/EM_MIPS input and the currently supported instruction subset only.
 - **Status:** Gate 3 remains in progress. This is not a product recompiler, a complete R5900 model, a function-boundary recovery pass, a runtime, or a compatibility claim.
 - **Implementation:** `tools/rptp_ir.py`; generated-code lowering: `tools/rptp_lower.py`
-- **Tests:** `tests/test_ir_cfg.py`; `tests/test_cfg_reachability.py`; `tests/test_ir_lowering.py`; `tests/test_instruction_logical.py`; `tests/test_instruction_logical_width.py`; `tests/test_instruction_lui.py`; `tests/test_instruction_register_logic.py`; `tests/test_instruction_nor.py`; `tests/test_instruction_slt.py`; `tests/test_instruction_sltu.py`; `tests/test_instruction_slti.py`; `tests/test_instruction_sltiu.py`; `tests/test_instruction_daddiu.py`; `tests/test_instruction_daddu.py`; `tests/test_instruction_sll.py`
+- **Tests:** `tests/test_ir_cfg.py`; `tests/test_cfg_reachability.py`; `tests/test_ir_lowering.py`; `tests/test_instruction_logical.py`; `tests/test_instruction_logical_width.py`; `tests/test_instruction_lui.py`; `tests/test_instruction_register_logic.py`; `tests/test_instruction_nor.py`; `tests/test_instruction_slt.py`; `tests/test_instruction_sltu.py`; `tests/test_instruction_slti.py`; `tests/test_instruction_sltiu.py`; `tests/test_instruction_daddiu.py`; `tests/test_instruction_daddu.py`; `tests/test_instruction_sll.py`; `tests/test_instruction_subu.py`
 
 ## Purpose
 
@@ -16,7 +16,7 @@ This increment separates five concerns that were previously implicit in the Gate
 4. traversing only the CFG's already-recorded successor edges from an explicit block root; and
 5. lowering a validated result to deterministic C++ for the same synthetic execution model.
 
-The Gate 0 differential spike and the separate ORI, ANDI/XORI, LUI, SLL, register-logical AND/OR/XOR/NOR, SLT, SLTU, DADDIU and DADDU differentials remain independent execution and native-generation paths. The IR module does not execute code or emit C++; `tools/rptp_lower.py` consumes the IR and emits C++. Known-edge graph traversal is static analysis, not a runtime result.
+The Gate 0 differential spike and the separate ORI, ANDI/XORI, LUI, SLL, register-logical AND/OR/XOR/NOR, SLT, SLTU, DADDIU, DADDU and SUBU differentials remain independent execution and native-generation paths. The IR module does not execute code or emit C++; `tools/rptp_lower.py` consumes the IR and emits C++. Known-edge graph traversal is static analysis, not a runtime result.
 
 ## IR contract
 
@@ -100,7 +100,7 @@ Each candidate is labeled `candidate` with the limitation text stored by the mod
 - The live state contains a 64-bit register array, a word-addressed `std::map` for initialized guest memory, a trace vector, the current PC and a halt flag. The output JSON is emitted in a fixed order.
 - A control transfer records a pending target. Its delay slot executes next; the pending target is applied only after that slot. Conditional branches choose the direct target or `pc + 8` in the delay-slot step.
 - `$zero` is suppressed by `write_register` and cleared after every executed instruction.
-- `ADDIU` and `ADDU` wrap at 32 bits and sign-extend the result; `DADDU` adds the full modeled 64-bit register values modulo 2^64 without an overflow trap; `DADDIU` adds the sign-extended 16-bit immediate modulo 2^64 without trapping on integer overflow; `ANDI`, `ORI` and `XORI` apply the logical operation with the zero-extended immediate across the full modeled 64-bit register (`ORI` and `XORI` preserve upper bits of `rs`, while `ANDI` zeroes bits 16..63 of the result); `AND`, `OR`, `XOR` and `NOR` apply the bitwise operation to the full modeled 64-bit register values; `SLT` compares the sign bits and then the unsigned magnitudes of the full modeled 64-bit values to produce a signed two's-complement result of `1` or `0`; `SLTU` compares the full modeled 64-bit values as unsigned integers and writes `1` or `0`; `LUI` shifts the immediate left 16 bits and sign-extends the 32-bit result; `SLL` shifts the low 32 bits of `rt` left by the 5-bit shift amount, truncates to 32 bits and sign-extends the result; `LW` requires initialized memory and sign-extends the loaded word; `SW` stores the low 32 bits; `JAL` writes `pc + 8` to `$ra`; `JR` reads its target from the runtime register.
+- `ADDIU` and `ADDU` wrap at 32 bits and sign-extend the result; `SUBU` subtracts the low 32 bits of `rt` from the low 32 bits of `rs` modulo 2^32 and sign-extends the result without an overflow trap; `DADDU` adds the full modeled 64-bit register values modulo 2^64 without an overflow trap; `DADDIU` adds the sign-extended 16-bit immediate modulo 2^64 without trapping on integer overflow; `ANDI`, `ORI` and `XORI` apply the logical operation with the zero-extended immediate across the full modeled 64-bit register (`ORI` and `XORI` preserve upper bits of `rs`, while `ANDI` zeroes bits 16..63 of the result); `AND`, `OR`, `XOR` and `NOR` apply the bitwise operation to the full modeled 64-bit register values; `SLT` compares the sign bits and then the unsigned magnitudes of the full modeled 64-bit values to produce a signed two's-complement result of `1` or `0`; `SLTU` compares the full modeled 64-bit values as unsigned integers and writes `1` or `0`; `LUI` shifts the immediate left 16 bits and sign-extends the 32-bit result; `SLL` shifts the low 32 bits of `rt` left by the 5-bit shift amount, truncates to 32 bits and sign-extends the result; `LW` requires initialized memory and sign-extends the loaded word; `SW` stores the low 32 bits; `JAL` writes `pc + 8` to `$ra`; `JR` reads its target from the runtime register.
 - A direct target is emitted from the validated IR. The lowerer does not re-decode the raw word, although it requires the raw word to be present and well-formed.
 - Uninitialized `LW` throws. Generated `main` writes `LOWER_RUNTIME_ERROR: <detail>\n` to stderr and exits `2`.
 - A non-code dynamic PC, including the return sentinel, halts the synthetic program. This matches the oracle; it is not a hardware exception or kernel model.
@@ -165,7 +165,7 @@ The DADDIU fixture in `tests/test_instruction_daddiu.py` checks positive and neg
 
 ## Limitations
 
-- The subset is the existing synthetic ten-opcode Gate 0 subset plus `ORI`, `ANDI`, `XORI`, `LUI`, `SLL`, `AND`, `OR`, `XOR`, `NOR`, `SLT`, `SLTU`, `SLTI`, `SLTIU`, `DADDIU` and `DADDU`. No other opcode is added by these increments.
+- The subset is the existing synthetic ten-opcode Gate 0 subset plus `ORI`, `ANDI`, `XORI`, `LUI`, `SLL`, `AND`, `OR`, `XOR`, `NOR`, `SLT`, `SLTU`, `SLTI`, `SLTIU`, `DADDIU`, `DADDU` and `SUBU`. No other opcode is added by these increments.
 - The CFG is a syntactic partition of the validated code range. Known-edge graph reachability is not runtime reachability, dead-code proof or function discovery.
 - Function entries are candidates only. There are no function extents, symbols, call graphs with return edges, or confident `JR $ra` return-path claims. The direct-call continuation caveat is explicit in the reachability report.
 - The IR is lowered only for the synthetic model. The generated C++ is not optimized, not a product recompiler or runtime, and not a substitute for the separate instruction differential tests.
@@ -179,6 +179,7 @@ The DADDIU fixture in `tests/test_instruction_daddiu.py` checks positive and neg
 - Delay-slot background: `RPTP-REF-005`, used only as a secondary cross-check for the existing synthetic model.
 - `LUI` shifted-immediate semantics: `RPTP-REF-013`, MIPS64 Revision 5.04 page 225. The Rev 6.03 LUI page was not directly accessible; the limitation is recorded in [REFERENCES.md](REFERENCES.md).
 - `SLL` 32-bit shift encoding and semantics: `RPTP-REF-002`; the sign-extension bridge into the modeled 64-bit register array is test-defined and recorded in [REFERENCES.md](REFERENCES.md).
+- `SUBU` 32-bit subtract encoding and semantics: `RPTP-REF-015`, MIPS64 Revision 5.04 page 355. That entry marks a non-word-value source UNPREDICTABLE; this model resolves that case deterministically by truncating both sources to their low 32 bits, matching the accepted `ADDU` model. The resolution is test-defined and recorded in [REFERENCES.md](REFERENCES.md).
 - The block, immediate, `$zero`, candidate, known-edge reachability and lowering rules are defined by this repository's tests and are not a hardware specification.
 - The generated C++ state machine, JSON shape, failure text and exit code are test-defined behavior, not R5900 or PS2 hardware behavior.
 
