@@ -273,6 +273,10 @@ def decode_instruction(pc: int, word: int) -> dict[str, Any]:
         return {"pc": pc, "word": word, "op": "lw", "rs": rs, "rt": rt, "imm": simm}
     if op == 0x2B:
         return {"pc": pc, "word": word, "op": "sw", "rs": rs, "rt": rt, "imm": simm}
+    if op == 0x37:
+        return {"pc": pc, "word": word, "op": "ld", "rs": rs, "rt": rt, "imm": simm}
+    if op == 0x3F:
+        return {"pc": pc, "word": word, "op": "sd", "rs": rs, "rt": rt, "imm": simm}
     if op in (0x04, 0x05):
         target = (pc + 4 + (simm << 2)) & 0xFFFFFFFF
         return {"pc": pc, "word": word, "op": "beq" if op == 0x04 else "bne", "rs": rs, "rt": rt, "imm": simm, "target": target}
@@ -409,6 +413,23 @@ def execute_oracle(entry: int, words: dict[int, int]) -> dict[str, Any]:
         elif op == "sw":
             address = ((r[ins["rs"]] & 0xFFFFFFFF) + ins["imm"]) & 0xFFFFFFFF
             s["memory"][address] = r[ins["rt"]] & 0xFFFFFFFF
+        elif op == "ld":
+            address = ((r[ins["rs"]] & 0xFFFFFFFF) + ins["imm"]) & 0xFFFFFFFF
+            if address & 7:
+                raise ValueError(f"Oracle unaligned doubleword load at 0x{address:08X}")
+            if address not in s["memory"] or (address + 4) not in s["memory"]:
+                missing = address if address not in s["memory"] else address + 4
+                raise ValueError(f"Oracle read from uninitialized memory 0x{missing:08X}")
+            result = (s["memory"][address] & 0xFFFFFFFF) | ((s["memory"][address + 4] & 0xFFFFFFFF) << 32)
+            if ins["rt"]:
+                r[ins["rt"]] = result & 0xFFFFFFFFFFFFFFFF
+        elif op == "sd":
+            address = ((r[ins["rs"]] & 0xFFFFFFFF) + ins["imm"]) & 0xFFFFFFFF
+            if address & 7:
+                raise ValueError(f"Oracle unaligned doubleword store at 0x{address:08X}")
+            value = r[ins["rt"]] & 0xFFFFFFFFFFFFFFFF
+            s["memory"][address] = value & 0xFFFFFFFF
+            s["memory"][address + 4] = (value >> 32) & 0xFFFFFFFF
         elif op == "beq":
             new_target = ins["target"] if r[ins["rs"]] == r[ins["rt"]] else (pc + 8) & 0xFFFFFFFF
         elif op == "bne":

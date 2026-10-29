@@ -20,6 +20,8 @@ constexpr std::uint32_t kOpcodeLui = 0x0FU;
 constexpr std::uint32_t kOpcodeDaddiu = 0x19U;
 constexpr std::uint32_t kOpcodeLw = 0x23U;
 constexpr std::uint32_t kOpcodeSw = 0x2BU;
+constexpr std::uint32_t kOpcodeLd = 0x37U;
+constexpr std::uint32_t kOpcodeSd = 0x3FU;
 constexpr std::uint32_t kOpcodeBeq = 0x04U;
 constexpr std::uint32_t kOpcodeBne = 0x05U;
 constexpr std::uint32_t kOpcodeJ = 0x02U;
@@ -58,6 +60,8 @@ enum class Op {
   Sll,
   Lw,
   Sw,
+  Ld,
+  Sd,
   Beq,
   Bne,
   J,
@@ -182,6 +186,12 @@ bool decode(std::uint32_t word, std::uint32_t pc, Instruction& instruction) {
       return true;
     case kOpcodeSw:
       instruction = {Op::Sw, rs, rt, 0, 0, sign_immediate, 0};
+      return true;
+    case kOpcodeLd:
+      instruction = {Op::Ld, rs, rt, 0, 0, sign_immediate, 0};
+      return true;
+    case kOpcodeSd:
+      instruction = {Op::Sd, rs, rt, 0, 0, sign_immediate, 0};
       return true;
     case kOpcodeBeq:
       instruction = {Op::Beq, rs, rt, 0, 0, sign_immediate, branch_target(pc, sign_immediate)};
@@ -460,6 +470,45 @@ ExecOutcome execute_loaded(const LoadReport& report, GuestMemory& memory, const 
           return fail(ExecErrorCode::MemoryFault, address_message("store outside mapped memory", address));
         }
         writes[address] = value;
+        break;
+      }
+      case Op::Ld: {
+        const auto address = static_cast<std::uint32_t>(static_cast<std::uint32_t>(registers[instruction.rs]) +
+                                                        instruction.immediate);
+        if ((address & 7U) != 0U) {
+          return fail(ExecErrorCode::MemoryFault,
+                      address_message("unaligned doubleword load", address));
+        }
+        std::array<std::uint8_t, 8> bytes{};
+        if (!memory.read(address, bytes)) {
+          return fail(ExecErrorCode::MemoryFault,
+                      address_message("doubleword load outside mapped memory", address));
+        }
+        const std::uint64_t value = static_cast<std::uint64_t>(read_le32(bytes.data())) |
+                                    (static_cast<std::uint64_t>(read_le32(bytes.data() + 4)) << 32U);
+        write_register(instruction.rt, value);
+        break;
+      }
+      case Op::Sd: {
+        const auto address = static_cast<std::uint32_t>(static_cast<std::uint32_t>(registers[instruction.rs]) +
+                                                        instruction.immediate);
+        if ((address & 7U) != 0U) {
+          return fail(ExecErrorCode::MemoryFault,
+                      address_message("unaligned doubleword store", address));
+        }
+        const std::uint64_t value = registers[instruction.rt];
+        if (!memory.is_mapped(address, 8)) {
+          return fail(ExecErrorCode::MemoryFault,
+                      address_message("doubleword store outside mapped memory", address));
+        }
+        const std::array<std::uint8_t, 4> low = write_le32(static_cast<std::uint32_t>(value));
+        const std::array<std::uint8_t, 4> high = write_le32(static_cast<std::uint32_t>(value >> 32U));
+        if (!memory.write(address, low) || !memory.write(address + 4U, high)) {
+          return fail(ExecErrorCode::MemoryFault,
+                      address_message("doubleword store outside mapped memory", address));
+        }
+        writes[address] = static_cast<std::uint32_t>(value);
+        writes[address + 4U] = static_cast<std::uint32_t>(value >> 32U);
         break;
       }
       case Op::Beq:

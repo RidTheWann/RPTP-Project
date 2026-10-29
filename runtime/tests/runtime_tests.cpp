@@ -406,11 +406,12 @@ std::uint32_t encode_j(std::uint32_t op, std::uint32_t target) {
 }
 
 std::vector<std::uint8_t> make_runnable_image(const std::vector<std::uint32_t>& code,
-                                              std::uint32_t entry_offset = 0U) {
+                                              std::uint32_t entry_offset = 0U,
+                                              std::uint32_t data_memsz = 4U) {
   constexpr std::uint32_t kDataOffset = 0x100U;
   constexpr std::uint32_t kCodeOffset = 0x200U;
   const auto code_size = static_cast<std::uint32_t>(code.size() * sizeof(std::uint32_t));
-  const SegmentSpec data{kDataOffset, kDataBase, 4U, 4U, 6U, 4U};
+  const SegmentSpec data{kDataOffset, kDataBase, 4U, data_memsz, 6U, 4U};
   const SegmentSpec text{kCodeOffset, kExecutableBase, code_size, code_size, 5U, 4U};
   std::vector<std::uint8_t> image =
       make_elf(kExecutableBase + entry_offset, {data, text}, kCodeOffset + code_size);
@@ -420,8 +421,9 @@ std::vector<std::uint8_t> make_runnable_image(const std::vector<std::uint32_t>& 
   return image;
 }
 
-ExecOutcome run_code(const std::vector<std::uint32_t>& code, const ExecOptions& options = {}) {
-  std::vector<std::uint8_t> image = make_runnable_image(code);
+ExecOutcome run_code(const std::vector<std::uint32_t>& code, const ExecOptions& options = {},
+                     std::uint32_t data_memsz = 4U) {
+  std::vector<std::uint8_t> image = make_runnable_image(code, 0U, data_memsz);
   LoadOutcome loaded = load_elf(image);
   if (!loaded.ok()) {
     std::cerr << "FAIL runnable image did not load: " << to_string(loaded.error->code) << '\n';
@@ -614,8 +616,58 @@ void test_execution_extended_subset() {
   }
 }
 
+void test_execution_doubleword_memory() {
+  const std::vector<std::uint32_t> code{
+      encode_i(0x0F, 0, 8, 0x8000),   // lui t0, 0x8000
+      encode_i(0x09, 0, 9, 0x2000),   // addiu t1, zero, 0x2000
+      encode_i(0x3F, 9, 8, 0),        // sd t0, 0(t1)
+      encode_i(0x37, 9, 10, 0),       // ld t2, 0(t1)
+      encode_i(0x37, 9, 0, 0),        // ld zero, 0(t1)
+      encode_i(0x3F, 9, 0, 8),        // sd zero, 8(t1)
+      encode_i(0x37, 9, 11, 8),       // ld t3, 8(t1)
+      encode_r(0, 0, 0, 0, 0),        // nop
+  };
+  const ExecOutcome outcome = run_code(code, ExecOptions{}, 16U);
+  CHECK(outcome.ok());
+  if (!outcome.ok()) {
+    return;
+  }
+  CHECK(outcome.result.registers[8] == 0xFFFFFFFF80000000ULL);
+  CHECK(outcome.result.registers[10] == 0xFFFFFFFF80000000ULL);
+  CHECK(outcome.result.registers[11] == 0U);
+  CHECK(outcome.result.registers[0] == 0U);
+  CHECK(outcome.result.memory_writes.size() == 4U);
+  if (outcome.result.memory_writes.size() == 4U) {
+    CHECK(outcome.result.memory_writes[0].address == kDataBase);
+    CHECK(outcome.result.memory_writes[0].value == 0x80000000U);
+    CHECK(outcome.result.memory_writes[1].address == kDataBase + 4U);
+    CHECK(outcome.result.memory_writes[1].value == 0xFFFFFFFFU);
+    CHECK(outcome.result.memory_writes[2].address == kDataBase + 8U);
+    CHECK(outcome.result.memory_writes[2].value == 0U);
+    CHECK(outcome.result.memory_writes[3].address == kDataBase + 12U);
+    CHECK(outcome.result.memory_writes[3].value == 0U);
+  }
+
+  expect_exec_error(
+      run_code({encode_i(0x09, 0, 9, 0x2000), encode_i(0x3F, 9, 8, 8)}, ExecOptions{}, 12U),
+      ExecErrorCode::MemoryFault, "doubleword store crossing the segment end");
+  expect_exec_error(
+      run_code({encode_i(0x09, 0, 9, 0x2000), encode_i(0x37, 9, 8, 2)}, ExecOptions{}, 16U),
+      ExecErrorCode::MemoryFault, "unaligned doubleword load");
+  expect_exec_error(
+      run_code({encode_i(0x09, 0, 9, 0x2000), encode_i(0x3F, 9, 8, 4)}, ExecOptions{}, 16U),
+      ExecErrorCode::MemoryFault, "unaligned doubleword store");
+  expect_exec_error(
+      run_code({encode_i(0x09, 0, 9, 0x2000), encode_i(0x37, 9, 8, 0)}, ExecOptions{}, 4U),
+      ExecErrorCode::MemoryFault, "doubleword load past the segment end");
+  expect_exec_error(run_code({encode_i(0x36, 0, 8, 0)}), ExecErrorCode::UnsupportedInstruction,
+                    "ldc2");
+  expect_exec_error(run_code({encode_i(0x3E, 0, 8, 0)}), ExecErrorCode::UnsupportedInstruction,
+                    "sdc2");
+}
+
 void test_execution_failures() {
-  expect_exec_error(run_code({0xFC000000U}), ExecErrorCode::UnsupportedInstruction, "unsupported");
+  expect_exec_error(run_code({0x0000003FU}), ExecErrorCode::UnsupportedInstruction, "unsupported");
   expect_exec_error(run_code({encode_i(0x0F, 1, 8, 0)}), ExecErrorCode::UnsupportedInstruction,
                     "lui with nonzero rs");
   expect_exec_error(run_code({encode_r(1, 8, 9, 0, 0x00)}), ExecErrorCode::UnsupportedInstruction,
@@ -693,6 +745,7 @@ int main() {
   test_execution_arithmetic_and_memory();
   test_execution_branches_delay_slots_and_calls();
   test_execution_extended_subset();
+  test_execution_doubleword_memory();
   test_execution_failures();
   test_execution_is_deterministic();
   if (failures != 0) {

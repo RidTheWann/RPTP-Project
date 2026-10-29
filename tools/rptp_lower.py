@@ -48,7 +48,7 @@ _CONTROLS = {
 }
 _DIRECT_CONTROLS = {CONDITIONAL_BRANCH, DIRECT_JUMP, DIRECT_CALL}
 _REGISTER_DEST_OPS = {"sll", "addu", "subu", "daddu", "and", "or", "xor", "nor", "slt", "sltu"}
-_SUPPORTED_OPS = {"nop", "sll", "addu", "subu", "daddu", "and", "or", "xor", "nor", "slt", "sltu", "addiu", "daddiu", "slti", "sltiu", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne", "j", "jal", "jr"}
+_SUPPORTED_OPS = {"nop", "sll", "addu", "subu", "daddu", "and", "or", "xor", "nor", "slt", "sltu", "addiu", "daddiu", "slti", "sltiu", "andi", "ori", "xori", "lui", "lw", "sw", "ld", "sd", "beq", "bne", "j", "jal", "jr"}
 _FIXED_CONTROLS = {
     "nop": FALLTHROUGH,
     "sll": FALLTHROUGH,
@@ -71,6 +71,8 @@ _FIXED_CONTROLS = {
     "lui": FALLTHROUGH,
     "lw": FALLTHROUGH,
     "sw": FALLTHROUGH,
+    "ld": FALLTHROUGH,
+    "sd": FALLTHROUGH,
     "beq": CONDITIONAL_BRANCH,
     "bne": CONDITIONAL_BRANCH,
     "j": DIRECT_JUMP,
@@ -215,12 +217,12 @@ def _validate_instruction(instruction: Any, expected_pc: int) -> tuple[str, str,
     if not isinstance(control, str) or control not in _CONTROLS:
         raise LoweringError(LOWER_INVALID_CONTROL, "Unknown control-flow classification", pc=pc)
 
-    if op in {"sll", "addu", "subu", "daddu", "and", "or", "xor", "nor", "slt", "sltu", "addiu", "daddiu", "slti", "sltiu", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne", "jr"}:
+    if op in {"sll", "addu", "subu", "daddu", "and", "or", "xor", "nor", "slt", "sltu", "addiu", "daddiu", "slti", "sltiu", "andi", "ori", "xori", "lui", "lw", "sw", "ld", "sd", "beq", "bne", "jr"}:
         rs = _register(instruction, "rs", required=True)
     else:
         _expect_none(instruction, "rs")
         rs = None
-    if op in {"sll", "addu", "subu", "daddu", "and", "or", "xor", "nor", "slt", "sltu", "addiu", "daddiu", "slti", "sltiu", "andi", "ori", "xori", "lui", "lw", "sw", "beq", "bne"}:
+    if op in {"sll", "addu", "subu", "daddu", "and", "or", "xor", "nor", "slt", "sltu", "addiu", "daddiu", "slti", "sltiu", "andi", "ori", "xori", "lui", "lw", "sw", "ld", "sd", "beq", "bne"}:
         rt = _register(instruction, "rt", required=True)
     else:
         _expect_none(instruction, "rt")
@@ -242,7 +244,7 @@ def _validate_instruction(instruction: Any, expected_pc: int) -> tuple[str, str,
     if control != expected_control:
         raise LoweringError(LOWER_INVALID_CONTROL, "Control-flow classification does not match the operation", pc=pc)
 
-    if op in {"addiu", "daddiu", "slti", "sltiu", "lw", "sw", "beq", "bne"}:
+    if op in {"addiu", "daddiu", "slti", "sltiu", "lw", "sw", "ld", "sd", "beq", "bne"}:
         immediate_kind = SIGNED16
         minimum, maximum = -0x8000, 0x7FFF
     elif op in {"andi", "ori", "xori"}:
@@ -275,7 +277,7 @@ def _validate_instruction(instruction: Any, expected_pc: int) -> tuple[str, str,
             maximum=maximum,
         )
 
-    if op in {"addiu", "daddiu", "slti", "sltiu", "andi", "ori", "xori", "lui", "lw"}:
+    if op in {"addiu", "daddiu", "slti", "sltiu", "andi", "ori", "xori", "lui", "lw", "ld"}:
         expected_destination = None if rt == 0 else rt
     elif op in _REGISTER_DEST_OPS:
         expected_destination = None if rd == 0 else rd
@@ -583,6 +585,18 @@ def _instruction_case(instruction: Any) -> list[str]:
             f"{instruction.immediate}), static_cast<std::uint32_t>(s.registers[{_register_literal(instruction.rt)}]));"
         )
         lines.append("            break;")
+    elif op == "ld":
+        lines.append(
+            f"            write_register(s, {_register_literal(instruction.rt)}, "
+            f"load_doubleword(s, effective_address(s.registers[{_register_literal(instruction.rs)}], {instruction.immediate})));"
+        )
+        lines.append("            break;")
+    elif op == "sd":
+        lines.append(
+            f"            store_doubleword(s, effective_address(s.registers[{_register_literal(instruction.rs)}], "
+            f"{instruction.immediate}), s.registers[{_register_literal(instruction.rt)}]);"
+        )
+        lines.append("            break;")
     elif op in {"beq", "bne"}:
         comparison = "==" if op == "beq" else "!="
         lines.append(
@@ -674,6 +688,22 @@ def lower_to_cpp(
             "}\n\n"
         )
     comparison_helper = "".join(comparison_helpers)
+    doubleword_helpers = (
+        "std::uint64_t load_doubleword(const State& state, std::uint32_t address) {\n"
+        "    if ((address & 7u) != 0u) throw std::runtime_error(\"unaligned doubleword load\");\n"
+        "    const auto low = state.memory.find(address);\n"
+        "    const auto high = state.memory.find(address + 4u);\n"
+        "    if (low == state.memory.end() || high == state.memory.end()) {\n"
+        "        throw std::runtime_error(\"doubleword load of uninitialized guest memory\");\n"
+        "    }\n"
+        "    return (static_cast<std::uint64_t>(high->second) << 32) | static_cast<std::uint64_t>(low->second);\n"
+        "}\n\n"
+        "void store_doubleword(State& state, std::uint32_t address, std::uint64_t value) {\n"
+        "    if ((address & 7u) != 0u) throw std::runtime_error(\"unaligned doubleword store\");\n"
+        "    state.memory[address] = static_cast<std::uint32_t>(value);\n"
+        "    state.memory[address + 4u] = static_cast<std::uint32_t>(value >> 32);\n"
+        "}\n\n"
+    ) if any(instruction.op in {"ld", "sd"} for instruction in instructions) else ""
 
     return f'''// Generated by tools/rptp_lower.py from validated RPTP IR. Do not edit by hand.
 // Synthetic instruction subset only; not a complete R5900 implementation.
@@ -728,7 +758,7 @@ void store_word(State& state, std::uint32_t address, std::uint32_t value) {{
     state.memory[address] = value;
 }}
 
-void run_generated(State& s) {{
+{doubleword_helpers}void run_generated(State& s) {{
     bool pending = false;
     std::uint32_t pending_target = 0;
     for (std::size_t step = 0; step < {step_limit}u; ++step) {{
