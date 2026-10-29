@@ -1,7 +1,7 @@
 # Clean-room provenance audit
 
 - **Audit date:** 2026-10-21
-- **Last evidence update:** 2026-10-29 — the read-only inspection increment merged as `a1365b5` and main CI run `40770223526` passed both jobs; the synthetic subset adds `SLL` with a separate literal-oracle, native differential and boundary harness. The ELF32 load map remains read-only. No native loader, component status or Gate disposition changed, and no component certified.
+- **Last evidence update:** 2026-10-29 — main merged the read-only inspection increment (`a1365b5`, main CI run `40770223526` green) and the synthetic `SLL` increment (`1ee2d4d`); this branch adds the read-only boot-code census over the eight authorized samples. The census reuses the validated inspector ELF parser, counts words in file-backed `PT_LOAD` ranges and labels unsupported words by raw encoding ID only. It adds no instruction semantics, no compatibility claim and no component status change; the ELF32 load map remains read-only, and no native loader, component status or Gate disposition changed. No component is certified.
 - **Policy:** [ADR-0003](DECISIONS/ADR-0003-sealed-source-clean-room-policy.md)
 - **Execution plan:** [PROVENANCE_PLAN.md](PROVENANCE_PLAN.md)
 - **Exposure record:** [docs/REFERENCES.md](REFERENCES.md)

@@ -1,7 +1,7 @@
 # Need for Speed - Most Wanted (USA) (v2.00)
 
-- **Status:** Inspected (read-only)
-- **Last updated:** 2026-10-28
+- **Status:** Boot analysis (static census)
+- **Last updated:** 2026-10-29
 - **RPTP inspector:** `tools/rptp_inspect.py`, hardened revision `0c2264e`; source SHA-256 verification and full fingerprint: [verification log](../../VERIFICATION_LOG.md)
 - **Source:** owner-provided local ISO; not committed
 - **Filename:** `Need for Speed - Most Wanted (USA) (v2.00).iso`
@@ -47,6 +47,13 @@ Recorded owner-authorized local evidence from main; documentation checked agains
 - Entry `0x004360C0` maps uniquely to PF_X file-backed bytes in program header 0 at ELF-relative file offset 3,371,200 bytes. Independent sparse ELF-header/entry/overlap cross-check agrees.
 - Evidence: local `build/elf-retail-summary.json`, `build/elf-retail-need-for-speed-most-wanted.inspect.json`, `build/elf-retail-need-for-speed-most-wanted.survey.json` and `build/elf-retail-independent-check.json`.
 - No extraction, content analysis, function discovery, boot, runtime, recompilation or compatibility testing was performed.
+
+### 2026-10-29 — read-only boot-code census
+
+- `python tools/rptp_census.py <iso> --iso --json` completed in memory with exit 0 and status `CENSUSED`; no file was extracted, modified or executed.
+- Census: 1,224,439 aligned words across 1 PT_LOAD segment(s); 724,764 (59.2%) accepted by the current synthetic decoder; 499,675 raw-unsupported words.
+- Most frequent unsupported raw encodings: `special_0x2d` (111,122); `opcode_0x37` (53,806); `opcode_0x11` (49,291).
+- Counts include data and padding and are not a function-level, runtime, boot or compatibility measurement. See [BOOT_CENSUS.md](../../BOOT_CENSUS.md).
 
 ## What is not tested
 

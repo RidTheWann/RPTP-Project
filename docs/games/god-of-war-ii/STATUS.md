@@ -1,7 +1,7 @@
 # God of War II (USA)
 
-- **Status:** Inspected (read-only)
-- **Last updated:** 2026-10-28
+- **Status:** Boot analysis (static census)
+- **Last updated:** 2026-10-29
 - **RPTP inspector:** `tools/rptp_inspect.py`, hardened revision `0c2264e`; source SHA-256 verification and full fingerprint: [verification log](../../VERIFICATION_LOG.md)
 - **Source:** owner-provided local ISO; not committed
 - **Filename:** `God of War II (USA).iso`
@@ -57,6 +57,13 @@ Recorded owner-authorized local evidence from main; documentation checked agains
 - The PVD/file gap remains 4,265,869,312 bytes; whole-image hashing does not classify those extra bytes or establish a second layer. The survey remains PVD-addressable only.
 - Evidence: local `build/elf-retail-summary.json`, `build/elf-retail-god-of-war-ii.inspect.json`, `build/elf-retail-god-of-war-ii.survey.json` and `build/elf-retail-independent-check.json`.
 - No extraction, content analysis, function discovery, boot, runtime, recompilation or compatibility testing was performed.
+
+### 2026-10-29 — read-only boot-code census
+
+- `python tools/rptp_census.py <iso> --iso --json` completed in memory with exit 0 and status `CENSUSED`; no file was extracted, modified or executed.
+- Census: 520,042 aligned words across 1 PT_LOAD segment(s); 277,381 (53.3%) accepted by the current synthetic decoder; 242,661 raw-unsupported words.
+- Most frequent unsupported raw encodings: `special_0x2d` (40,580); `opcode_0x11` (28,957); `opcode_0x12` (23,930).
+- Counts include data and padding and are not a function-level, runtime, boot or compatibility measurement. See [BOOT_CENSUS.md](../../BOOT_CENSUS.md).
 
 ## What is not tested
 

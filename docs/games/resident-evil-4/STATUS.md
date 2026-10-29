@@ -1,7 +1,7 @@
 # Resident Evil 4 (USA)
 
-- **Status:** Inspected (read-only)
-- **Last updated:** 2026-10-28
+- **Status:** Boot analysis (static census)
+- **Last updated:** 2026-10-29
 - **RPTP inspector:** `tools/rptp_inspect.py`, hardened revision `0c2264e`; source SHA-256 verification and full fingerprint: [verification log](../../VERIFICATION_LOG.md)
 - **Source:** owner-provided local ISO; not committed
 - **Filename:** `Resident Evil 4 (USA).iso`
@@ -46,6 +46,13 @@ Recorded owner-authorized local evidence from main; documentation checked agains
 - Entry `0x00100008` maps uniquely to PF_X file-backed bytes in program header 0 at ELF-relative file offset 4,104 bytes. Independent sparse ELF-header/entry/overlap cross-check agrees.
 - Evidence: local `build/elf-retail-summary.json`, `build/elf-retail-resident-evil-4.inspect.json`, `build/elf-retail-resident-evil-4.survey.json` and `build/elf-retail-independent-check.json`.
 - No extraction, content analysis, function discovery, boot, runtime, recompilation or compatibility testing was performed.
+
+### 2026-10-29 — read-only boot-code census
+
+- `python tools/rptp_census.py <iso> --iso --json` completed in memory with exit 0 and status `CENSUSED`; no file was extracted, modified or executed.
+- Census: 731,082 aligned words across 1 PT_LOAD segment(s); 376,290 (51.5%) accepted by the current synthetic decoder; 354,792 raw-unsupported words.
+- Most frequent unsupported raw encodings: `special_0x2d` (52,487); `opcode_0x11` (31,396); `opcode_0x37` (13,623).
+- Counts include data and padding and are not a function-level, runtime, boot or compatibility measurement. See [BOOT_CENSUS.md](../../BOOT_CENSUS.md).
 
 ## What is not tested
 

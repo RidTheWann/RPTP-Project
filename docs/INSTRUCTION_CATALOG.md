@@ -48,6 +48,10 @@
 
 The lowering tests cover the supported operations, both branch outcomes, direct and indirect control flow, delay slots, `$zero` writes, 32-bit wraparound, zero-extended logical immediates, signed `SLTI` and unsigned `SLTIU` immediate comparisons, the shifted/sign-extended LUI immediate, full modeled 64-bit register logical operations including NOR, signed 64-bit `SLT` comparison, unsigned 64-bit `SLTU` comparison, the 32-bit `SLL` shift and memory load/store. A separate one-instruction fixture covers uninitialized-memory failure. The reachability tests cover only existing stored edges, unresolved indirect transfers and the explicit direct-call continuation caveat. These tests do not add product runtime behavior, runtime reachability, function extents or a complete R5900 model. Gate 3 remains in progress.
 
+## Retail boot-code census (read-only, 2026-10-29)
+
+`tools/rptp_census.py` counts aligned 4-byte words in the file-backed `PT_LOAD` ranges of the boot executable inside owner-authorized ISOs and classifies each word with the current synthetic IR decoder. Unsupported words are reported only as raw encoding identifiers (`special_0xNN`, `regimm_0xNN`, `opcode_0xNN`); the tool assigns no instruction names and no semantics. The census reads in memory, writes nothing, has explicit boot-byte and word limits and reuses the inspector's validated ELF parser. It is planning input for Gate 3, not decoder support: no instruction becomes supported by being counted. Results for the eight authorized samples and the report contract are in [BOOT_CENSUS.md](BOOT_CENSUS.md); tests are in `tests/test_boot_census.py`.
+
 ## Explicitly unsupported
 
 - All other opcodes, SPECIAL functions, immediate forms and register-field combinations are rejected with an explicit `Unsupported ...` diagnostic.
