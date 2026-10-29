@@ -15,7 +15,7 @@ This pass does three limited things: it records the official references behind e
 | Behavior | Contract | Permitted reference |
 |---|---|---|
 | CMake minimum and preset schema | CMake 3.25; preset schema version 6; Ninja; build trees under `build/` | RPTP-REF-007 |
-| CTest registration | Three named tests; Python interpreter; source-root working directory; exit status is the result | RPTP-REF-008 |
+| CTest registration | Named CTest entries (six at the time of writing); Python interpreter; source-root working directory; exit status is the result | RPTP-REF-008 |
 | Windows toolchain setup | `VsDevCmd.bat -arch=x64 -host_arch=x64`; `cl.exe` from the developer environment | RPTP-REF-009 |
 | CI shape | `push`, `pull_request`, `workflow_dispatch`; `contents: read`; Windows and Ubuntu runners; 15-minute timeout; Python 3.13 | RPTP-REF-010 |
 | Python test invocation | `unittest discover -s tests -v`; non-zero exit on failure | RPTP-REF-011 |
@@ -28,7 +28,7 @@ No build behavior in this layer was derived from a sealed project's build files 
 
 - **Configure:** `CMakeLists.txt` requires CMake 3.25, declares a C++ project, finds Python 3.10 or newer, and includes CTest. `CMakePresets.json` defines the `windows-msvc` and `host` configure presets with Ninja and Debug builds, and matching build presets that target `rptp-ci`.
 - **Doctor:** the `rptp-doctor` target invokes the Python doctor against the project source root. The doctor checks the required layout, Python version, available compiler, CMake, Ninja, git and the artifact guard.
-- **Tests:** `artifact_guard`, `python_unit_tests` and `gate0_differential_spike` are registered through one helper so every test runs with the source root as its working directory. The differential test writes only to the CMake binary directory.
+- **Tests:** `artifact_guard`, `python_unit_tests`, `gate0_differential_spike`, `runtime_loader_tests`, `runtime_loader_cli` and `runtime_execution_cli` are registered through one helper so every test runs with the source root as its working directory. The differential tests write only to the CMake binary directory.
 - **CI run history:** the Windows job runs as `Windows x64 / MSVC` and the Linux job as `Linux / GCC`. Listed CI run IDs, the ones that reported a green run, are recorded in [ROADMAP.md](ROADMAP.md) and [COMPATIBILITY.md](COMPATIBILITY.md).
 - **Aggregate target:** `rptp-ci` depends on `rptp-doctor` and runs `ctest --output-on-failure`.
 - **CI:** both jobs check out the source, install Python 3.13 and run the doctor plus the matching configure/build preset. The Windows job resolves Visual Studio through `vswhere.exe` and enters the x64 developer environment. The workflow has read-only repository permissions and no secrets.
@@ -39,7 +39,7 @@ No build behavior in this layer was derived from a sealed project's build files 
 
 ## Evidence and limits
 
-- The contract tests are local evidence and do not constitute a provenance review. An earlier code tip `25267b6` passed build, doctor and CTest in CI run #45 on Windows x64/MSVC and Linux/GCC. This does not resolve the build/CI/doctor layer's `Review required` status.
+- The contract tests are local evidence and do not constitute a provenance review. The latest merge `f967448` (PR #28) passed build, doctor and CTest in run `40856000777`; the earlier tip `25267b6` passed run #45 on Windows x64/MSVC and Linux/GCC. This does not resolve the build/CI/doctor layer's `Review required` status.
 - The wrapper change was checked through the current Visual Studio developer environment and invoked from a temporary working directory outside the repository. A local pass is not a clean-machine guarantee.
 - The doctor and workflow are not proven correct for every Visual Studio edition, runner image, shell, locale or filesystem.
 - No dependency was added, and no third-party action or CMake module was vendored.

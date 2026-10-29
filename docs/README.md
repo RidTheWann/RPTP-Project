@@ -1,0 +1,61 @@
+# RPTP documentation map
+
+This map lists every tracked document in the repository. `tests/test_doc_freshness.py` fails when a document is missing from this map, when a mapped path does not exist, or when the current-status pointers in `docs/STATE.md` / `docs/HANDOFF.md` lag behind the append-only evidence log.
+
+Every increment must review and update every document affected by its change before merge; see [AGENTS.md](../AGENTS.md). A historical record such as a decision or a dated log entry is not rewritten, but no document may keep a superseded date, PR/run pointer, count or status claim.
+
+## Start here
+
+- `README.md` — project overview, public status, build entry points and links.
+- `AGENTS.md` — mandatory agent rules, documentation-freshness rule and verification commands.
+- `docs/STATE.md` — single current status, blockers and next steps.
+- `docs/HANDOFF.md` — operational handoff, expected commands and next actionable step.
+- `docs/ROADMAP.md` — phases, pass criteria and current status per phase.
+- `docs/VERIFICATION_LOG.md` — append-only dated evidence record; never rewrite earlier entries.
+- `docs/README.md` — this map.
+
+## Status and evidence
+
+- `docs/COMPATIBILITY.md` — platform and sample results; explicitly not a game-compatibility list.
+- `docs/BOOT_CENSUS.md` — read-only boot-code census contract and dated retail figures (pre-`SUBU`, `R-029`).
+- `docs/EXECUTION_CONTEXT.md` — compact context snapshot for a new session.
+- `docs/RISKS.md` — risk register, mitigations and revisit triggers.
+- `docs/GATE0_REVIEW.md` — recorded narrow Gate 0 technical disposition and limits.
+- `docs/GATE2_EVIDENCE.md` — Gate 2 criterion-to-evidence dossier; not a disposition.
+- `docs/CLEAN_ROOM_AUDIT.md` — component provenance status.
+- `docs/PROVENANCE_PLAN.md` — per-increment procedure and independent-review gates.
+- `docs/REFERENCES.md` — permitted references, provenance contracts and exposure record.
+- `docs/LICENSES.md` — project license, SPDX policy and third-party notices.
+- `docs/INCREMENT_LEDGER.md` — reconstructed behavior, reference and test trail per increment.
+
+## Contracts
+
+- `docs/INSTRUCTION_CATALOG.md` — supported synthetic instruction subset and verification level.
+- `docs/IR_CFG.md` — IR, CFG, known-edge reachability and lowering contract.
+- `docs/RUNTIME.md` — native loader and synthetic execution-harness contract.
+- `docs/ISO_INSPECTOR.md` — read-only ISO 9660 inspection contract and format envelope.
+- `docs/BUILD_PROVENANCE.md` — build/CI/doctor reference basis and current contracts.
+- `docs/BUILDING_WINDOWS.md` — Windows x64 build and verification instructions.
+
+## Decisions
+
+- `docs/DECISIONS/ADR-0001-foundation-and-clean-room.md` — foundation, license and clean-room decision.
+- `docs/DECISIONS/ADR-0002-renderer-spike-plan.md` — renderer spike plan; selection remains open.
+- `docs/DECISIONS/ADR-0003-sealed-source-clean-room-policy.md` — accepted sealed-source policy.
+- `docs/DECISIONS/ADR-0004-gate2-read-only-scope.md` — read-only Gate 2 scope; extraction deferred.
+
+## Game records
+
+- `docs/games/README.md` — game work index, rules and status ladder.
+- `docs/games/black/STATUS.md` — Black (USA) read-only record.
+- `docs/games/bully/STATUS.md` — Bully (USA) read-only record.
+- `docs/games/downhill-domination/STATUS.md` — Downhill Domination (USA) read-only record.
+- `docs/games/god-of-war-ii/STATUS.md` — God of War II (USA) read-only record.
+- `docs/games/grand-theft-auto-san-andreas-indonesian-v6/STATUS.md` — owner-described Indonesian-language mod record.
+- `docs/games/grand-theft-auto-san-andreas-usa-v300/STATUS.md` — owner-described original USA sample record.
+- `docs/games/need-for-speed-most-wanted/STATUS.md` — Need for Speed - Most Wanted (USA) (v2.00) record.
+- `docs/games/resident-evil-4/STATUS.md` — Resident Evil 4 (USA) record.
+
+## External
+
+- `third_party/README.md` — third-party material boundary; not mapped as RPTP documentation.
