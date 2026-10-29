@@ -1128,3 +1128,16 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-msvc.ps1
   - Focused modules: `tests.test_instruction_branch_plain` 10 tests OK; `tests.test_runtime_execution` 25 tests OK; `tests.test_cross_path_equivalence` 4 tests OK.
   - `git diff --check` → no whitespace errors; the only output was Git's LF/CRLF normalization warnings for generated assets.
 - Limitations: local results are not hosted CI. The exact-head Windows x64/MSVC and Linux/GCC jobs and the merge-commit run are recorded only after PR #51 is pushed and merged. The increment is synthetic-only; no real ISO was needed, the local ISO corpus was not accessed, and no ISO, BIOS, game code or extracted asset was uploaded, committed or executed.
+
+## 2026-10-30 — ordinary-branch review hardening (PR #51)
+
+- Scope: review hardening for PR #51 only. Adds signed-low-64-bit condition cases (`0x00000000FFFFFFFF` positive and `0xFFFFFFFF00000001` negative) to `tests/test_instruction_branch_plain.py` and `tests/test_runtime_execution.py`, covering the Python oracle, generated C++ and the native `rptp-run` harness, and synchronizes stale PR pointers and test counts in `README.md`, [CLEAN_ROOM_AUDIT.md](CLEAN_ROOM_AUDIT.md), [COMPATIBILITY.md](COMPATIBILITY.md), [research/instruction-semantics-matrix.md](research/instruction-semantics-matrix.md) and [research/isa-evidence.md](research/isa-evidence.md). No runtime, decoder, oracle, emitter or build behavior changed; no Gate, provenance or compatibility status changed.
+- Commit `854ae42a7b544fef0f0bed4dea197b3f93ddb6f0` on branch `automation/827e7b9005d246449dc834d517d6f60d`; PR #51 remains open at this snapshot.
+- Local commands and results in the x64 MSVC environment (`VsDevCmd.bat -arch=x64 -host_arch=x64`, MSVC 14.51.36231, 2026-10-30):
+  - `python tools/rptp_doctor.py` → Overall status: PASS.
+  - `cmake --preset windows-msvc`, `cmake --build --preset windows-msvc` → succeeded; `ctest --test-dir build/cmake-msvc --output-on-failure` → 7/7 tests passed.
+  - `python -m unittest discover -s tests` with `RPTP_LOAD_BINARY` and `RPTP_RUN_BINARY` set to the built tools → 519 tests, OK, 0 skipped, 1 expected failure.
+  - Focused modules under the same environment: `tests.test_instruction_branch_plain` 12 tests, `tests.test_runtime_execution` 26 tests and `tests.test_cross_path_equivalence` 4 tests → 42 tests, OK, no skips.
+  - `python -m unittest tests.test_doc_budget tests.test_doc_freshness tests.test_progress_consistency tests.test_license_headers tests.test_build_contract` → 19 tests, OK; `python tools/check_forbidden_artifacts.py --root .` passed; `git diff --check` reported no whitespace errors.
+- These results supersede the earlier PR #51 entry counts (516 full-suite tests, 10 plain-branch tests, 25 runtime tests); that entry is kept unchanged because this log is append-only.
+- Limitations: local results are not hosted CI. No real ISO was needed or accessed; no ISO, BIOS, game code or extracted asset was uploaded, committed or executed.
