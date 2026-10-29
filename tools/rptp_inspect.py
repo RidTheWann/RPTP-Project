@@ -14,12 +14,19 @@ from typing import BinaryIO
 
 BLOCK = 2048
 PVD_LBA = 16
+MIN_IMAGE_BLOCKS = PVD_LBA + 2  # Primary volume descriptor plus its terminator.
 MAX_DESCRIPTORS = 256
 MAX_SYSTEM_CNF = 1024 * 1024
 MAX_DIRECTORY_ENTRIES = 100_000
+MAX_DIRECTORY_BYTES = 64 * 1024 * 1024
 MAX_BOOT_COMPONENTS = 32
 MAX_PROGRAM_HEADERS = 4096
 CHUNK_SIZE = 1024 * 1024
+MAX_READ_BYTES = 4 * 1024 * 1024
+MAX_SURVEY_DEPTH = 64
+MAX_SURVEY_DIRECTORIES = 100_000
+MAX_SURVEY_RECORDS = 1_000_000
+MAX_SURVEY_BYTES = 256 * 1024 * 1024
 ELF_HEADER_SIZE = 52
 ELF_PROGRAM_HEADER_SIZE = 32
 PT_LOAD = 1
@@ -57,7 +64,7 @@ def _name(raw: bytes) -> str:
         return "."
     if raw == b"\x01":
         return ".."
-    return raw.decode("ascii", errors="replace").rstrip("\x00")
+    return raw.decode("ascii")
 
 
 def _text(raw: bytes) -> str:
@@ -80,16 +87,35 @@ def _entry_metadata(entry: dict[str, object]) -> dict[str, object]:
 
 
 class IsoReader:
-    def __init__(self, stream: BinaryIO, size: int, name: str):
+    def __init__(
+        self,
+        stream: BinaryIO,
+        size: int,
+        name: str,
+        *,
+        max_read_bytes: int = MAX_READ_BYTES,
+        chunk_size: int = CHUNK_SIZE,
+    ):
+        if max_read_bytes <= 0:
+            raise ValueError("max_read_bytes must be positive.")
+        if chunk_size <= 0:
+            raise ValueError("chunk_size must be positive.")
         self.stream = stream
         self.size = size
         self.name = name
+        self.max_read_bytes = max_read_bytes
+        self.chunk_size = chunk_size
         self.volume_blocks = 0
+        self.pvd_lba = PVD_LBA
+        self.volume_descriptors: list[dict[str, int]] = []
         self.root: dict[str, object] | None = None
 
     def read_at(self, offset: int, size: int) -> bytes:
-        if offset < 0 or size < 0 or offset + size > self.size:
-            raise InspectError("IMAGE_BOUNDS", f"Byte range [{offset}, {offset + size}) is outside the image.")
+        if offset < 0 or size < 0 or offset > self.size or size > self.size - offset:
+            raise InspectError(
+                "IMAGE_BOUNDS",
+                f"Byte range at offset {offset} of {size} bytes is outside the image.",
+            )
         self.stream.seek(offset)
         data = self.stream.read(size)
         if len(data) != size:
@@ -99,13 +125,15 @@ class IsoReader:
     def extent(self, entry: dict[str, object]) -> tuple[int, int]:
         first_lba = int(entry["lba"]) + int(entry["xa_len"])
         length = int(entry["size"])
-        start = first_lba * BLOCK
         limit = self.volume_blocks * BLOCK
-        if first_lba > self.volume_blocks or start + length > limit or start + length > self.size:
+        if first_lba < 0 or length < 0 or first_lba > self.volume_blocks:
+            raise InspectError("EXTENT_OUT_OF_BOUNDS", f"Extent is outside the image or declared volume: {entry['name']}.")
+        start = first_lba * BLOCK
+        if start > limit or length > limit - start or start > self.size or length > self.size - start:
             raise InspectError("EXTENT_OUT_OF_BOUNDS", f"Extent is outside the image or declared volume: {entry['name']}.")
         return start, length
 
-    def parse_record(self, rec: bytes) -> dict[str, object]:
+    def parse_record(self, rec: bytes, *, allow_unsupported: bool = False) -> dict[str, object]:
         if len(rec) < 34 or rec[0] < 34 or rec[0] > len(rec):
             raise InspectError("DIRECTORY_RECORD_LENGTH_INVALID", "Invalid or truncated ISO 9660 directory record.")
         rec = rec[:rec[0]]
@@ -116,21 +144,43 @@ class IsoReader:
         pad = 1 if name_len % 2 == 0 else 0
         if name_end + pad > len(rec):
             raise InspectError("DIRECTORY_IDENTIFIER_TRUNCATED", "Directory identifier extends beyond its record.")
+        if pad and rec[name_end] != 0:
+            raise InspectError("DIRECTORY_PADDING_INVALID", "Directory identifier padding is not zero.")
+        flags = rec[25]
+        if flags & 0x60 or (flags & 0x02 and flags & 0x0C):
+            raise InspectError("DIRECTORY_FLAGS_INVALID", "Directory record has reserved or invalid directory flags.")
+        raw_name = rec[33:name_end]
+        if raw_name in (b"\x00", b"\x01"):
+            if not flags & 0x02:
+                raise InspectError("DIRECTORY_IDENTIFIER_INVALID", "Special directory identifiers require the directory flag.")
+        elif any(byte < 0x20 or byte >= 0x7F for byte in raw_name):
+            raise InspectError("DIRECTORY_IDENTIFIER_INVALID", "Primary identifiers must contain printable ASCII bytes.")
         volume_sequence = _u723(rec, 28, "volume sequence number")
         if volume_sequence != 1:
             raise InspectError(
                 "UNSUPPORTED_VOLUME_SEQUENCE",
                 f"Directory record volume sequence {volume_sequence} is not supported; only single-volume sets are accepted.",
             )
+        file_unit_size = rec[26]
+        interleave_gap = rec[27]
+        if not allow_unsupported and (file_unit_size != 0 or interleave_gap != 0):
+            raise InspectError(
+                "INTERLEAVED_UNSUPPORTED",
+                f"Interleaved directory record is unsupported: {_name(rec[33:name_end])}.",
+            )
+        if not allow_unsupported and flags & 0x04:
+            raise InspectError("ASSOCIATED_FILE_UNSUPPORTED", "Associated files are not interpreted as regular file data.")
+        if not allow_unsupported and flags & 0x08:
+            raise InspectError("RECORD_FORMAT_UNSUPPORTED", "Record-formatted file data is unsupported.")
         entry = {
             "name": _name(rec[33:name_end]),
             "id": rec[33:name_end],
             "xa_len": rec[1],
             "lba": _u733(rec, 2, "extent location"),
             "size": _u733(rec, 10, "data length"),
-            "flags": rec[25],
-            "directory": bool(rec[25] & 0x02),
-            "multi_extent": bool(rec[25] & 0x80),
+            "flags": flags,
+            "directory": bool(flags & 0x02),
+            "multi_extent": bool(flags & 0x80),
             "record_length": rec[0],
             "volume_sequence": volume_sequence,
         }
@@ -140,16 +190,36 @@ class IsoReader:
     def scan_pvd(self) -> bytes:
         pvd = None
         terminated = False
+        self.volume_blocks = 0
+        self.pvd_lba = PVD_LBA
+        self.volume_descriptors = []
         end = min(self.size // BLOCK, PVD_LBA + MAX_DESCRIPTORS)
         for lba in range(PVD_LBA, end):
+            if pvd is not None and lba >= self.volume_blocks:
+                raise InspectError("VOLUME_DESCRIPTOR_OUT_OF_BOUNDS", "Volume descriptor set extends beyond the declared volume.")
             desc = self.read_at(lba * BLOCK, BLOCK)
             if desc[1:6] != b"CD001":
                 raise InspectError("VOLUME_DESCRIPTOR_SIGNATURE", f"Descriptor at block {lba} has no CD001 signature.")
-            if desc[6] != 1:
-                raise InspectError("VOLUME_DESCRIPTOR_VERSION", f"Descriptor at block {lba} has unsupported version {desc[6]}.")
-            if desc[0] == 1 and pvd is None:
-                pvd = desc
-            if desc[0] == 255:
+            kind, version = desc[0], desc[6]
+            if kind not in (0, 1, 2, 3, 255):
+                raise InspectError("UNSUPPORTED_VOLUME_DESCRIPTOR_TYPE", f"Descriptor at block {lba} has reserved type {kind}.")
+            if version != 1 and not (kind == 2 and version == 2):
+                raise InspectError("VOLUME_DESCRIPTOR_VERSION", f"Descriptor at block {lba} has unsupported version {version}.")
+            if kind == 1:
+                if pvd is None:
+                    self.volume_blocks = _u733(desc, 80, "volume space size")
+                    if self.volume_blocks <= PVD_LBA:
+                        raise InspectError("INVALID_VOLUME_SIZE", "Declared volume is too small.")
+                    if self.volume_blocks * BLOCK > self.size:
+                        raise InspectError("IMAGE_TRUNCATED", "Image is smaller than the volume space size in the PVD.")
+                    if lba >= self.volume_blocks:
+                        raise InspectError("VOLUME_DESCRIPTOR_OUT_OF_BOUNDS", "Primary volume descriptor lies outside the declared volume.")
+                    pvd = desc
+                    self.pvd_lba = lba
+                elif desc != pvd:
+                    raise InspectError("PRIMARY_VOLUME_DESCRIPTOR_CONFLICT", "Repeated primary volume descriptors have conflicting bytes.")
+            self.volume_descriptors.append({"lba": lba, "type": kind, "version": version})
+            if kind == 255:
                 terminated = True
                 break
         if not terminated:
@@ -158,7 +228,15 @@ class IsoReader:
             raise InspectError("PRIMARY_VOLUME_DESCRIPTOR_MISSING", "No primary volume descriptor was found.")
         return pvd
 
+    def descriptor_warnings(self) -> list[str]:
+        return [
+            f"Volume descriptor type {item['type']} at block {item['lba']} is not interpreted; only the primary ISO 9660 namespace is inspected."
+            for item in self.volume_descriptors if item["type"] not in (1, 255)
+        ]
+
     def parse_pvd(self, pvd: bytes) -> dict[str, object]:
+        if pvd[881] != 1:
+            raise InspectError("UNSUPPORTED_FILE_STRUCTURE_VERSION", f"Primary file-structure version {pvd[881]} is unsupported; expected 1.")
         self.volume_blocks = _u733(pvd, 80, "volume space size")
         block_size = _u723(pvd, 128, "logical block size")
         volume_set_size = _u723(pvd, 120, "volume set size")
@@ -175,11 +253,13 @@ class IsoReader:
         if self.volume_blocks * BLOCK > self.size:
             raise InspectError("IMAGE_TRUNCATED", "Image is smaller than the volume space size in the PVD.")
         root_len = pvd[156]
-        if root_len < 34 or 156 + root_len > BLOCK:
-            raise InspectError("ROOT_RECORD_INVALID", "Root directory record is invalid.")
+        if root_len != 34:
+            raise InspectError("ROOT_RECORD_INVALID", "PVD root directory record must be 34 bytes.")
         root = self.parse_record(pvd[156:156 + root_len])
         if not root["directory"] or root["id"] != b"\x00" or root["size"] == 0:
             raise InspectError("ROOT_RECORD_INVALID", "PVD root record is not a valid non-empty root directory.")
+        if root["multi_extent"]:
+            raise InspectError("MULTI_EXTENT_UNSUPPORTED", "Multi-extent root directory is unsupported.")
         self.root = root
         return {
             "volume_id": _text(pvd[40:72]),
@@ -195,7 +275,9 @@ class IsoReader:
             "bibliographic_file_identifier": _text(pvd[776:813]),
             "volume_space_blocks": self.volume_blocks,
             "logical_block_size": block_size,
-            "primary_volume_descriptor_lba": PVD_LBA,
+            "primary_volume_descriptor_lba": self.pvd_lba,
+            "file_structure_version": pvd[881],
+            "volume_descriptors": [dict(item) for item in self.volume_descriptors],
             "root_directory": {
                 "extent_lba": root["lba"],
                 "size_bytes": root["size"],
@@ -203,37 +285,204 @@ class IsoReader:
             },
         }
 
+    @staticmethod
+    def _validate_directory_length(size: int) -> None:
+        if size <= 0 or size % BLOCK:
+            raise InspectError(
+                "DIRECTORY_SIZE_INVALID",
+                f"Directory data length {size} is not a positive multiple of {BLOCK} bytes.",
+            )
+
+    @staticmethod
+    def _validate_dot_entries(
+        directory: dict[str, object],
+        first: dict[str, object] | None,
+        second: dict[str, object] | None,
+    ) -> None:
+        if first is None or first["id"] != b"\x00" or not first["directory"]:
+            raise InspectError(
+                "DIRECTORY_DOT_ENTRY_INVALID",
+                f"Directory {directory['name']} does not start with a '.' directory record.",
+            )
+        if second is None or second["id"] != b"\x01" or not second["directory"]:
+            raise InspectError(
+                "DIRECTORY_DOT_ENTRY_INVALID",
+                f"Directory {directory['name']} does not have a '..' directory record as its second entry.",
+            )
+
     def list_dir(self, entry: dict[str, object]) -> list[dict[str, object]]:
         if not entry["directory"]:
             raise InspectError("NOT_A_DIRECTORY", f"{entry['name']} is not a directory.")
         if entry["multi_extent"]:
             raise InspectError("MULTI_EXTENT_UNSUPPORTED", f"Multi-extent directory is unsupported: {entry['name']}.")
         start, size = self.extent(entry)
+        self._validate_directory_length(size)
+        if size > MAX_DIRECTORY_BYTES:
+            raise InspectError("DIRECTORY_SIZE_LIMIT", f"Directory exceeds the {MAX_DIRECTORY_BYTES}-byte safety limit.")
         position = 0
+        scanned_records = 0
+        first_record: dict[str, object] | None = None
+        second_record: dict[str, object] | None = None
         items: list[dict[str, object]] = []
         while position < size:
             block_left = BLOCK - (position % BLOCK)
             segment = min(block_left, size - position)
             rec_len = self.read_at(start + position, 1)[0]
             if rec_len == 0:
+                if any(self.read_at(start + position, segment)):
+                    raise InspectError("DIRECTORY_PADDING_INVALID", "Directory sector padding is not zero.")
                 position += segment
                 continue
-            if rec_len < 34:
+            if rec_len < 34 or rec_len % 2:
                 raise InspectError("DIRECTORY_RECORD_LENGTH_INVALID", f"Invalid record length {rec_len} at directory offset {position}.")
             if rec_len > segment:
                 raise InspectError("DIRECTORY_RECORD_CROSSES_BLOCK", f"Directory record crosses a logical block at offset {position}.")
             rec = self.read_at(start + position, rec_len)
             child = self.parse_record(rec)
+            if scanned_records == 0:
+                first_record = child
+            elif scanned_records == 1:
+                second_record = child
+            scanned_records += 1
+            if scanned_records > MAX_DIRECTORY_ENTRIES:
+                raise InspectError("DIRECTORY_ENTRY_LIMIT", "Directory record safety limit exceeded.")
+            if child["multi_extent"]:
+                raise InspectError("MULTI_EXTENT_UNSUPPORTED", f"Multi-extent entry is unsupported: {child['name']}.")
             if child["id"] not in (b"\x00", b"\x01"):
                 items.append(child)
-                if len(items) > MAX_DIRECTORY_ENTRIES:
-                    raise InspectError("DIRECTORY_ENTRY_LIMIT", "Directory entry limit exceeded.")
             position += rec_len
+        self._validate_dot_entries(entry, first_record, second_record)
         return items
 
+    def survey(self) -> dict[str, object]:
+        if self.size < MIN_IMAGE_BLOCKS * BLOCK:
+            raise InspectError(
+                "IMAGE_TOO_SMALL",
+                f"Image is too small to contain a volume descriptor set; at least {MIN_IMAGE_BLOCKS} blocks are required.",
+            )
+        if self.size % BLOCK:
+            raise InspectError("IMAGE_ALIGNMENT_INVALID", f"Image size is not a multiple of {BLOCK} bytes.")
+        self.parse_pvd(self.scan_pvd())
+        assert self.root is not None
+        directory_count = 0
+        directory_record_count = 0
+        file_count = 0
+        record_count = 0
+        scanned_records = 0
+        scanned_bytes = 0
+        max_depth = 0
+        multi_extent_records = 0
+        interleaved_records = 0
+        skipped_unsupported_directories = 0
+        highest_file_extent_end = 0
+        largest_file_size = 0
+        scheduled: set[tuple[int, int]] = {self.extent(self.root)}
+        stack: list[tuple[dict[str, object], int]] = [(self.root, 0)]
+        while stack:
+            directory, depth = stack.pop()
+            start, size = self.extent(directory)
+            self._validate_directory_length(size)
+            if depth > MAX_SURVEY_DEPTH:
+                raise InspectError("SURVEY_DEPTH_LIMIT", f"Directory depth exceeds {MAX_SURVEY_DEPTH}.")
+            if len(scheduled) > MAX_SURVEY_DIRECTORIES:
+                raise InspectError("SURVEY_DIRECTORY_LIMIT", f"Directory count exceeds {MAX_SURVEY_DIRECTORIES}.")
+            if size > MAX_DIRECTORY_BYTES:
+                raise InspectError("DIRECTORY_SIZE_LIMIT", f"Directory exceeds the {MAX_DIRECTORY_BYTES}-byte safety limit.")
+            scanned_bytes += size
+            if scanned_bytes > MAX_SURVEY_BYTES:
+                raise InspectError("SURVEY_BYTE_LIMIT", f"Directory survey exceeds the {MAX_SURVEY_BYTES}-byte safety limit.")
+            directory_count += 1
+            max_depth = max(max_depth, depth)
+            position = 0
+            directory_records = 0
+            first_record: dict[str, object] | None = None
+            second_record: dict[str, object] | None = None
+            while position < size:
+                block_left = BLOCK - (position % BLOCK)
+                segment = min(block_left, size - position)
+                rec_len = self.read_at(start + position, 1)[0]
+                if rec_len == 0:
+                    if any(self.read_at(start + position, segment)):
+                        raise InspectError("DIRECTORY_PADDING_INVALID", "Directory sector padding is not zero.")
+                    position += segment
+                    continue
+                if rec_len < 34 or rec_len % 2:
+                    raise InspectError("DIRECTORY_RECORD_LENGTH_INVALID", f"Invalid record length {rec_len} at directory offset {position}.")
+                if rec_len > segment:
+                    raise InspectError("DIRECTORY_RECORD_CROSSES_BLOCK", f"Directory record crosses a logical block at offset {position}.")
+                rec = self.read_at(start + position, rec_len)
+                child = self.parse_record(rec, allow_unsupported=True)
+                if directory_records == 0:
+                    first_record = child
+                elif directory_records == 1:
+                    second_record = child
+                directory_records += 1
+                position += rec_len
+                scanned_records += 1
+                if scanned_records > MAX_SURVEY_RECORDS:
+                    raise InspectError("SURVEY_RECORD_LIMIT", f"Scanned record count exceeds {MAX_SURVEY_RECORDS}.")
+                if child["id"] in (b"\x00", b"\x01"):
+                    continue
+                record_count += 1
+                if rec[26] != 0 or rec[27] != 0:
+                    interleaved_records += 1
+                if child["multi_extent"]:
+                    multi_extent_records += 1
+                if child["directory"]:
+                    directory_record_count += 1
+                    if child["multi_extent"] or rec[26] != 0 or rec[27] != 0:
+                        skipped_unsupported_directories += 1
+                        continue
+                    child_key = self.extent(child)
+                    if child_key not in scheduled:
+                        if len(scheduled) >= MAX_SURVEY_DIRECTORIES:
+                            raise InspectError("SURVEY_DIRECTORY_LIMIT", f"Directory count exceeds {MAX_SURVEY_DIRECTORIES}.")
+                        scheduled.add(child_key)
+                        stack.append((child, depth + 1))
+                else:
+                    file_count += 1
+                    file_start, file_size = self.extent(child)
+                    highest_file_extent_end = max(highest_file_extent_end, file_start + file_size)
+                    largest_file_size = max(largest_file_size, file_size)
+            self._validate_dot_entries(directory, first_record, second_record)
+        sector_count = self.size // BLOCK
+        volume_bytes = self.volume_blocks * BLOCK
+        if self.volume_blocks == sector_count:
+            volume_relation = "equal"
+        elif self.volume_blocks < sector_count:
+            volume_relation = "smaller"
+        else:
+            volume_relation = "larger"
+        warnings = self.descriptor_warnings()
+        return {
+            "status": "SURVEYED_WITH_WARNINGS" if warnings else "SURVEYED",
+            "volume_descriptors": [dict(item) for item in self.volume_descriptors],
+            "warnings": warnings,
+            "image_size_bytes": self.size,
+            "sector_count": sector_count,
+            "logical_block_size": BLOCK,
+            "volume_space_blocks": self.volume_blocks,
+            "volume_space_bytes": volume_bytes,
+            "volume_space_relation": volume_relation,
+            "volume_space_delta_bytes": volume_bytes - self.size,
+            "directory_count": directory_count,
+            "directory_record_count": directory_record_count,
+            "file_count": file_count,
+            "record_count": record_count,
+            "max_depth": max_depth,
+            "multi_extent_records": multi_extent_records,
+            "interleaved_records": interleaved_records,
+            "skipped_unsupported_directories": skipped_unsupported_directories,
+            "highest_file_extent_end_bytes": highest_file_extent_end,
+            "largest_file_size_bytes": largest_file_size,
+        }
+
     def find_child(self, parent: dict[str, object], component: str) -> dict[str, object]:
-        wanted = _key(component)
-        matches = [entry for entry in self.list_dir(parent) if _key(entry["id"]) == wanted]
+        entries = self.list_dir(parent)
+        if ";" in component:
+            matches = [entry for entry in entries if str(entry["name"]).casefold() == component.casefold()]
+        else:
+            matches = [entry for entry in entries if _key(entry["id"]) == _key(component)]
         if not matches:
             raise InspectError("BOOT_EXECUTABLE_NOT_FOUND", f"BOOT path component was not found: {component}.")
         if len(matches) > 1:
@@ -241,7 +490,13 @@ class IsoReader:
         return matches[0]
 
     def resolve_boot(self, value: str) -> tuple[dict[str, object], str | None, list[str]]:
-        value = value.strip().strip('"').strip("'")
+        value = value.strip()
+        if value and value[0] in ("'", '"'):
+            if len(value) < 2 or value[-1] != value[0]:
+                raise InspectError("BOOT_PATH_INVALID", "BOOT path has unbalanced quotes.")
+            value = value[1:-1]
+        if "'" in value or '"' in value:
+            raise InspectError("BOOT_PATH_INVALID", "BOOT path contains unexpected quotes.")
         device = None
         if ":" in value:
             device, value = value.split(":", 1)
@@ -267,18 +522,32 @@ class IsoReader:
             raise InspectError("MULTI_EXTENT_UNSUPPORTED", "Multi-extent BOOT executable is not supported.")
         return entry, device, resolved_path
 
+    def read_range(self, start: int, size: int) -> bytes:
+        if start < 0 or size < 0 or start > self.size or size > self.size - start:
+            raise InspectError("IMAGE_BOUNDS", f"Byte range at offset {start} of {size} bytes is outside the image.")
+        if size > self.max_read_bytes:
+            raise InspectError("FILE_SIZE_LIMIT", f"Read size {size} exceeds the {self.max_read_bytes}-byte safety limit.")
+        chunks: list[bytes] = []
+        offset = 0
+        while offset < size:
+            count = min(self.chunk_size, size - offset)
+            chunks.append(self.read_at(start + offset, count))
+            offset += count
+        return b"".join(chunks)
+
     def read_entry(self, entry: dict[str, object], max_size: int) -> bytes:
         start, size = self.extent(entry)
-        if size > max_size:
-            raise InspectError("FILE_SIZE_LIMIT", f"{entry['name']} exceeds the {max_size}-byte safety limit.")
-        return self.read_at(start, size)
+        limit = min(max_size, self.max_read_bytes)
+        if size > limit:
+            raise InspectError("FILE_SIZE_LIMIT", f"{entry['name']} exceeds the {limit}-byte safety limit.")
+        return self.read_range(start, size)
 
     def hash_entry(self, entry: dict[str, object]) -> str:
         start, size = self.extent(entry)
         digest = hashlib.sha256()
         offset = 0
         while offset < size:
-            count = min(CHUNK_SIZE, size - offset)
+            count = min(self.chunk_size, size - offset)
             digest.update(self.read_at(start + offset, count))
             offset += count
         return digest.hexdigest()
@@ -303,14 +572,21 @@ class IsoReader:
         ehsize = int.from_bytes(h[40:42], "little")
         phentsize = int.from_bytes(h[42:44], "little")
         phnum = int.from_bytes(h[44:46], "little")
-        if ehsize < ELF_HEADER_SIZE or ehsize > size:
-            raise InspectError("ELF_HEADER_SIZE_INVALID", "ELF32 header size is invalid.")
+        if ehsize != ELF_HEADER_SIZE or phentsize != ELF_PROGRAM_HEADER_SIZE:
+            raise InspectError(
+                "ELF_HEADER_SIZE_INVALID",
+                f"ELF32 requires a {ELF_HEADER_SIZE}-byte header and {ELF_PROGRAM_HEADER_SIZE}-byte program-header entries.",
+            )
         if phnum > MAX_PROGRAM_HEADERS:
             raise InspectError("ELF_PROGRAM_HEADER_LIMIT", f"Program header count exceeds {MAX_PROGRAM_HEADERS}.")
         if phnum:
-            if phentsize < ELF_PROGRAM_HEADER_SIZE or phoff < ehsize or phoff + phentsize * phnum > size:
+            if phoff < ehsize or phoff + phentsize * phnum > size:
                 raise InspectError("ELF_PROGRAM_HEADERS_OUT_OF_BOUNDS", "ELF program header table is invalid or out of bounds.")
         load_segments: list[dict[str, object]] = []
+        entry_point_mappings: list[dict[str, object]] = []
+        previous_address = -1
+        highest_memory_end = 0
+        load_segments_overlap = False
         for index in range(phnum):
             ph = self.read_at(start + phoff + index * phentsize, ELF_PROGRAM_HEADER_SIZE)
             segment_type = int.from_bytes(ph[0:4], "little")
@@ -338,13 +614,47 @@ class IsoReader:
                     "ELF_LOAD_SEGMENT_ALIGNMENT_INVALID",
                     f"ELF PT_LOAD segment {index} has non-power-of-two alignment {alignment}.",
                 )
+            if alignment > 1 and virtual_address % alignment != file_offset % alignment:
+                raise InspectError(
+                    "ELF_LOAD_SEGMENT_ALIGNMENT_INVALID",
+                    f"ELF PT_LOAD segment {index} has incongruent virtual address and file offset for alignment {alignment}.",
+                )
+            virtual_memory_end = virtual_address + memory_size
+            virtual_file_end = virtual_address + file_size
+            if virtual_memory_end > 0x100000000:
+                raise InspectError(
+                    "ELF_LOAD_SEGMENT_ADDRESS_INVALID",
+                    f"ELF PT_LOAD segment {index} has a virtual address range that overflows ELF32.",
+                )
+            if virtual_address < previous_address:
+                raise InspectError(
+                    "ELF_LOAD_SEGMENT_ORDER_INVALID",
+                    f"ELF PT_LOAD segment {index} is not in ascending virtual address order.",
+                )
+            previous_address = virtual_address
+            if memory_size:
+                if virtual_address < highest_memory_end:
+                    load_segments_overlap = True
+                highest_memory_end = max(highest_memory_end, virtual_memory_end)
+            if virtual_address <= entry_point < virtual_memory_end:
+                file_backed = entry_point < virtual_file_end
+                entry_point_mappings.append({
+                    "program_header_index": index,
+                    "file_offset": file_offset + entry_point - virtual_address if file_backed else None,
+                    "executable": bool(flags & 1),
+                    "file_backed": file_backed,
+                })
             load_segments.append({
+                "program_header_index": index,
                 "type": segment_type,
                 "file_offset": file_offset,
                 "virtual_address": virtual_address,
                 "physical_address": physical_address,
                 "file_size": file_size,
                 "memory_size": memory_size,
+                "virtual_file_end": virtual_file_end,
+                "virtual_memory_end": virtual_memory_end,
+                "zero_fill_size": memory_size - file_size,
                 "flags": flags,
                 "alignment": alignment,
             })
@@ -360,11 +670,16 @@ class IsoReader:
             "program_header_count": phnum,
             "load_segment_count": len(load_segments),
             "load_segments": load_segments,
+            "load_segments_overlap": load_segments_overlap,
+            "entry_point_mappings": entry_point_mappings,
         }
 
     def inspect(self) -> dict[str, object]:
-        if self.size < (PVD_LBA + 1) * BLOCK:
-            raise InspectError("IMAGE_TOO_SMALL", "Image is too small to contain an ISO 9660 volume descriptor.")
+        if self.size < MIN_IMAGE_BLOCKS * BLOCK:
+            raise InspectError(
+                "IMAGE_TOO_SMALL",
+                f"Image is too small to contain a volume descriptor set; at least {MIN_IMAGE_BLOCKS} blocks are required.",
+            )
         if self.size % BLOCK:
             raise InspectError("IMAGE_ALIGNMENT_INVALID", f"Image size is not a multiple of {BLOCK} bytes.")
         iso = self.parse_pvd(self.scan_pvd())
@@ -379,19 +694,28 @@ class IsoReader:
             raise InspectError("SYSTEM_CNF_IS_DIRECTORY", "SYSTEM.CNF is a directory, not a regular file.")
         if system["multi_extent"]:
             raise InspectError("MULTI_EXTENT_UNSUPPORTED", "Multi-extent SYSTEM.CNF is not supported.")
-        raw_config = self.read_entry(system, MAX_SYSTEM_CNF).decode("ascii", errors="replace").replace("\x00", "")
+        config_bytes = self.read_entry(system, MAX_SYSTEM_CNF).rstrip(b"\x00")
+        if b"\x00" in config_bytes:
+            raise InspectError("SYSTEM_CNF_ENCODING_INVALID", "SYSTEM.CNF contains an embedded NUL byte.")
+        try:
+            raw_config = config_bytes.decode("ascii")
+        except UnicodeDecodeError as exc:
+            raise InspectError("SYSTEM_CNF_ENCODING_INVALID", "SYSTEM.CNF contains non-ASCII bytes.") from exc
         config: dict[str, str] = {}
         for line in raw_config.splitlines():
             if "=" in line:
                 key, value = line.split("=", 1)
-                if key.strip():
-                    config[key.strip().upper()] = value.strip()
+                key = key.strip().upper()
+                if key:
+                    if key in config:
+                        raise InspectError("SYSTEM_CNF_DUPLICATE_KEY", f"SYSTEM.CNF repeats key {key}.")
+                    config[key] = value.strip()
         boot_key = "BOOT2" if config.get("BOOT2") else ("BOOT" if config.get("BOOT") else None)
         if boot_key is None:
             raise InspectError("BOOT_CONFIG_MISSING", "SYSTEM.CNF has no non-empty BOOT2 or BOOT entry.")
         executable, device, resolved_path = self.resolve_boot(config[boot_key])
         elf = self.parse_elf(executable)
-        warnings: list[str] = []
+        warnings = self.descriptor_warnings()
         if device is None:
             warnings.append("BOOT path has no device prefix; cdrom0 is expected for a typical PS2 disc.")
         elif device != "cdrom0":
@@ -400,16 +724,18 @@ class IsoReader:
             warnings.append(f"BOOT ELF machine id is {elf['machine_id']}; EM_MIPS (8) is expected for PS2.")
         if elf["type"] != 2:
             warnings.append(f"BOOT ELF type is {elf['type']}; ET_EXEC (2) is expected for a PS2 executable.")
+        if elf["load_segments_overlap"]:
+            warnings.append("BOOT ELF PT_LOAD memory ranges overlap; loading precedence is not evaluated.")
         if elf["load_segment_count"] == 0:
             warnings.append("BOOT ELF has no PT_LOAD segment.")
         else:
-            entry_point = int(elf["entry_point"])
-            entry_in_segment = any(
-                int(segment["virtual_address"]) <= entry_point < int(segment["virtual_address"]) + int(segment["memory_size"])
-                for segment in elf["load_segments"]
-            )
-            if not entry_in_segment:
+            mappings = elf["entry_point_mappings"]
+            if not mappings:
                 warnings.append("BOOT ELF entry point is outside all PT_LOAD segments.")
+            elif not any(mapping["file_backed"] and mapping["executable"] for mapping in mappings):
+                warnings.append("BOOT ELF entry point is not in file-backed executable PT_LOAD bytes.")
+            if len(mappings) > 1:
+                warnings.append("BOOT ELF entry point maps to multiple PT_LOAD segments.")
         return {
             "status": "INSPECTED_WITH_WARNINGS" if warnings else "INSPECTED",
             "input_name": self.name,
@@ -437,29 +763,92 @@ class IsoReader:
             "warnings": warnings,
             "limitations": [
                 "Read-only ISO 9660 primary-volume-descriptor inspector; files are not extracted or modified.",
-                "Supports single-volume ISO 9660 images with 2048-byte logical blocks; multi-extent entries are rejected.",
-                "ELF inspection validates the header, program-header table and PT_LOAD file bounds; it does not recompile or launch the game.",
+                "Inspects only the primary namespace of single-volume ISO 9660 images with 2048-byte logical blocks; encountered multi-extent entries are rejected.",
+                "Auxiliary namespaces, system-use bytes and extended-attribute contents are not interpreted; no Joliet or Rock Ridge name resolution is performed.",
+                "ELF inspection validates selected header, program-table, PT_LOAD file/alignment/order and ELF32 virtual-range constraints; it does not recompile or launch the game.",
+                "The ELF load map is metadata only; overlap precedence, physical-address mapping, relocations and PS2 loading conventions are not evaluated.",
                 "No retail/commercial ISO is included in tests; broader PS2 disc compatibility is unverified.",
             ],
         }
 
 
-def inspect_stream(stream: BinaryIO, size: int, name: str = "<stream>") -> dict[str, object]:
-    return IsoReader(stream, size, name).inspect()
+def inspect_stream(
+    stream: BinaryIO,
+    size: int,
+    name: str = "<stream>",
+    *,
+    max_read_bytes: int = MAX_READ_BYTES,
+    chunk_size: int = CHUNK_SIZE,
+) -> dict[str, object]:
+    return IsoReader(
+        stream,
+        size,
+        name,
+        max_read_bytes=max_read_bytes,
+        chunk_size=chunk_size,
+    ).inspect()
 
 
-def inspect_bytes(data: bytes, name: str = "<memory>") -> dict[str, object]:
-    return inspect_stream(BytesIO(data), len(data), name)
+def inspect_bytes(
+    data: bytes,
+    name: str = "<memory>",
+    *,
+    max_read_bytes: int = MAX_READ_BYTES,
+    chunk_size: int = CHUNK_SIZE,
+) -> dict[str, object]:
+    return inspect_stream(
+        BytesIO(data),
+        len(data),
+        name,
+        max_read_bytes=max_read_bytes,
+        chunk_size=chunk_size,
+    )
 
 
-def inspect_path(path: Path) -> dict[str, object]:
+def inspect_path(
+    path: Path,
+    *,
+    max_read_bytes: int = MAX_READ_BYTES,
+    chunk_size: int = CHUNK_SIZE,
+) -> dict[str, object]:
     try:
         if not path.exists():
             raise InspectError("INPUT_NOT_FOUND", f"Input file does not exist: {path}")
         if not path.is_file():
             raise InspectError("INPUT_NOT_FILE", f"Input path is not a regular file: {path}")
         with path.open("rb") as stream:
-            return inspect_stream(stream, path.stat().st_size, str(path))
+            return inspect_stream(
+                stream,
+                path.stat().st_size,
+                str(path),
+                max_read_bytes=max_read_bytes,
+                chunk_size=chunk_size,
+            )
+    except InspectError:
+        raise
+    except OSError as exc:
+        raise InspectError("INPUT_UNREADABLE", f"Cannot read {path}: {exc}") from exc
+
+
+def survey_path(
+    path: Path,
+    *,
+    max_read_bytes: int = MAX_READ_BYTES,
+    chunk_size: int = CHUNK_SIZE,
+) -> dict[str, object]:
+    try:
+        if not path.exists():
+            raise InspectError("INPUT_NOT_FOUND", f"Input file does not exist: {path}")
+        if not path.is_file():
+            raise InspectError("INPUT_NOT_FILE", f"Input path is not a regular file: {path}")
+        with path.open("rb") as stream:
+            return IsoReader(
+                stream,
+                path.stat().st_size,
+                str(path),
+                max_read_bytes=max_read_bytes,
+                chunk_size=chunk_size,
+            ).survey()
     except InspectError:
         raise
     except OSError as exc:
@@ -470,11 +859,42 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("image", type=Path, help="User-owned 2048-byte-sector ISO image, opened read-only")
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
+    parser.add_argument("--survey", action="store_true", help="Emit a read-only directory survey instead of boot inspection")
     args = parser.parse_args()
     try:
-        report = inspect_path(args.image)
+        if args.survey:
+            report = survey_path(args.image)
+        else:
+            report = inspect_path(args.image)
         if args.json:
             print(json.dumps(report, indent=2, sort_keys=True))
+        elif args.survey:
+            print(f"RPTP ISO directory survey: {report['status']}")
+            print(f"Image size: {report['image_size_bytes']} bytes; sectors: {report['sector_count']}")
+            if report["volume_space_relation"] == "equal":
+                print(f"Volume space: {report['volume_space_blocks']} blocks; equal to the file size")
+            else:
+                print(
+                    f"Volume space: {report['volume_space_blocks']} blocks; "
+                    f"{report['volume_space_relation']} than the file by "
+                    f"{abs(report['volume_space_delta_bytes'])} bytes"
+                )
+            print(
+                f"Directories: {report['directory_count']}; files: {report['file_count']}; "
+                f"max depth: {report['max_depth']}"
+            )
+            print(
+                f"Multi-extent records: {report['multi_extent_records']}; "
+                f"interleaved records: {report['interleaved_records']}"
+            )
+            print(
+                f"Highest file extent end: {report['highest_file_extent_end_bytes']} bytes; "
+                f"largest file section: {report['largest_file_size_bytes']} bytes"
+            )
+            for warning in report["warnings"]:
+                print(f"WARNING: {warning}")
+            print("Counts describe directory records, not reconstructed multi-extent files.")
+            print("No file data was extracted or executed.")
         else:
             iso, cfg, boot = report["iso9660"], report["system_cnf"], report["boot_executable"]
             print(f"RPTP ISO inspection: {report['status']}")

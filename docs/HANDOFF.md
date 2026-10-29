@@ -1,43 +1,43 @@
-# Handoff — RPTP after Gate 0 publication
+# Handoff — RPTP after the Gate 0 technical disposition
 
 ## Current position
 
-- Public repository: RidTheWann/RPTP-Project, default branch main. The only allowed branches are `main` (release-only) and `development` (work), as defined in `docs/BRANCH_POLICY.md`.
-- The README cover is published at docs/assets/rptp-cover.png; README should contain one cover reference.
-- The isolated Gate 0 spike is published. The owner ran scripts/run-msvc.ps1 on Windows x64 and recorded PASS_LOCAL_DIFFERENTIAL_SPIKE, native_matches_oracle true and windows_msvc_verified true.
-- The 12 original Gate 0 tests and artifact guard passed in the recorded Windows run. Linux/GCC and Linux/Clang spike evidence is also recorded.
-- The work laptop is aligned to Visual Studio 2026 Build Tools 18.11.1 / MSVC 19.51.36260.0 and Python 3.13.16. Doctor, CMake configure, CTest and the Gate 0 spike pass locally.
-- The ISO inspector was expanded with single-volume checks, `SYSTEM.CNF`/BOOT validation, PVD/root/boot metadata, SHA-256, ELF PT_LOAD checks, warnings, an explicit error taxonomy and deterministic mutation smoke tests. 33 ISO inspector tests and 53 total tests pass; CTest is 3/3.
-- Downhill Domination (USA) was inspected read-only and recorded in `docs/games/downhill-domination/STATUS.md`. No boot or native port exists. Every game worked on must get a `docs/games/<slug>/STATUS.md` record.
-- The project license is GPL-3.0-or-later for original RPTP material. Third-party licensing remains a per-dependency audit.
-- Formal Gate 0 acceptance is pending human review.
-- Historical source exposure involving PS2Recomp and PS2 Web Recomp remains documented; this must not be described as erased or resolved by the license decision.
-- On 2026-10-21 the owner adopted ADR-0003: those projects and other emulator/recompiler implementations are sealed. Do not access them again; new work must be independently derived from neutral specifications and tests. `docs/CLEAN_ROOM_AUDIT.md` tracks component status; no file is certified clean-room, and the build/CI/doctor layer is `Review required`.
-
-## Current phase
-
-B1b repository/toolchain baseline and B1c ISO inspector prototype: CMake presets, rptp doctor, CTest wrappers, the synthetic-only ISO inspector, and Windows/MSVC + Linux CI are present. PR #1 (`development -> main`) merged as `5bf62b2`; main CI run `39594267744` and development sync run `39594304857` passed, and the branch-policy job passed on the PR run. A clean-checkout local Windows run at pre-push commit `83459c1` (now `b4d6fa7`; content unchanged) passed; it is recorded in STATE.md. Gate 2 synthetic hardening and one real ISO inspection are locally verified, but broader real ISO layouts, multi-extent support and safe extraction boundaries remain open. Do not access sealed projects; apply ADR-0003 to all new work. Do not expand R5900 instruction semantics or PS2 runtime implementation until the owner completes the formal Gate 0 review.
+- Public repository: RidTheWann/RPTP-Project. On 2026-10-28 the owner authorized isolated increment branches, PRs, CI diagnosis/fixes and merges after local verification/review and both exact-head compiler jobs pass. Follow [AGENTS.md](../AGENTS.md), pin the merge head and monitor actual merge-commit CI; no direct main push, force-push, history rewrite or administrative override.
+- PRs #10–#31 merged inspection, `SLL`, census, native loader, harness, `DADDU`, `SUBU`, tooling and census-evidence increments; `SUBU` is PR #22 (`21fdffc`, run `40849490715`), and latest PR #31 is `330dfb4` (run `40862024274`), both jobs passing on each merge. The original checkout remains preserved. User-profile `/rptp-develop` is manual and not vendored; GitHub CLI write access is verified. Query current PR/run metadata before claiming hosted CI or merge, and use the append-only [VERIFICATION_LOG.md](VERIFICATION_LOG.md) for observed results.
+- PR #7 (reference policy) and PR #8 (older `SUBU` work) are closed; `SUBU` was re-implemented as PR #22 on current `origin/main`, and neither closed branch was reused or modified.
+- 2026-10-23 Gate 0 disposition: **technical pass for the narrow synthetic differential-spike scope** by explicit owner delegation, recorded in [GATE0_REVIEW.md](GATE0_REVIEW.md). Not a clean-room certification, independent review or Gate 2 disposition.
+- Gate 3 is **not passed**. The synthetic instruction catalog includes `SLTI`, `SLTIU`, `DADDIU`, `DADDU`, `SUBU` and `SLL` (`RPTP-REF-014`/`015`/`002`), with separate literal-oracle and native C++ differential suites. `DADDIU` passed run #50, `DADDU` PR #19 run `40836707828` and `SUBU` PR #22 run `40849490715`. See [INSTRUCTION_CATALOG.md](INSTRUCTION_CATALOG.md), [IR_CFG.md](IR_CFG.md), [INCREMENT_LEDGER.md](INCREMENT_LEDGER.md) and the append-only [VERIFICATION_LOG.md](VERIFICATION_LOG.md). No product recompiler, function discovery, runtime or game-boot evidence exists.
+- Gate 2 is **open, read-only and not passed** under [ADR-0004](DECISIONS/ADR-0004-gate2-read-only-scope.md); extraction is deferred and needs a separate ADR and threat model. Evidence gaps: [GATE2_EVIDENCE.md](GATE2_EVIDENCE.md).
+- ISO inspector: single-volume ISO 9660, strict descriptor/record/config validation, root `SYSTEM.CNF`/BOOT validation, PVD/root/boot metadata, SHA-256, ELF PT_LOAD bounds/alignment/order/zero-fill plus entry load-map and overlap reporting, explicit error taxonomy, read and survey byte budgets, metadata-only survey, deterministic malformed-input tests. Details: [ISO_INSPECTOR.md](ISO_INSPECTOR.md); retail sample summary: [COMPATIBILITY.md](COMPATIBILITY.md).
+- Boot-code census: `tools/rptp_census.py` counts aligned file-backed PT_LOAD words and current-decoder acceptance for a local ELF or an ISO boot executable read in memory. The eight-image table was refreshed read-only after `SLL` and `DADDU` but predates `SUBU` (`R-029`). The one image available on this machine, Downhill Domination (USA), was remeasured with the post-`SUBU` decoder: 260,641/413,500 accepted words (63.03%), whole-image SHA-256 and mtime unchanged, deterministic JSON, no warnings. The other seven rows remain pre-`SUBU`; acceptance across the sample is 58.3–69.2%, and counts include data/padding. Details and limits: [BOOT_CENSUS.md](BOOT_CENSUS.md). No extraction, execution or compatibility is implied.
+- Native runtime foundation: C++20 `rptp_runtime` provides sparse `GuestMemory` and a fail-closed ELF32 little-endian `ET_EXEC`/`EM_MIPS` `PT_LOAD` loader; `rptp-load` emits deterministic `rptp.runtime.load.v1` JSON and exits `0`/`2`/`1`. CTest `runtime_loader_tests` and `runtime_loader_cli` cover direct C++ checks and an independent Python-built image differential. Contract: [RUNTIME.md](RUNTIME.md).
+- Synthetic execution harness: `rptp_runtime::execute_loaded` runs the documented synthetic subset (Gate 0 instructions plus SLL, SLT, SLTU, SLTI, SLTIU, DADDIU, DADDU, SUBU, AND, OR, XOR, NOR, ANDI, ORI, XORI, LUI) with one delay slot over a loaded image; `rptp-run` emits deterministic `rptp.runtime.run.v1` JSON, `EXEC_*` errors, a step budget and an optional trace. Direct C++ checks plus an independent Python oracle differential in `tests/test_runtime_execution.py` cover arithmetic, memory, logic, shifts, comparisons, branches, calls, delay slots, failures and determinism. It is a test vehicle, not a product runtime; the Gate 0 fixture halts with `EXEC_MEMORY_FAULT` because its store falls outside the single RX segment. No kernel, syscall, ISO ingestion, boot or compatibility behavior.
+- Provenance: Gate 0 spike and ISO inspector are `Provisional independent`; the build/CI/doctor layer is `Review required`. Nothing is clean-room certified. Historical PS2Recomp / PS2 Web Recomp exposure remains documented and is not erased by the license decision. Policy: ADR-0003; component status: [CLEAN_ROOM_AUDIT.md](CLEAN_ROOM_AUDIT.md); procedure: [PROVENANCE_PLAN.md](PROVENANCE_PLAN.md).
+- Toolchain baseline: CMake presets, `rptp doctor`, CTest targets and Windows/MSVC + Linux/GCC CI are present. A plain shell has no MSVC `cl.exe`; run MSVC checks through `VsDevCmd.bat -arch=x64 -host_arch=x64` or the wrapper. Contracts: [BUILD_PROVENANCE.md](BUILD_PROVENANCE.md) and `tests/test_build_contract.py`.
+- Owner decisions still open: independent provenance reviews of the Gate 0 spike, the ISO inspector and the build/CI/doctor layer, and the Gate 2 disposition.
+- Current documents are bounded by `tests/test_doc_budget.py` (STATE/HANDOFF: at most 8192 UTF-8 bytes and 900 characters per line) and kept current by `tests/test_doc_freshness.py` plus [docs/README.md](README.md): no document may keep a superseded date, pointer, count or status. Keep detail in the canonical documents, not here.
 
 ## Expected local commands
 
-Windows, from Visual Studio Developer PowerShell or x64 Native Tools prompt:
+From Visual Studio Developer PowerShell (x64) or the x64 Native Tools prompt, in the repository root:
 
+    python tools/rptp_doctor.py
+    python tools/check_forbidden_artifacts.py --root .
     cmake --preset windows-msvc
     cmake --build --preset windows-msvc
+    python -m compileall -q tools tests
+    python -m unittest discover -s tests -v
+    powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-msvc.ps1
 
-Host toolchain:
+Focused runs: `python -m unittest discover -s tests -p test_doc_budget.py -v`, and `python -m unittest tests.test_ir_cfg -v` for the IR/CFG suite. Host preset: `cmake --preset host` then `cmake --build --preset host`.
 
-    cmake --preset host
-    cmake --build --preset host
+Useful paths: `tools/rptp_doctor.py`, `tools/check_forbidden_artifacts.py`, `tools/rptp_gate0_spike.py`, `tools/rptp_ir.py`, `tools/rptp_lower.py`, `tools/rptp_inspect.py`, `tools/rptp_census.py`, `tools/rptp_progress.py`, `scripts/run-msvc.ps1`, `docs/VERIFICATION_LOG.md` (append-only), `docs/games/<slug>/STATUS.md` plus its index in `docs/games/README.md`.
 
-If a CI job fails, record the exact runner, command and error before updating project state.
+If a CI job fails, record the exact runner, command and error in `docs/VERIFICATION_LOG.md` before updating `docs/STATE.md`.
 
-## Next review points
+## Next actionable step
 
-1. Human owner completes formal Gate 0 review.
-2. Enforce ADR-0003: keep sealed projects off-limits, preserve provenance, and quarantine any work that cannot demonstrate independent derivation.
-3. Arrange an independent review or re-derivation of the build/CI/doctor layer marked `Review required` in `docs/CLEAN_ROOM_AUDIT.md`; do not claim clean-room certification before it is recorded.
-4. Keep the two-branch policy enforced: work on `development`, require green CI, and merge to `main` only through a `development -> main` pull request.
-5. Keep every capability claim tied to reproducible evidence. B1b technical checks and development CI now pass; the independent clean-room review of the build/CI/doctor layer remains open.
-5. Continue validating the ISO inspector only against owner-authorized discs; keep `docs/games/` records current, record hashes and outcomes without committing game images, and do not promote compatibility from synthetic tests.
-6. Review multi-extent, ISO 9660 variants and safe extraction boundaries before treating Gate 2 as passed.
+1. Extend the synthetic runtime harness only inside the documented model, or apply the per-increment procedure in [PROVENANCE_PLAN.md](PROVENANCE_PLAN.md) to the next smallest Gate 3 behavior using [BOOT_CENSUS.md](BOOT_CENSUS.md) frequency evidence. Either way: behavior statement, permitted `RPTP-REF-*`, a test that fails first, fail-closed diagnostics, then an informative commit body. Do not expand into kernel, IOP, DMA, VU, GS, SPU2, extraction or compatibility claims.
+2. Start the independent ISO inspector provenance review and add the native runtime layer to the independent review scope; Gate 2 cannot close without the inspector review.
+3. Keep `docs/games/` records current and validate the inspector only against owner-authorized discs; never commit game images.
+4. Treat [IR_CFG.md](IR_CFG.md) and [RUNTIME.md](RUNTIME.md) as the analysis and runtime loader/harness contracts; keep every extension fail-closed and never infer function extents, runtime reachability or game compatibility from candidate lists, loaded images or generated artifacts.

@@ -85,9 +85,22 @@ def fixture_words() -> list[tuple[int, str, int]]:
     return [(addr(i * 4), name, word) for i, (name, word) in enumerate(labels)]
 
 
-def build_fixture_elf() -> bytes:
-    """Create an ELF32 little-endian EM_MIPS executable from original test words."""
-    rows = fixture_words()
+def ori_fixture_words() -> list[tuple[int, str, int]]:
+    """Return (guest PC, label, encoded word) rows for the separate ORI program."""
+    addr = lambda off: BASE + off
+    labels = [
+        ("zero_register_stays_zero", encode_i(0x0D, ZERO, ZERO, 0xFFFF)),
+        ("zero_extend_high_bit", encode_i(0x0D, ZERO, T0, 0x8001)),
+        ("combine_zero_extended_value", encode_i(0x0D, T0, T1, 0x4000)),
+        ("return_value", encode_i(0x0D, ZERO, V0, 42)),
+        ("return_from_main", encode_r(RA, ZERO, ZERO, 0, 0x08)),
+        ("main_return_delay_slot", encode_r(ZERO, ZERO, ZERO, 0, 0x00)),
+    ]
+    return [(addr(i * 4), name, word) for i, (name, word) in enumerate(labels)]
+
+
+def build_elf_from_rows(rows: list[tuple[int, str, int]]) -> bytes:
+    """Create an ELF32 little-endian EM_MIPS executable from explicit test words."""
     code = b"".join(struct.pack("<I", word) for _, _, word in rows)
     ident = b"\x7fELF" + bytes([1, 1, 1, 0, 0]) + bytes(7)
     # ELF32 header: ET_EXEC, EM_MIPS, EV_CURRENT, one PT_LOAD, no section table.
@@ -124,6 +137,16 @@ def build_fixture_elf() -> bytes:
     return ehdr + phdr + bytes(0x1000 - len(ehdr) - len(phdr)) + code
 
 
+def build_fixture_elf() -> bytes:
+    """Create the registered Gate 0 synthetic fixture without changing its bytes."""
+    return build_elf_from_rows(fixture_words())
+
+
+def build_ori_fixture_elf() -> bytes:
+    """Create the separate synthetic ORI differential fixture."""
+    return build_elf_from_rows(ori_fixture_words())
+
+
 def sign_extend_16(value: int) -> int:
     value &= 0xFFFF
     return value - 0x10000 if value & 0x8000 else value
@@ -132,6 +155,19 @@ def sign_extend_16(value: int) -> int:
 def sign_extend_32(value: int) -> int:
     value &= 0xFFFFFFFF
     return value - 0x100000000 if value & 0x80000000 else value
+
+
+def sign_extend_64(value: int) -> int:
+    value &= 0xFFFFFFFFFFFFFFFF
+    return value - 0x10000000000000000 if value & 0x8000000000000000 else value
+
+
+def slt64(lhs: int, rhs: int) -> int:
+    return 1 if sign_extend_64(lhs) < sign_extend_64(rhs) else 0
+
+
+def sltu64(lhs: int, rhs: int) -> int:
+    return 1 if (lhs & 0xFFFFFFFFFFFFFFFF) < (rhs & 0xFFFFFFFFFFFFFFFF) else 0
 
 
 def parse_elf(data: bytes) -> tuple[int, dict[int, int], dict[str, int]]:
@@ -198,17 +234,49 @@ def decode_instruction(pc: int, word: int) -> dict[str, Any]:
     if op == 0x00:
         if funct == 0x21 and shamt == 0:
             return {"pc": pc, "word": word, "op": "addu", "rs": rs, "rt": rt, "rd": rd}
+        if funct == 0x23 and shamt == 0:
+            return {"pc": pc, "word": word, "op": "subu", "rs": rs, "rt": rt, "rd": rd}
+        if funct in (0x24, 0x25, 0x26, 0x27) and shamt == 0:
+            name = {0x24: "and", 0x25: "or", 0x26: "xor", 0x27: "nor"}[funct]
+            return {"pc": pc, "word": word, "op": name, "rs": rs, "rt": rt, "rd": rd}
+        if funct == 0x2A and shamt == 0:
+            return {"pc": pc, "word": word, "op": "slt", "rs": rs, "rt": rt, "rd": rd}
+        if funct == 0x2B and shamt == 0:
+            return {"pc": pc, "word": word, "op": "sltu", "rs": rs, "rt": rt, "rd": rd}
+        if funct == 0x2D and shamt == 0:
+            return {"pc": pc, "word": word, "op": "daddu", "rs": rs, "rt": rt, "rd": rd}
         if funct == 0x08 and rt == 0 and rd == 0 and shamt == 0:
             return {"pc": pc, "word": word, "op": "jr", "rs": rs}
-        if funct == 0x00 and rs == 0 and rt == 0 and rd == 0 and shamt == 0:
-            return {"pc": pc, "word": word, "op": "nop"}
+        if funct == 0x00:
+            if rs != 0:
+                raise ValueError(f"SLL requires rs=0 (word 0x{word:08X}) at 0x{pc:08X}")
+            if rt == 0 and rd == 0 and shamt == 0:
+                return {"pc": pc, "word": word, "op": "nop"}
+            return {"pc": pc, "word": word, "op": "sll", "rs": rs, "rt": rt, "rd": rd, "shamt": shamt}
         raise ValueError(f"Unsupported SPECIAL instruction 0x{word:08X} at 0x{pc:08X}")
     if op == 0x09:
         return {"pc": pc, "word": word, "op": "addiu", "rs": rs, "rt": rt, "imm": simm}
+    if op == 0x0A:
+        return {"pc": pc, "word": word, "op": "slti", "rs": rs, "rt": rt, "imm": simm}
+    if op == 0x0B:
+        return {"pc": pc, "word": word, "op": "sltiu", "rs": rs, "rt": rt, "imm": simm}
+    if op == 0x19:
+        return {"pc": pc, "word": word, "op": "daddiu", "rs": rs, "rt": rt, "imm": simm}
+    if op in (0x0C, 0x0D, 0x0E):
+        name = {0x0C: "andi", 0x0D: "ori", 0x0E: "xori"}[op]
+        return {"pc": pc, "word": word, "op": name, "rs": rs, "rt": rt, "imm": imm}
+    if op == 0x0F:
+        if rs != 0:
+            raise ValueError(f"LUI requires rs=0 (word 0x{word:08X}) at 0x{pc:08X}")
+        return {"pc": pc, "word": word, "op": "lui", "rs": rs, "rt": rt, "imm": imm}
     if op == 0x23:
         return {"pc": pc, "word": word, "op": "lw", "rs": rs, "rt": rt, "imm": simm}
     if op == 0x2B:
         return {"pc": pc, "word": word, "op": "sw", "rs": rs, "rt": rt, "imm": simm}
+    if op == 0x37:
+        return {"pc": pc, "word": word, "op": "ld", "rs": rs, "rt": rt, "imm": simm}
+    if op == 0x3F:
+        return {"pc": pc, "word": word, "op": "sd", "rs": rs, "rt": rt, "imm": simm}
     if op in (0x04, 0x05):
         target = (pc + 4 + (simm << 2)) & 0xFFFFFFFF
         return {"pc": pc, "word": word, "op": "beq" if op == 0x04 else "bne", "rs": rs, "rt": rt, "imm": simm, "target": target}
@@ -263,11 +331,78 @@ def execute_oracle(entry: int, words: dict[int, int]) -> dict[str, Any]:
             result = sign_extend_32(value)
             if ins["rt"]:
                 r[ins["rt"]] = result & 0xFFFFFFFFFFFFFFFF
+        elif op == "daddiu":
+            value = (r[ins["rs"]] + ins["imm"]) & 0xFFFFFFFFFFFFFFFF
+            if ins["rt"]:
+                r[ins["rt"]] = value
         elif op == "addu":
             value = ((r[ins["rs"]] & 0xFFFFFFFF) + (r[ins["rt"]] & 0xFFFFFFFF)) & 0xFFFFFFFF
             result = sign_extend_32(value)
             if ins["rd"]:
                 r[ins["rd"]] = result & 0xFFFFFFFFFFFFFFFF
+        elif op == "subu":
+            value = ((r[ins["rs"]] & 0xFFFFFFFF) - (r[ins["rt"]] & 0xFFFFFFFF)) & 0xFFFFFFFF
+            result = sign_extend_32(value)
+            if ins["rd"]:
+                r[ins["rd"]] = result & 0xFFFFFFFFFFFFFFFF
+        elif op == "daddu":
+            value = (r[ins["rs"]] + r[ins["rt"]]) & 0xFFFFFFFFFFFFFFFF
+            if ins["rd"]:
+                r[ins["rd"]] = value
+        elif op == "sll":
+            value = ((r[ins["rt"]] & 0xFFFFFFFF) << ins["shamt"]) & 0xFFFFFFFF
+            result = sign_extend_32(value)
+            if ins["rd"]:
+                r[ins["rd"]] = result & 0xFFFFFFFFFFFFFFFF
+        elif op == "and":
+            result = r[ins["rs"]] & r[ins["rt"]]
+            if ins["rd"]:
+                r[ins["rd"]] = result & 0xFFFFFFFFFFFFFFFF
+        elif op == "or":
+            result = r[ins["rs"]] | r[ins["rt"]]
+            if ins["rd"]:
+                r[ins["rd"]] = result & 0xFFFFFFFFFFFFFFFF
+        elif op == "xor":
+            result = r[ins["rs"]] ^ r[ins["rt"]]
+            if ins["rd"]:
+                r[ins["rd"]] = result & 0xFFFFFFFFFFFFFFFF
+        elif op == "nor":
+            result = ~(r[ins["rs"]] | r[ins["rt"]])
+            if ins["rd"]:
+                r[ins["rd"]] = result & 0xFFFFFFFFFFFFFFFF
+        elif op == "slt":
+            result = slt64(r[ins["rs"]], r[ins["rt"]])
+            if ins["rd"]:
+                r[ins["rd"]] = result
+        elif op == "sltu":
+            result = sltu64(r[ins["rs"]], r[ins["rt"]])
+            if ins["rd"]:
+                r[ins["rd"]] = result
+        elif op == "slti":
+            result = slt64(r[ins["rs"]], ins["imm"])
+            if ins["rt"]:
+                r[ins["rt"]] = result
+        elif op == "sltiu":
+            result = sltu64(r[ins["rs"]], ins["imm"])
+            if ins["rt"]:
+                r[ins["rt"]] = result
+        elif op == "ori":
+            value = (r[ins["rs"]] | (ins["imm"] & 0xFFFF)) & 0xFFFFFFFFFFFFFFFF
+            if ins["rt"]:
+                r[ins["rt"]] = value
+        elif op == "andi":
+            value = ((r[ins["rs"]] & 0xFFFFFFFF) & ins["imm"]) & 0xFFFFFFFF
+            if ins["rt"]:
+                r[ins["rt"]] = value
+        elif op == "xori":
+            value = (r[ins["rs"]] ^ (ins["imm"] & 0xFFFF)) & 0xFFFFFFFFFFFFFFFF
+            if ins["rt"]:
+                r[ins["rt"]] = value
+        elif op == "lui":
+            value = (ins["imm"] << 16) & 0xFFFFFFFF
+            result = sign_extend_32(value)
+            if ins["rt"]:
+                r[ins["rt"]] = result & 0xFFFFFFFFFFFFFFFF
         elif op == "lw":
             address = ((r[ins["rs"]] & 0xFFFFFFFF) + ins["imm"]) & 0xFFFFFFFF
             if address not in s["memory"]:
@@ -278,6 +413,23 @@ def execute_oracle(entry: int, words: dict[int, int]) -> dict[str, Any]:
         elif op == "sw":
             address = ((r[ins["rs"]] & 0xFFFFFFFF) + ins["imm"]) & 0xFFFFFFFF
             s["memory"][address] = r[ins["rt"]] & 0xFFFFFFFF
+        elif op == "ld":
+            address = ((r[ins["rs"]] & 0xFFFFFFFF) + ins["imm"]) & 0xFFFFFFFF
+            if address & 7:
+                raise ValueError(f"Oracle unaligned doubleword load at 0x{address:08X}")
+            if address not in s["memory"] or (address + 4) not in s["memory"]:
+                missing = address if address not in s["memory"] else address + 4
+                raise ValueError(f"Oracle read from uninitialized memory 0x{missing:08X}")
+            result = (s["memory"][address] & 0xFFFFFFFF) | ((s["memory"][address + 4] & 0xFFFFFFFF) << 32)
+            if ins["rt"]:
+                r[ins["rt"]] = result & 0xFFFFFFFFFFFFFFFF
+        elif op == "sd":
+            address = ((r[ins["rs"]] & 0xFFFFFFFF) + ins["imm"]) & 0xFFFFFFFF
+            if address & 7:
+                raise ValueError(f"Oracle unaligned doubleword store at 0x{address:08X}")
+            value = r[ins["rt"]] & 0xFFFFFFFFFFFFFFFF
+            s["memory"][address] = value & 0xFFFFFFFF
+            s["memory"][address + 4] = (value >> 32) & 0xFFFFFFFF
         elif op == "beq":
             new_target = ins["target"] if r[ins["rs"]] == r[ins["rt"]] else (pc + 8) & 0xFFFFFFFF
         elif op == "bne":
@@ -322,6 +474,9 @@ def emit_cpp(decoded: dict[int, dict[str, Any]], entry: int) -> str:
         elif op == "addu":
             lines.append(f"            write_register(s, {ins['rd']}u, addu32(s.registers[{ins['rs']}u], s.registers[{ins['rt']}u]));")
             lines.append("            break;")
+        elif op == "ori":
+            lines.append(f"            write_register(s, {ins['rt']}u, ori32(s.registers[{ins['rs']}u], 0x{ins['imm']:04X}u));")
+            lines.append("            break;")
         elif op == "lw":
             lines.append(f"            write_register(s, {ins['rt']}u, load_word(s, effective_address(s.registers[{ins['rs']}u], {ins['imm']})));")
             lines.append("            break;")
@@ -346,6 +501,11 @@ def emit_cpp(decoded: dict[int, dict[str, Any]], entry: int) -> str:
             raise ValueError(f"Cannot emit unsupported instruction {op}")
         cases.extend(lines)
     body = "\n".join(cases)
+    ori_helper = (
+        "std::uint64_t ori32(std::uint64_t lhs, std::uint32_t immediate) {{\n"
+        "    return lhs | static_cast<std::uint64_t>(immediate);\n"
+        "}}\n\n"
+    ) if any(ins["op"] == "ori" for ins in decoded.values()) else ""
     return f'''// Generated by tools/rptp_gate0_spike.py. Do not edit by hand.
 // This is a narrow ISA-subset spike, not a complete R5900 implementation.
 #include <array>
@@ -381,7 +541,7 @@ std::uint64_t addu32(std::uint64_t lhs, std::uint64_t rhs) {{
     return sign_extend_32(value);
 }}
 
-std::uint32_t effective_address(std::uint64_t base, std::int32_t offset) {{
+{ori_helper}std::uint32_t effective_address(std::uint64_t base, std::int32_t offset) {{
     return static_cast<std::uint32_t>(static_cast<std::uint32_t>(base) + static_cast<std::uint32_t>(offset));
 }}
 
