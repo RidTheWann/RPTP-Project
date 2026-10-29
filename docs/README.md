@@ -34,6 +34,7 @@ Every increment must review and update every document affected by its change bef
 - `docs/IR_CFG.md` — IR, CFG, known-edge reachability and lowering contract.
 - `docs/RUNTIME.md` — native loader and synthetic execution-harness contract.
 - `docs/ISO_INSPECTOR.md` — read-only ISO 9660 inspection contract and format envelope.
+- `docs/ISO_INSPECTOR_REVIEW.md` — independent inspector review findings against `4c0df86`; not a Gate disposition.
 - `docs/BUILD_PROVENANCE.md` — build/CI/doctor reference basis and current contracts.
 - `docs/BUILDING_WINDOWS.md` — Windows x64 build and verification instructions.
 
