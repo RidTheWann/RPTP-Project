@@ -3,8 +3,8 @@
 - **Status: NOT PASSED — evidence only.** Only the human owner records a Gate disposition.
 - **Base commit:** `6499b05d710837f3cae4b3f7e06fa5ab0cb9e55a`; CI run `39838955979` passed Windows x64/MSVC and Linux/GCC.
 - **Historical CI:** runs #44/#45 cover SLTI/SLTIU; the existing log records DADDIU/correction run #50 on Windows x64/MSVC and Linux/GCC. These are historical records, not CI for this inspection increment.
-- **Technical review date:** 2026-10-28. The primary-only ISO envelope and ELF32 load-map checks use `RPTP-REF-006`/`003` and named synthetic tests in [ISO_INSPECTOR.md](ISO_INSPECTOR.md); the eight-image sample was revalidated read-only. This increment publishes the hardened inspector; hosted exact-head CI results are recorded in [VERIFICATION_LOG.md](VERIFICATION_LOG.md) when observed.
-- **Gate 2 status:** remains **NOT PASSED**. The independent inspector provenance review, hosted exact-head CI of this increment and owner disposition remain open. No extraction, boot or runtime feature is added.
+- **Technical review date:** 2026-10-28. The primary-only ISO envelope and ELF32 load-map checks use `RPTP-REF-006`/`003` and named synthetic tests in [ISO_INSPECTOR.md](ISO_INSPECTOR.md); the eight-image sample was revalidated read-only. The hardened inspector merged through PR #10; exact-head and actual merge-commit CI results are recorded in [VERIFICATION_LOG.md](VERIFICATION_LOG.md).
+- **Gate 2 status:** remains **NOT PASSED**. The independent inspector provenance review and owner disposition remain open. No extraction, boot or runtime feature is added.
 - **Scope:** read-only ISO inspection and synthetic test evidence, per [ADR-0004](DECISIONS/ADR-0004-gate2-read-only-scope.md). No boot, extraction, recompilation or compatibility claim.
 
 ## Owner prerequisites
@@ -28,7 +28,7 @@
 | Extraction boundary | No extraction or output-directory feature exists; ADR-0004 records read-only scope and defers extraction. | Not a Gate 2 criterion. Future extraction needs a separate ADR and threat model. |
 | Multi-extent and ISO-variant technical review | The format matrix in [ISO_INSPECTOR.md](ISO_INSPECTOR.md) maps descriptor coexistence, primary-only names, opaque extensions, multi-extent chains, raw/non-2048 and multi-volume cases to named synthetic acceptance/rejection tests. | **Technical review complete for the primary-only envelope.** Extension decoding/file assembly remains unsupported, not a claim of broad disc compatibility. |
 | Interleave field provenance | ECMA-119 5th edition (December 2024), Table 8 (p. 37) and §§10.1.8–10.1.9 (p. 40); independent field tests. | Evidenced. Interleaved file data remains unsupported. |
-| CI on the current evidence | The inspection increment is published for exact-head CI; observed results are appended to [VERIFICATION_LOG.md](VERIFICATION_LOG.md). | **Open:** green Windows x64/MSVC plus Linux/GCC jobs for the exact head are required before merge. |
+| CI on the current evidence | The inspection increment merged as `a1365b5`; exact-head run `40769859822` and main-branch run `40770223526` passed both jobs; observed results are in [VERIFICATION_LOG.md](VERIFICATION_LOG.md). | **Verified for that increment:** Windows x64/MSVC and Linux/GCC green on the exact head and the merge commit. |
 
 ## Retail sample limits
 
@@ -45,5 +45,5 @@ Eight owner-authorized images have read-only inspection records. Historical pass
 1. Record an independent review of the ISO inspector's provenance; the narrow Gate 0 technical disposition is already recorded but does not substitute for it.
 2. Confirm the read-only Gate 2 scope in ADR-0004; extraction is deferred and requires a separate threat model.
 3. Review the completed primary-only format matrix and its named synthetic tests; any request for extension decoding, extraction or broader disc support needs additional scope and evidence.
-4. Owner publication of the final evidence commit followed by green Windows x64/MSVC and Linux/GCC CI.
+4. Publication and CI: satisfied for the inspection increment by PR #10 (merge commit `a1365b5`; exact-head and merge-commit runs green on both jobs).
 5. Owner records the Gate 2 disposition; this dossier must not be treated as that disposition.
