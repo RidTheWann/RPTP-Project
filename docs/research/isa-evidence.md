@@ -1,6 +1,7 @@
 # R5900 ISA catalog evidence levels
 
 - **Status date:** 2026-10-30
+- **Baseline:** `origin/main` after the approved-reference branch-likely increment merged (`fcae099`, 2026-10-30).
 - **Subject:** [`docs/research/r5900-isa.json`](r5900-isa.json) — schema version 1, 224 instruction entries, four cited sources, `"verified": true` on every entry.
 - **Purpose:** Define honest, auditable evidence levels for the catalog so that its `"verified"` boolean, its `semantics` text and its page citations are not read as semantic proof or as an approved reference.
 - **Scope:** Documentation and evidence classification only. This document adds no instruction semantics, corrects no catalog entry, quotes no text from the cited manuals, changes no JSON data and records no Gate, provenance or legal disposition. Only the owner can approve a reference.
@@ -32,16 +33,16 @@ The catalog mixes several different things: an encoding map (opcode/`funct`/oper
 ### Level B — `test-defined + approved reference`
 
 - **Basis:** the instruction has (1) an approved `RPTP-REF-*` row in [REFERENCES.md](../REFERENCES.md) that supports the encoding/operation used, and (2) executable RPTP tests that would fail if the modeled behavior is wrong — literal-expectation assertions, an oracle differential, an IR-lowering native differential, or the Gate 0 synthetic fixture and its native differential.
-- **Coverage:** the synthetic instruction subset in [INSTRUCTION_CATALOG.md](../INSTRUCTION_CATALOG.md) — 28 instructions at this commit, mapped row by row in §3. After the approved-reference branch-likely increment lands, the same table also covers the eight likely forms (§3.1).
+- **Coverage:** the synthetic instruction subset in [INSTRUCTION_CATALOG.md](../INSTRUCTION_CATALOG.md) — 36 instructions at this commit, mapped row by row in §3, including the eight branch-likely forms added by the 2026-10-30 approved-reference increment (`RPTP-REF-015`, §3.1).
 - **What it proves:** for each listed instruction, an approved generic reference supports the cited encoding/operation, and RPTP tests exercise the modeled behavior. The model itself is an RPTP test definition and is narrower than R5900 hardware wherever the limits column says so.
-- **What it does not prove:** complete R5900 semantics; hardware behavior beyond the permitted-use scope of the cited reference; or the catalog entry's `semantics` text for that instruction (the catalog is not the evidence). It also does not promote any other catalog entry: the 197 catalog entries outside §3 remain at Level C even when the decoder recognizes their mnemonic.
+- **What it does not prove:** complete R5900 semantics; hardware behavior beyond the permitted-use scope of the cited reference; or the catalog entry's `semantics` text for that instruction (the catalog is not the evidence). It also does not promote any other catalog entry: the 189 catalog entries outside §3 remain at Level C even when the decoder recognizes their mnemonic.
 - **Dual-model differential tests are not Level B by themselves.** `tests/test_native_diff.py`, `tests/test_oracle_edges.py` and `tests/test_oracle_fuzz.py` compare an RPTP Python oracle with RPTP generated C++. Agreement between two RPTP implementations shows internal consistency; it is not an approved reference and does not establish hardware behavior.
 
 ### Level C — `unverified / pending approved reference`
 
 - **Basis:** the only support for the claim is the catalog's own `semantics` prose and a page citation to a document that is not an approved reference. No approved `RPTP-REF-*` and no executable test in this repository establishes the claim.
-- **Coverage:** every catalog claim outside §3 — 197 of 224 entries at this commit (`NOP` is the 28th Level B instruction but is a decoder synonym rather than a catalog entry). This includes the eight COP2 entries that cannot round-trip (Level A also excludes them), the MMI/MMI0–MMI3/SPECIAL2 families, the HI/LO instructions, the REGIMM traps and branch-likely forms before the approved-reference increment lands, the unaligned load/store forms, and the COP2 `LQC2`/`SQC2` entries.
-- **Decoder labels are not evidence.** `tools/rptp/isa.py` attaches `generic-mips-cross-checked`, `manual-cross-checked` and `provisional` labels to its own decoder specs. Those labels are internal vocabulary, not approved references; `manual-cross-checked` in particular is a claim that the cited manual was used and cannot be read as owner approval. An implemented oracle/emitter path for such an instruction does not move it to Level B.
+- **Coverage:** every catalog claim outside §3 — 189 of 224 entries at this commit (`NOP` is one of the 36 Level B instructions but is a decoder synonym rather than a catalog entry). This includes the eight COP2 entries that cannot round-trip (Level A also excludes them), the MMI/MMI0–MMI3/SPECIAL2 families, the HI/LO instructions, the REGIMM traps, the unaligned load/store forms, and the COP2 `LQC2`/`SQC2` entries.
+- **Decoder labels are not evidence.** `tools/rptp/isa.py` attaches `generic-mips-cross-checked`, `manual-cross-checked` and `provisional` labels to its own decoder specs. After the 2026-10-30 wording correction the decoder docstring states that these labels are documentation metadata, not certification, and that the R5900 manual they partly refer to is pending an owner decision; even so, `manual-cross-checked` is not an approved reference and cannot be read as owner approval. An implemented oracle/emitter path for such an instruction does not move it to Level B.
 - **What would change it:** owner approval of a cited document plus recorded permitted use and limits as a reference row; or re-derivation from an approved neutral reference plus an independent test; or removal/quarantine of the entry. Until then, no semantic claim outside §3 is approved for implementation or release use.
 
 | Level | Label | Basis | What it proves | Sufficient for |
@@ -52,7 +53,7 @@ The catalog mixes several different things: an encoding map (opcode/`funct`/oper
 
 ## 3. Supported synthetic subset mapped to approved references and tests
 
-The table below is the complete list of RPTP synthetic instructions that have both an approved reference and executable tests: 28 instructions at this commit. The behavior descriptions live in [INSTRUCTION_CATALOG.md](../INSTRUCTION_CATALOG.md); this table records evidence provenance only and its limits column is part of the record.
+The table below is the complete list of RPTP synthetic instructions that have both an approved reference and executable tests: 36 instructions at this commit. The behavior descriptions live in [INSTRUCTION_CATALOG.md](../INSTRUCTION_CATALOG.md); this table records evidence provenance only and its limits column is part of the record.
 
 | Instruction | Encoding | Approved reference | Test evidence | Limits |
 |---|---|---|---|---|
@@ -80,16 +81,24 @@ The table below is the complete list of RPTP synthetic instructions that have bo
 | `SD` | I-type opcode `0x3F` | `RPTP-REF-015` (SD p. 327) | `tests/test_instruction_ld_sd.py`, `tests/test_runtime_execution.py`, `runtime/tests/runtime_tests.cpp` | Two-word split, 32-bit effective address and fail-closed alignment are RPTP test definitions. |
 | `BEQ` | I-type opcode `0x04` | `RPTP-REF-001` | `tests/test_gate0_spike.py`, `tests/test_ir_lowering.py` | Full R5900 branch behavior is not claimed; static targets must stay inside the synthetic code model. |
 | `BNE` | I-type opcode `0x05` | `RPTP-REF-001` | `tests/test_gate0_spike.py`, `tests/test_ir_lowering.py` | Full R5900 branch behavior is not claimed; static targets must stay inside the synthetic code model. |
+| `BEQL` | I-type opcode `0x14` | `RPTP-REF-015` (BEQL p. 75) | `tests/test_instruction_branch_likely.py`, `tests/test_isa_encodings.py` | Likely-branch nullification; low-64-bit comparison, 32-bit PC masking and trace/step accounting are RPTP test definitions; no timing or exception claim. |
+| `BNEL` | I-type opcode `0x15` | `RPTP-REF-015` (BNEL p. 91) | `tests/test_instruction_branch_likely.py`, `tests/test_isa_encodings.py` | Same likely-branch model as `BEQL`; no timing or exception claim. |
+| `BLEZL` | I-type opcode `0x16` | `RPTP-REF-015` (BLEZL p. 84) | `tests/test_instruction_branch_likely.py`, `tests/test_isa_encodings.py` | Taken when the signed low 64 bits of `rs` are `<= 0`; same test-defined model limits. |
+| `BGTZL` | I-type opcode `0x17` | `RPTP-REF-015` (BGTZL p. 82) | `tests/test_instruction_branch_likely.py`, `tests/test_isa_encodings.py` | Taken when the signed low 64 bits of `rs` are `> 0`; same test-defined model limits. |
+| `BLTZL` | REGIMM opcode `0x01`, `rt=0x02` | `RPTP-REF-015` (BLTZL p. 89) | `tests/test_instruction_branch_likely.py`, `tests/test_isa_encodings.py` | Taken when the signed low 64 bits of `rs` are `< 0`; same test-defined model limits. |
+| `BGEZL` | REGIMM opcode `0x01`, `rt=0x03` | `RPTP-REF-015` (BGEZL p. 80) | `tests/test_instruction_branch_likely.py`, `tests/test_isa_encodings.py` | Taken when the signed low 64 bits of `rs` are `>= 0`; same test-defined model limits. |
+| `BLTZALL` | REGIMM opcode `0x01`, `rt=0x12` | `RPTP-REF-015` (BLTZALL p. 87) | `tests/test_instruction_branch_likely.py`, `tests/test_isa_encodings.py` | Written `GPR[31] = pc + 8` unconditionally; `rs = 31` rejected fail-closed because the reference marks it UNPREDICTABLE; the rejection is RPTP policy. |
+| `BGEZALL` | REGIMM opcode `0x01`, `rt=0x13` | `RPTP-REF-015` (BGEZALL p. 78) | `tests/test_instruction_branch_likely.py`, `tests/test_isa_encodings.py` | Written `GPR[31] = pc + 8` unconditionally; `rs = 31` rejected fail-closed because the reference marks it UNPREDICTABLE; the rejection is RPTP policy. |
 | `J` | J-type opcode `0x02` | `RPTP-REF-001` | `tests/test_gate0_spike.py`, `tests/test_ir_lowering.py` | Static targets must stay inside the synthetic code model. |
 | `JAL` | J-type opcode `0x03` | `RPTP-REF-001` | `tests/test_gate0_spike.py`, `tests/test_ir_lowering.py` | No full R5900 call convention or pipeline behavior is claimed. |
 | `JR` | SPECIAL funct `0x08`, `rt=rd=shamt=0` | `RPTP-REF-001` | `tests/test_gate0_spike.py`, `tests/test_ir_lowering.py` | No return-address stack, speculation or exception behavior. |
 | `NOP` | SPECIAL word `0x00000000` | none specific; RPTP test definition | `tests/test_gate0_spike.py`, `tests/test_ir_lowering.py` | Only the encoded all-zero NOP is recognized. |
 
-NOP is the only Level B instruction without a catalog entry (the catalog lists 224 mnemonics and NOP is a decoder synonym for the all-zero word). All other 27 Level B instructions are catalog entries; the remaining 197 catalog entries stay at Level C.
+NOP is the only Level B instruction without a catalog entry (the catalog lists 224 mnemonics and NOP is a decoder synonym for the all-zero word). All other 35 Level B instructions are catalog entries; the remaining 189 catalog entries stay at Level C.
 
-### 3.1 Branch-likely forms and the approved-reference increment
+### 3.1 Branch-likely forms (added 2026-10-30, `RPTP-REF-015`)
 
-The eight R5900 branch-likely forms — `BEQL`, `BNEL`, `BLEZL`, `BGTZL`, `BLTZL`, `BGEZL`, `BLTZALL` and `BGEZALL` — are catalog entries today, but they are not yet in RPTP's tested synthetic subset on the baseline this document was written against. An increment is landing that models their delay-slot nullification and re-sources their semantics to the already-approved `RPTP-REF-015` (MIPS64 Volume II-A), with tests in `tests/test_instruction_branch_likely.py`. Until that increment is merged, the eight forms remain at Level C; this document will be updated to add their Level B rows when the increment lands, and it does not cite any unapproved manual for them in the meantime.
+The eight branch-likely forms are the newest Level B rows. `RPTP-REF-015` (MIPS64 Revision 5.04, pages above) supports their encodings, PC-relative target, equality/zero-test conditions, take-only delay-slot execution, the unconditional `GPR[31] = PC + 8` link for the two link forms and the `rs = 31` UNPREDICTABLE restriction. `tests/test_instruction_branch_likely.py` covers both outcomes for all eight forms, delay-slot register and memory effects, `$zero`, unconditional link writes, the `rs = 31` rejection, CFG successors, deterministic generated C++ and a native differential against the oracle; `tests/test_isa_encodings.py` exercises the decoder and lowering path for the same forms. The branch-likely rows are implemented in the `tools/rptp` decoder/oracle/emitter path; the older `tools/rptp_ir.py`/`tools/rptp_lower.py` pipeline remains unchanged and does not implement them. The low-64-bit comparison, 32-bit PC masking, trace/step accounting, `$zero` suppression, memory representation and the fail-closed `rs = 31` rejection are RPTP test definitions, not hardware facts, and no branch-prediction, timing, exception or TLB behavior is claimed.
 
 ## 4. Catalog coverage inventory (structural only)
 
@@ -104,12 +113,12 @@ These are structural counts of the JSON data and the decoder, not semantic claim
 | Citations to the Sony VU User's Manual | 8 | Exactly the eight COP2 entries excluded from Level A. |
 | Level A round-trip entries | 216 | Pinned by `test_every_encodable_entry_decodes_exactly` and `test_skip_list_is_small_explicit_and_complete`. |
 | Entries with no mnemonic-level decoder representation | 8 | The COP2 forms; decoder exposes an opaque `cop2` placeholder. |
-| Catalog entries with a decoder-supported mnemonic | 133 | `ins.supported` is true for these; structural only. |
-| Catalog entries without a decoder-supported mnemonic | 91 | Decode either as an unsupported named spec or as `unknown_*`; decode acceptance is not semantics. |
-| Level B instructions | 28 | §3 table; 27 are catalog entries, plus `NOP`. |
-| Catalog entries at Level C | 197 | Everything outside §3. |
+| Catalog entries with a decoder-supported mnemonic | 141 | `ins.supported` is true for these; structural only. |
+| Catalog entries without a decoder-supported mnemonic | 83 | Decode either as an unsupported named spec or as `unknown_*`; decode acceptance is not semantics. |
+| Level B instructions | 36 | §3 table; 35 are catalog entries, plus `NOP`. |
+| Catalog entries at Level C | 189 | Everything outside §3. |
 
-Class distribution of the 224 entries (from the JSON only): `special` 52, `mips3` 41, `special2` 25, `mmi0` 25, `mmi2` 22, `mmi1` 18, `regimm` 16, `mmi3` 13, `cop2` 10, `lqsq` 2. The decoder-label distribution for the 216 entries that match a decoder spec by mnemonic is `generic-mips-cross-checked` 77, `manual-cross-checked` 131 and `provisional` 8; these labels are not evidence (§2, Level C).
+Class distribution of the 224 entries (from the JSON only): `special` 52, `mips3` 41, `special2` 25, `mmi0` 25, `mmi2` 22, `mmi1` 18, `regimm` 16, `mmi3` 13, `cop2` 10, `lqsq` 2. The decoder declares 142 supported mnemonics after the branch-likely increment (134 before it), and 141 of the 224 catalog entries are among them. The decoder-label distribution for the 216 entries that match a decoder spec by mnemonic is `generic-mips-cross-checked` 77, `manual-cross-checked` 131 and `provisional` 8; the decoder docstring now documents these labels as metadata, and they are not evidence (§2, Level C).
 
 ## 5. The eight COP2 entries (pending schema decision)
 
@@ -133,8 +142,8 @@ The decoder currently maps primary opcode `0x12` to a single opaque `cop2` place
 These are audit observations, not semantic corrections and not catalog edits:
 
 1. **`RPTP-REF-013` scope gap.** [REFERENCES.md](../REFERENCES.md) scopes that row's permitted use to narrow `LUI` semantics, while a later recorded note in the same file cites `RPTP-REF-013` for the `ORI`/`XORI` (and by extension `ANDI`) 64-bit logical-immediate model. The row and the note need reconciliation by the owner/Lead; this increment does not change either.
-2. **Decoder wording overclaims.** `tools/rptp/isa.py` describes its sources as "neutral public documentation" including the Sony/Toshiba EE Core Instruction Set Manual, and publishes the label values `MANUAL = "manual-cross-checked"`, `GENERIC = "generic-mips-cross-checked"` and `PROVISIONAL = "provisional"`. The `manual-cross-checked` label appears on 137 decoder specs (131 of them matched to catalog mnemonics) and surfaces in diagnostics through `tools/rptp/cfg.py`. The label and the docstring wording are not evidence and, while manual use is unapproved, the wording overstates the source status. This is reported to the Lead; `tools/rptp/` is outside this increment's scope and must not be treated as an approved reference because of the label.
-3. **Test wording overclaim.** `tests/test_isa_encodings.py` describes the JSON as "the repository's verified research catalog (224 entries, all `verified: true`)" and its test name says the catalog "is verified". Those strings describe the data, not evidence. If the boolean is migrated to an evidence enum, this test and its docstring have to change with it.
+2. **Decoder wording (corrected 2026-10-30).** The decoder docstring used to describe its sources as "neutral public documentation" including the Sony/Toshiba EE Core Instruction Set Manual and used the label vocabulary without qualification. The approved-reference branch-likely increment rewrote that docstring: it records the R5900 manual as pending an owner decision, describes `ps2tek` as a secondary cross-check that is not an `RPTP-REF`, and states that `generic-mips-cross-checked`/`manual-cross-checked`/`provisional` are documentation metadata rather than certification. The label values are unchanged (137 `verification=MANUAL` specs, 131 of them matched to catalog mnemonics) and remain not evidence; `tools/rptp/cfg.py` still surfaces the label in diagnostics. This increment neither edits `tools/rptp/` nor treats the label as an approved reference.
+3. **Test wording (corrected 2026-10-30).** The encoding-conformance test used to describe the JSON as "the repository's verified research catalog (224 entries, all `verified: true`)" and its test name said the catalog "is verified". The branch-likely increment renamed it to `test_research_catalog_entries_are_present_and_complete` and documented the boolean as a catalog bookkeeping marker that is not hardware verification; §1 of this document relies on that corrected wording.
 4. **`ps2tek`.** The catalog's fourth source `ps2tek` is a secondary cross-check only. It is not recorded as an `RPTP-REF-*` row, is not an approved reference, and must not be used for behavior claims; the same applies to its mentions in `tools/rptp/isa.py` and `docs/research/function-discovery.md`. This increment adds no reference row for it.
 5. **No manual files in the repository.** The catalog stores the manual URLs only; the PDFs are not committed (`tests/test_catalog_provenance.py` guards that no manual-named file appears in the repository). Repository hygiene requires this to stay true even if the owner later approves a limited citation use.
 
@@ -147,7 +156,7 @@ The following are questions for the owner. This document records evidence and op
 3. **Per-entry evidence enum.** Should the `"verified": true` boolean be replaced by an evidence class such as `citation_only`, `decoder_crosscheck`, `test_defined`, `approved_reference` or `pending_owner`, with a test that allows only those values? If yes, who records the per-entry value, and which vocabulary is authoritative? A migration requires a JSON schema change, test changes and an owner decision; this increment does not touch the JSON.
 4. **The eight COP2 entries.** Should the catalog keep all eight COP2 forms as unresolved placeholders, collapse them into a single opaque `cop2` entry, or re-derive them from an approved VU/COP2 reference? They currently cannot be round-trip tested, and their citations are exactly the eight VU-manual citations in §5.
 5. **`ps2tek`.** Should `ps2tek` stay a secondary, unrecorded cross-check (current status), be removed from the catalog metadata and the code comments that cite it, or be formally reviewed for reference status later? It is not a permitted reference now and must not be used for behavior claims, and this increment adds no reference row for it.
-6. **Reference-scope reconciliation and evidence vocabulary.** Should `RPTP-REF-013`'s permitted-use cell be widened to cover the recorded `ORI`/`XORI`/`ANDI` model, or should those notes be re-derived against a reference whose row already covers them? Should the decoder's `manual-cross-checked`/`provisional` label vocabulary be renamed or mapped onto the three levels in this document? The wording part is being handled by a separate increment; the vocabulary decision remains open.
+6. **Reference-scope reconciliation and evidence vocabulary.** The wording part of the decoder/label issue was corrected by the 2026-10-30 branch-likely increment; two questions remain. Should `RPTP-REF-013`'s permitted-use cell be widened to cover the recorded `ORI`/`XORI`/`ANDI` model, or should those notes be re-derived against a reference whose row already covers them? And should the decoder's `manual-cross-checked`/`provisional` label vocabulary be renamed or mapped onto the three levels in this document?
 
 ## 8. Non-claims
 
@@ -162,6 +171,7 @@ The following are questions for the owner. This document records evidence and op
 The structural checks in this document are reproducible from the repository:
 
     python -m unittest tests.test_isa_encodings -v
+    python -m unittest tests.test_instruction_branch_likely -v
     python -m unittest tests.test_catalog_provenance -v
 
 The catalog and decoder counts in §4 are a read-only inspection of `docs/research/r5900-isa.json`, `tools/rptp/isa.py` and `tests/test_isa_encodings.py`; the tests above pin the 224/216 split and the Level B table check pins that every instruction in [INSTRUCTION_CATALOG.md](../INSTRUCTION_CATALOG.md) has a row in §3. A green run shows only that this classification is internally consistent; it does not turn any Level C entry into evidence.

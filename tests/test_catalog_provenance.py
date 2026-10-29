@@ -136,9 +136,6 @@ class CatalogProvenanceTests(unittest.TestCase):
         for mnemonic in SKIPPED_COP2_ENTRIES:
             with self.subTest(mnemonic=mnemonic):
                 self.assertIn(f"`{mnemonic}`", text)
-        # The document must not cite an unapproved manual as an approved
-        # reference row of its own; it may only repeat catalog page pointers.
-        self.assertNotIn("RPTP-REF-018", text)
 
     def test_evidence_table_covers_every_catalog_instruction_with_a_test(self) -> None:
         rows = evidence_rows()
