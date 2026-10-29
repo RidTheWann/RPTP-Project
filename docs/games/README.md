@@ -28,18 +28,20 @@ This is a work log, not a compatibility claim. An inspected ISO is not a bootabl
 
 | Game | Region | Status | Last updated | Record |
 |---|---|---|---|---|
-| Black | USA | Inspected (read-only) | 2026-10-28 | [black](black/STATUS.md) |
-| Bully | USA | Inspected (read-only) | 2026-10-28 | [bully](bully/STATUS.md) |
-| Downhill Domination | USA | Inspected (read-only) | 2026-10-28 | [downhill-domination](downhill-domination/STATUS.md) |
-| God of War II | USA | Inspected (read-only) | 2026-10-28 | [god-of-war-ii](god-of-war-ii/STATUS.md) |
-| Grand Theft Auto - San Andreas (USA) — owner-described original | USA | Inspected (read-only) | 2026-10-28 | [grand-theft-auto-san-andreas-usa-v300](grand-theft-auto-san-andreas-usa-v300/STATUS.md) |
-| Grand Theft Auto - San Andreas (USA) — owner-described Indonesian-language mod | USA | Inspected (read-only) | 2026-10-28 | [grand-theft-auto-san-andreas-indonesian-v6](grand-theft-auto-san-andreas-indonesian-v6/STATUS.md) |
-| Need for Speed - Most Wanted (v2.00) | USA | Inspected (read-only) | 2026-10-28 | [need-for-speed-most-wanted](need-for-speed-most-wanted/STATUS.md) |
-| Resident Evil 4 | USA | Inspected (read-only) | 2026-10-28 | [resident-evil-4](resident-evil-4/STATUS.md) |
+| Black | USA | Boot analysis (static census) | 2026-10-29 | [black](black/STATUS.md) |
+| Bully | USA | Boot analysis (static census) | 2026-10-29 | [bully](bully/STATUS.md) |
+| Downhill Domination | USA | Boot analysis (static census) | 2026-10-29 | [downhill-domination](downhill-domination/STATUS.md) |
+| God of War II | USA | Boot analysis (static census) | 2026-10-29 | [god-of-war-ii](god-of-war-ii/STATUS.md) |
+| Grand Theft Auto - San Andreas (USA) — owner-described original | USA | Boot analysis (static census) | 2026-10-29 | [grand-theft-auto-san-andreas-usa-v300](grand-theft-auto-san-andreas-usa-v300/STATUS.md) |
+| Grand Theft Auto - San Andreas (USA) — owner-described Indonesian-language mod | USA | Boot analysis (static census) | 2026-10-29 | [grand-theft-auto-san-andreas-indonesian-v6](grand-theft-auto-san-andreas-indonesian-v6/STATUS.md) |
+| Need for Speed - Most Wanted (v2.00) | USA | Boot analysis (static census) | 2026-10-29 | [need-for-speed-most-wanted](need-for-speed-most-wanted/STATUS.md) |
+| Resident Evil 4 | USA | Boot analysis (static census) | 2026-10-29 | [resident-evil-4](resident-evil-4/STATUS.md) |
 
 **Recorded local evidence — 2026-10-28:** Bully and both San Andreas samples returned `INSPECTED_WITH_WARNINGS` for PT_LOAD memory overlaps; the other five returned `INSPECTED` without warnings. All eight surveys returned `SURVEYED` without warnings; every CLI run exited 0. Overlap is metadata, not evidence of corrupt/unsupported discs or compatibility; loading precedence remains undefined and unevaluated. Inspect/survey JSON was byte-identical across two runs per image. Whole-image SHA-256 before/after matched prior records, with size/mtime unchanged; God of War II was rehashed this time.
 
-Inspector: `tools/rptp_inspect.py`, hardened revision `0c2264e`; source verification/full fingerprint: [VERIFICATION_LOG.md](../VERIFICATION_LOG.md). Per-game sections cite the local summary, inspect/survey and independent sparse ELF cross-check reports; documentation was checked without reopening discs. Load maps/zero-fill are metadata only ([RPTP-REF-003](../REFERENCES.md)). No extraction, content analysis, function discovery, boot, runtime, recompilation or compatibility was tested. Not CI verification; statuses remain **Inspected (read-only)**.
+Inspector: `tools/rptp_inspect.py`, hardened revision `0c2264e`; source verification/full fingerprint: [VERIFICATION_LOG.md](../VERIFICATION_LOG.md). Per-game sections cite the local summary, inspect/survey and independent sparse ELF cross-check reports; documentation was checked without reopening discs. Load maps/zero-fill are metadata only ([RPTP-REF-003](../REFERENCES.md)). No extraction, content analysis, function discovery, boot, runtime, recompilation or compatibility was tested. Not CI verification; this paragraph records inspection evidence, and the census paragraph below adds static word counts only.
+
+**Read-only boot-code census — 2026-10-29:** all eight authorized boot executables were censused in memory with `tools/rptp_census.py`. Decoder-accepted word ratios range from 50.0% to 59.2% of file-backed PT_LOAD words; the counts include data and padding and are not a function-level measurement. The most frequent raw-unsupported encodings across the sample are `special_0x2d` and `opcode_0x11`/`opcode_0x12`, recorded per title in each STATUS.md. No file was extracted or executed; no compatibility is inferred. Method and limitations: [BOOT_CENSUS.md](../BOOT_CENSUS.md).
 
 **Owner-provided provenance:** the two GTA San Andreas USA records are separate samples. The owner describes one as the original (unmodified) sample and the other as an Indonesian-language mod. This distinction is declarative owner information, not a technical classification. Equal boot or `SYSTEM.CNF` hashes do not establish file equality or identify the modification; whole-image hashes and PVD identifiers are recorded in each record.
 

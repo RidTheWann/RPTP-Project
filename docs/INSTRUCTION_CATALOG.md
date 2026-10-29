@@ -1,6 +1,6 @@
 # RPTP synthetic instruction catalog
 
-- **Status date:** 2026-10-28
+- **Status date:** 2026-10-29
 - **Scope:** narrow synthetic ELF32/EM_MIPS differential spike, not a complete R5900 implementation and not a compatibility list.
 - **Provenance:** [ADR-0003](DECISIONS/ADR-0003-sealed-source-clean-room-policy.md), [PROVENANCE_PLAN.md](PROVENANCE_PLAN.md) and [REFERENCES.md](REFERENCES.md).
 - **Gate status:** Gate 3 is not passed. This catalog records what the current synthetic tests actually exercise. A documented IR, candidate-only CFG analysis, conservative known-edge graph reachability and deterministic C++ lowering now exist for the same subset, including the `DADDIU`, `ANDI`, `ORI`, `XORI`, `SLTI` and `SLTIU` immediates, the `LUI` shifted immediate, the `AND`/`OR`/`XOR`/`NOR` register operations, the `SLT` signed comparison and the `SLTU` unsigned comparison; see [IR_CFG.md](IR_CFG.md). Known-edge reachability adds no instruction or runtime behavior.
@@ -46,6 +46,10 @@
 [IR_CFG.md](IR_CFG.md) defines the additional contract for the same subset. It records raw words, normalized operands, explicit signed/zero-extended immediates, `$zero` destination handling, control-flow classes, direct targets, delay-slot ownership, deterministic basic blocks, candidate-only function entries and conservative known-edge graph traversal from an explicit block root. `tools/rptp_lower.py` consumes the validated IR and emits deterministic C++20 for the same synthetic model, with native differential coverage in `tests/test_ir_lowering.py`, `tests/test_instruction_logical.py`, `tests/test_instruction_lui.py`, `tests/test_instruction_register_logic.py`, `tests/test_instruction_nor.py`, `tests/test_instruction_slt.py` and `tests/test_instruction_sltu.py`.
 
 The lowering tests cover the supported operations, both branch outcomes, direct and indirect control flow, delay slots, `$zero` writes, 32-bit wraparound, zero-extended logical immediates, signed `SLTI` and unsigned `SLTIU` immediate comparisons, the shifted/sign-extended LUI immediate, full modeled 64-bit register logical operations including NOR, signed 64-bit `SLT` comparison, unsigned 64-bit `SLTU` comparison and memory load/store. A separate one-instruction fixture covers uninitialized-memory failure. The reachability tests cover only existing stored edges, unresolved indirect transfers and the explicit direct-call continuation caveat. These tests do not add product runtime behavior, runtime reachability, function extents or a complete R5900 model. Gate 3 remains in progress.
+
+## Retail boot-code census (read-only, 2026-10-29)
+
+`tools/rptp_census.py` counts aligned 4-byte words in the file-backed `PT_LOAD` ranges of the boot executable inside owner-authorized ISOs and classifies each word with the current synthetic IR decoder. Unsupported words are reported only as raw encoding identifiers (`special_0xNN`, `regimm_0xNN`, `opcode_0xNN`); the tool assigns no instruction names and no semantics. The census reads in memory, writes nothing, has explicit boot-byte and word limits and reuses the inspector's validated ELF parser. It is planning input for Gate 3, not decoder support: no instruction becomes supported by being counted. Results for the eight authorized samples and the report contract are in [BOOT_CENSUS.md](BOOT_CENSUS.md); tests are in `tests/test_boot_census.py`.
 
 ## Explicitly unsupported
 

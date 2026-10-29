@@ -1,7 +1,7 @@
 # Grand Theft Auto - San Andreas (USA) — owner-described Indonesian-language mod
 
-- **Status:** Inspected (read-only)
-- **Last updated:** 2026-10-28
+- **Status:** Boot analysis (static census)
+- **Last updated:** 2026-10-29
 - **Sample provenance:** Owner-provided: a USA San Andreas sample modified with Indonesian-language changes. This classification is declarative owner information, not a result derived from the filename or metadata; the modified file set and method are not audited.
 - **RPTP inspector:** `tools/rptp_inspect.py`, hardened revision `0c2264e`; source SHA-256 verification and full fingerprint: [verification log](../../VERIFICATION_LOG.md)
 - **Source:** owner-provided local ISO; not committed
@@ -56,6 +56,13 @@ Recorded owner-authorized local evidence from main; documentation checked agains
 - The overlap warning is metadata only; loading precedence remains undefined and is not evaluated. It is not evidence of corruption, an unsupported disc or compatibility.
 - Evidence: local `build/elf-retail-summary.json`, `build/elf-retail-grand-theft-auto-san-andreas-indonesian-v6.inspect.json`, `build/elf-retail-grand-theft-auto-san-andreas-indonesian-v6.survey.json` and `build/elf-retail-independent-check.json`.
 - No extraction, content analysis, function discovery, boot, runtime, recompilation or compatibility testing was performed; owner-provided mod provenance remains unaudited.
+
+### 2026-10-29 — read-only boot-code census
+
+- `python tools/rptp_census.py <iso> --iso --json` completed in memory with exit 0 and status `CENSUSED_WITH_WARNINGS`; no file was extracted, modified or executed.
+- Census: 1,420,864 aligned words across 10 PT_LOAD segment(s); 714,339 (50.3%) accepted by the current synthetic decoder; 706,525 raw-unsupported words.
+- Most frequent unsupported raw encodings: `opcode_0x11` (133,433); `special_0x2d` (91,977); `opcode_0x31` (74,361).
+- Counts include data and padding and are not a function-level, runtime, boot or compatibility measurement. See [BOOT_CENSUS.md](../../BOOT_CENSUS.md).
 
 ## What is not tested
 

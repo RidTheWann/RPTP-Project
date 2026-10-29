@@ -1,7 +1,7 @@
 # Clean-room provenance audit
 
 - **Audit date:** 2026-10-21
-- **Last evidence update:** 2026-10-28 — main synchronization, DADDIU regression coverage and local Windows/MSVC verification; read-only ISO hardening and the ELF32 load map record neutral format/address/order/zero-fill/entry rules and resource budgets. The same eight authorized images were revalidated with before/after hashes and an independent raw-header cross-check. No native loader, instruction/runtime semantics, component status or Gate disposition changed, and no component certified.
+- **Last evidence update:** 2026-10-29 — read-only boot-code census over the eight authorized samples. The census reuses the validated inspector ELF parser, counts words in file-backed `PT_LOAD` ranges and labels unsupported words by raw encoding ID only. It adds no instruction semantics, no compatibility claim and no component status change; no component is certified.
 - **Policy:** [ADR-0003](DECISIONS/ADR-0003-sealed-source-clean-room-policy.md)
 - **Execution plan:** [PROVENANCE_PLAN.md](PROVENANCE_PLAN.md)
 - **Exposure record:** [docs/REFERENCES.md](REFERENCES.md)
