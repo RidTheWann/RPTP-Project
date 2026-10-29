@@ -9,10 +9,15 @@
 #include <vector>
 
 #include "rptp/runtime/elf_loader.hpp"
+#include "rptp/runtime/execution.hpp"
 #include "rptp/runtime/guest_memory.hpp"
 
 namespace {
 
+using rptp::runtime::ExecErrorCode;
+using rptp::runtime::ExecOptions;
+using rptp::runtime::ExecOutcome;
+using rptp::runtime::execute_loaded;
 using rptp::runtime::GuestMemory;
 using rptp::runtime::kDefaultMaxGuestBytes;
 using rptp::runtime::LoadErrorCode;
@@ -382,6 +387,212 @@ void test_guest_memory_direct() {
   CHECK(memory.view(0x1010, 1).empty());
 }
 
+constexpr std::uint32_t kExecutableBase = 0x00100000U;
+constexpr std::uint32_t kDataBase = 0x00002000U;
+
+std::uint32_t encode_i(std::uint32_t op, std::uint32_t rs, std::uint32_t rt, std::int32_t immediate) {
+  return ((op & 0x3FU) << 26U) | ((rs & 0x1FU) << 21U) | ((rt & 0x1FU) << 16U) |
+         (static_cast<std::uint32_t>(immediate) & 0xFFFFU);
+}
+
+std::uint32_t encode_r(std::uint32_t rs, std::uint32_t rt, std::uint32_t rd, std::uint32_t shamt,
+                       std::uint32_t funct) {
+  return ((rs & 0x1FU) << 21U) | ((rt & 0x1FU) << 16U) | ((rd & 0x1FU) << 11U) | ((shamt & 0x1FU) << 6U) |
+         (funct & 0x3FU);
+}
+
+std::uint32_t encode_j(std::uint32_t op, std::uint32_t target) {
+  return ((op & 0x3FU) << 26U) | ((target >> 2U) & 0x03FFFFFFU);
+}
+
+std::vector<std::uint8_t> make_runnable_image(const std::vector<std::uint32_t>& code,
+                                              std::uint32_t entry_offset = 0U) {
+  constexpr std::uint32_t kDataOffset = 0x100U;
+  constexpr std::uint32_t kCodeOffset = 0x200U;
+  const auto code_size = static_cast<std::uint32_t>(code.size() * sizeof(std::uint32_t));
+  const SegmentSpec data{kDataOffset, kDataBase, 4U, 4U, 6U, 4U};
+  const SegmentSpec text{kCodeOffset, kExecutableBase, code_size, code_size, 5U, 4U};
+  std::vector<std::uint8_t> image =
+      make_elf(kExecutableBase + entry_offset, {data, text}, kCodeOffset + code_size);
+  for (std::size_t index = 0; index < code.size(); ++index) {
+    put32(image, kCodeOffset + static_cast<std::uint32_t>(index) * 4U, code[index]);
+  }
+  return image;
+}
+
+ExecOutcome run_code(const std::vector<std::uint32_t>& code, const ExecOptions& options = {}) {
+  std::vector<std::uint8_t> image = make_runnable_image(code);
+  LoadOutcome loaded = load_elf(image);
+  if (!loaded.ok()) {
+    std::cerr << "FAIL runnable image did not load: " << to_string(loaded.error->code) << '\n';
+    ++failures;
+    return {};
+  }
+  return execute_loaded(loaded.report, loaded.memory, options);
+}
+
+void expect_exec_error(const ExecOutcome& outcome, ExecErrorCode expected, const char* label) {
+  if (outcome.ok()) {
+    std::cerr << "FAIL " << label << ": expected " << to_string(expected) << ", execution succeeded\n";
+    ++failures;
+    return;
+  }
+  if (outcome.error->code != expected) {
+    std::cerr << "FAIL " << label << ": expected " << to_string(expected) << ", got "
+              << to_string(outcome.error->code) << " (" << outcome.error->message << ")\n";
+    ++failures;
+  }
+  if (outcome.result.steps != 0 || !outcome.result.trace.empty()) {
+    std::cerr << "FAIL " << label << ": failed execution left a populated result\n";
+    ++failures;
+  }
+}
+
+void test_execution_arithmetic_and_memory() {
+  const std::vector<std::uint32_t> code{
+      encode_i(0x09, 0, 8, 7),        // addiu t0, zero, 7
+      encode_i(0x09, 0, 9, 5),        // addiu t1, zero, 5
+      encode_r(8, 9, 10, 0, 0x21),    // addu t2, t0, t1
+      encode_i(0x09, 0, 11, 0x2000),  // addiu t3, zero, 0x2000
+      encode_i(0x2B, 11, 10, 0),      // sw t2, 0(t3)
+      encode_i(0x23, 11, 12, 0),      // lw t4, 0(t3)
+      encode_i(0x09, 0, 13, -1),      // addiu t5, zero, -1
+      encode_i(0x09, 0, 0, 1),        // addiu zero, zero, 1 (discarded)
+  };
+  const ExecOutcome outcome = run_code(code);
+  CHECK(outcome.ok());
+  if (!outcome.ok()) {
+    return;
+  }
+  CHECK(outcome.result.entry_point == kExecutableBase);
+  CHECK(outcome.result.steps == code.size());
+  CHECK(outcome.result.final_pc == kExecutableBase + 4U * static_cast<std::uint32_t>(code.size()));
+  CHECK(outcome.result.halt_reason == rptp::runtime::HaltReason::UnmappedPc);
+  CHECK(outcome.result.registers[8] == 7U);
+  CHECK(outcome.result.registers[9] == 5U);
+  CHECK(outcome.result.registers[10] == 12U);
+  CHECK(outcome.result.registers[11] == 0x2000U);
+  CHECK(outcome.result.registers[12] == 12U);
+  CHECK(outcome.result.registers[13] == 0xFFFFFFFFFFFFFFFFULL);
+  CHECK(outcome.result.registers[0] == 0U);
+  CHECK(outcome.result.memory_writes.size() == 1U);
+  if (outcome.result.memory_writes.size() == 1U) {
+    CHECK(outcome.result.memory_writes[0].address == kDataBase);
+    CHECK(outcome.result.memory_writes[0].value == 12U);
+  }
+}
+
+void test_execution_branches_delay_slots_and_calls() {
+  const std::vector<std::uint32_t> code{
+      encode_i(0x09, 0, 8, 7),             // 0x00 addiu t0, zero, 7
+      encode_i(0x09, 0, 9, 5),             // 0x04 addiu t1, zero, 5
+      encode_r(8, 9, 10, 0, 0x21),         // 0x08 addu t2, t0, t1
+      encode_i(0x09, 0, 11, 0x2000),       // 0x0c addiu t3, zero, 0x2000
+      encode_i(0x2B, 11, 10, 0),           // 0x10 sw t2, 0(t3)
+      encode_i(0x23, 11, 12, 0),           // 0x14 lw t4, 0(t3)
+      encode_i(0x05, 10, 12, 5),           // 0x18 bne t2, t4, 0x30 (not taken)
+      encode_i(0x09, 0, 16, 3),            // 0x1c addiu s0, zero, 3 (delay slot)
+      encode_i(0x04, 10, 9, 4),            // 0x20 beq t2, t1, 0x34 (not taken)
+      encode_i(0x09, 0, 17, 4),            // 0x24 addiu s1, zero, 4 (delay slot)
+      encode_j(0x03, kExecutableBase + 0x48U),  // 0x28 jal 0x00100048
+      encode_i(0x09, 0, 4, 9),             // 0x2c addiu a0, zero, 9 (delay slot)
+      encode_i(0x09, 0, 18, 6),            // 0x30 addiu s2, zero, 6
+      encode_j(0x02, kExecutableBase + 0x5CU),  // 0x34 j 0x0010005c
+      encode_r(0, 0, 0, 0, 0),             // 0x38 nop (delay slot)
+      encode_r(0, 0, 0, 0, 0),             // 0x3c nop
+      encode_r(0, 0, 0, 0, 0),             // 0x40 nop
+      encode_r(0, 0, 0, 0, 0),             // 0x44 nop
+      encode_r(4, 10, 2, 0, 0x21),         // 0x48 addu v0, a0, t2
+      encode_r(31, 0, 0, 0, 0x08),         // 0x4c jr ra
+      encode_i(0x09, 0, 19, 8),            // 0x50 addiu s3, zero, 8 (delay slot)
+      encode_r(0, 0, 0, 0, 0),             // 0x54 nop
+      encode_r(0, 0, 0, 0, 0),             // 0x58 nop
+      encode_i(0x09, 0, 20, 10),           // 0x5c addiu s4, zero, 10
+  };
+  ExecOptions options;
+  options.trace = true;
+  const ExecOutcome outcome = run_code(code, options);
+  CHECK(outcome.ok());
+  if (!outcome.ok()) {
+    return;
+  }
+  const std::vector<std::uint32_t> expected_trace{
+      0x00100000U, 0x00100004U, 0x00100008U, 0x0010000CU, 0x00100010U, 0x00100014U, 0x00100018U,
+      0x0010001CU, 0x00100020U, 0x00100024U, 0x00100028U, 0x0010002CU, 0x00100048U, 0x0010004CU,
+      0x00100050U, 0x00100030U, 0x00100034U, 0x00100038U, 0x0010005CU};
+  CHECK(outcome.result.trace == expected_trace);
+  CHECK(outcome.result.steps == expected_trace.size());
+  CHECK(outcome.result.final_pc == 0x00100060U);
+  CHECK(outcome.result.registers[8] == 7U);
+  CHECK(outcome.result.registers[9] == 5U);
+  CHECK(outcome.result.registers[10] == 12U);
+  CHECK(outcome.result.registers[11] == 0x2000U);
+  CHECK(outcome.result.registers[12] == 12U);
+  CHECK(outcome.result.registers[16] == 3U);
+  CHECK(outcome.result.registers[17] == 4U);
+  CHECK(outcome.result.registers[4] == 9U);
+  CHECK(outcome.result.registers[2] == 21U);
+  CHECK(outcome.result.registers[18] == 6U);
+  CHECK(outcome.result.registers[19] == 8U);
+  CHECK(outcome.result.registers[20] == 10U);
+  CHECK(outcome.result.registers[31] == 0x00100030U);
+  CHECK(outcome.result.memory_writes.size() == 1U);
+}
+
+void test_execution_failures() {
+  expect_exec_error(run_code({0xFC000000U}), ExecErrorCode::UnsupportedInstruction, "unsupported");
+  expect_exec_error(
+      run_code({encode_i(0x09, 0, 11, 0x2000), encode_r(11, 0, 0, 0, 0x08), encode_r(0, 0, 0, 0, 0)}),
+      ExecErrorCode::PcNotExecutable, "jr into data");
+  expect_exec_error(
+      run_code({encode_i(0x09, 0, 8, 1), encode_i(0x09, 0, 11, 0x3000), encode_i(0x2B, 11, 8, 0)}),
+      ExecErrorCode::MemoryFault, "store outside segments");
+  expect_exec_error(
+      run_code({encode_i(0x04, 0, 0, 2), encode_j(0x02, kExecutableBase), encode_r(0, 0, 0, 0, 0)}),
+      ExecErrorCode::DelaySlotControl, "control in delay slot");
+  expect_exec_error(run_code({encode_j(0x02, kExecutableBase)}), ExecErrorCode::DelaySlotMissing,
+                    "missing delay slot");
+  ExecOptions limited;
+  limited.max_steps = 5U;
+  limited.trace = true;
+  const ExecOutcome limited_outcome =
+      run_code({encode_j(0x02, kExecutableBase), encode_r(0, 0, 0, 0, 0)}, limited);
+  expect_exec_error(limited_outcome, ExecErrorCode::StepLimit, "step limit");
+  ExecOptions zero_budget;
+  zero_budget.max_steps = 0U;
+  expect_exec_error(run_code({encode_r(0, 0, 0, 0, 0)}, zero_budget), ExecErrorCode::Internal,
+                    "zero step budget");
+
+  std::vector<std::uint8_t> image = make_runnable_image({encode_r(0, 0, 0, 0, 0)}, 2U);
+  LoadOutcome loaded = load_elf(image);
+  CHECK(loaded.ok());
+  if (loaded.ok()) {
+    expect_exec_error(execute_loaded(loaded.report, loaded.memory), ExecErrorCode::EntryUnaligned,
+                      "unaligned entry");
+  }
+}
+
+void test_execution_is_deterministic() {
+  const std::vector<std::uint32_t> code{
+      encode_i(0x09, 0, 8, 3),
+      encode_i(0x09, 0, 9, 4),
+      encode_r(8, 9, 10, 0, 0x21),
+  };
+  ExecOptions options;
+  options.trace = true;
+  const ExecOutcome first = run_code(code, options);
+  const ExecOutcome second = run_code(code, options);
+  CHECK(first.ok());
+  CHECK(second.ok());
+  if (first.ok() && second.ok()) {
+    CHECK(first.result.steps == second.result.steps);
+    CHECK(first.result.final_pc == second.result.final_pc);
+    CHECK(first.result.registers == second.result.registers);
+    CHECK(first.result.trace == second.result.trace);
+    CHECK(first.result.memory_writes.size() == second.result.memory_writes.size());
+  }
+}
+
 }  // namespace
 
 int main() {
@@ -390,10 +601,14 @@ int main() {
   test_segment_errors();
   test_limits_and_zero_size_segment();
   test_guest_memory_direct();
+  test_execution_arithmetic_and_memory();
+  test_execution_branches_delay_slots_and_calls();
+  test_execution_failures();
+  test_execution_is_deterministic();
   if (failures != 0) {
     std::cerr << failures << " runtime loader check(s) failed\n";
     return 1;
   }
-  std::cout << "runtime loader checks passed\n";
+  std::cout << "runtime loader and execution checks passed\n";
   return 0;
 }

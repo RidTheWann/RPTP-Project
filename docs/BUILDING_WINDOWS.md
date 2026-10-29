@@ -15,7 +15,7 @@ Open Developer PowerShell for Visual Studio or an x64 Native Tools prompt so cl.
     cmake --preset windows-msvc
     cmake --build --preset windows-msvc
 
-The rptp-ci target first runs rptp doctor, then runs CTest for the artifact guard, Python unit tests, the Gate 0 generated-native differential test and the native runtime loader tests (`runtime_loader_tests`, `runtime_loader_cli`). Results and generated binaries are written below the ignored build/ directory. The loader CLI can be run directly after the build, for example `build\cmake-msvc\rptp-load.exe --json tests\fixtures\gate0-r5900-subset.elf`; see [RUNTIME.md](RUNTIME.md).
+The rptp-ci target first runs rptp doctor, then runs CTest for the artifact guard, Python unit tests, the Gate 0 generated-native differential test and the native runtime tests (`runtime_loader_tests`, `runtime_loader_cli`, `runtime_execution_cli`). Results and generated binaries are written below the ignored build/ directory. The loader CLI can be run directly after the build, for example `build\cmake-msvc\rptp-load.exe --json tests\fixtures\gate0-r5900-subset.elf`; the synthetic execution harness is `build\cmake-msvc\rptp-run.exe --json --trace tests\fixtures\gate0-r5900-subset.elf`, which fails with `EXEC_MEMORY_FAULT` for that fixture because its store target is outside the single RX segment. See [RUNTIME.md](RUNTIME.md).
 
 To inspect the toolchain/environment without running all tests:
 
