@@ -623,7 +623,7 @@ void test_execution_doubleword_memory() {
       encode_i(0x3F, 9, 8, 0),        // sd t0, 0(t1)
       encode_i(0x37, 9, 10, 0),       // ld t2, 0(t1)
       encode_i(0x37, 9, 0, 0),        // ld zero, 0(t1)
-      encode_i(0x3F, 0, 0, 8),        // sd zero, 8(t1)
+      encode_i(0x3F, 9, 0, 8),        // sd zero, 8(t1)
       encode_i(0x37, 9, 11, 8),       // ld t3, 8(t1)
       encode_r(0, 0, 0, 0, 0),        // nop
   };
@@ -649,7 +649,7 @@ void test_execution_doubleword_memory() {
   }
 
   expect_exec_error(
-      run_code({encode_i(0x09, 0, 9, 0x2000), encode_i(0x3F, 9, 8, 4)}, ExecOptions{}, 12U),
+      run_code({encode_i(0x09, 0, 9, 0x2000), encode_i(0x3F, 9, 8, 8)}, ExecOptions{}, 12U),
       ExecErrorCode::MemoryFault, "doubleword store crossing the segment end");
   expect_exec_error(
       run_code({encode_i(0x09, 0, 9, 0x2000), encode_i(0x37, 9, 8, 2)}, ExecOptions{}, 16U),

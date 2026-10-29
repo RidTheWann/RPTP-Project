@@ -104,7 +104,7 @@ def extended_words() -> list[int]:
         encode_r(8, 9, 0, 0, 0x23),  # 0x74 subu zero, t0, t1
         encode_i(0x3F, 23, 28, 8),  # 0x78 sd gp, 8(s7)
         encode_i(0x37, 23, 29, 8),  # 0x7c ld sp, 8(s7)
-        encode_i(0x3F, 0, 0, 0),  # 0x80 sd zero, 0(s7)
+        encode_i(0x3F, 23, 0, 0),  # 0x80 sd zero, 0(s7)
         encode_i(0x37, 23, 30, 0),  # 0x84 ld fp, 0(s7)
         encode_r(0, 0, 0, 0, 0),  # 0x88 nop
     ]
@@ -266,7 +266,7 @@ class RuntimeExecutionCliTests(unittest.TestCase):
         words = [
             encode_i(0x09, 0, 8, 1),
             encode_i(0x09, 0, 23, DATA),
-            encode_i(0x3F, 23, 8, 4),
+            encode_i(0x3F, 23, 8, 8),
         ]
         result, _ = self.run_cli(build_program(words, data_memsz=12), "--json")
         self.assertEqual(2, result.returncode)
@@ -283,8 +283,8 @@ class RuntimeExecutionCliTests(unittest.TestCase):
         image = build_elf(
             BASE,
             [
-                {"offset": DATA_OFFSET, "vaddr": DATA, "filesz": 4, "memsz": 8, "flags": 6},
-                {"offset": DATA_OFFSET + 4, "vaddr": DATA + 8, "filesz": 4, "memsz": 8, "flags": 6},
+                {"offset": DATA_OFFSET, "vaddr": DATA, "filesz": 4, "memsz": 4, "flags": 6},
+                {"offset": DATA_OFFSET + 4, "vaddr": DATA + 4, "filesz": 4, "memsz": 4, "flags": 6},
                 {"offset": CODE_OFFSET, "vaddr": BASE, "filesz": len(code), "memsz": len(code), "flags": 5},
             ],
             payload=payload,

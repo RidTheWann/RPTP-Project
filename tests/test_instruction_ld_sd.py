@@ -320,7 +320,7 @@ int main() {{
             run_generated(state);
             std::cout << 'v' << std::hex << state.memory[0x{DATA:08X}u] << ','
                       << state.memory[0x{DATA + 4:08X}u] << ' ';
-        }} catch (const std::runtime_error& error) {{
+        }} catch (const std::runtime_error&) {{
             std::cout << "unaligned" << ' ';
         }}
     }};
