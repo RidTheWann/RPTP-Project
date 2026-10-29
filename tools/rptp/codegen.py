@@ -251,7 +251,8 @@ class _Emitter:
             cast = f"(std::uint64_t)(std::int64_t){op.imm}" if op.imm < 0 else f"{op.imm}u"
             self.emit(f"rptp::write_reg(s, {dest}, rptp::{write}({operand} + {cast}));")
         elif m == "slti":
-            self.emit(f"rptp::write_reg(s, {dest}, rptp::sext64(cmp_signed({source}.lo, {op.imm}, 64) < 0 ? 1u : 0u));")
+            imm = op.imm & 0xFFFFFFFFFFFFFFFF
+            self.emit(f"rptp::write_reg(s, {dest}, rptp::sext64(cmp_signed({source}.lo, 0x{imm:016X}ull, 64) < 0 ? 1u : 0u));")
         elif m == "sltiu":
             imm = op.imm & 0xFFFFFFFFFFFFFFFF
             self.emit(f"rptp::write_reg(s, {dest}, rptp::sext64({source}.lo < 0x{imm:016X}ull ? 1u : 0u));")

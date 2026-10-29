@@ -110,6 +110,15 @@ if(BUILD_TESTING)
         runtime_execution_cli
         PROPERTIES WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
     )
+    add_test(
+        NAME cross_path_equivalence
+        COMMAND "${CMAKE_COMMAND}" -E env "RPTP_RUN_BINARY=$<TARGET_FILE:rptp-run>"
+                "${Python3_EXECUTABLE}" -m unittest tests.test_cross_path_equivalence -v
+    )
+    set_tests_properties(
+        cross_path_equivalence
+        PROPERTIES WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+    )
     set(_rptp_runtime_test_target rptp-runtime-tests)
 else()
     set(_rptp_runtime_test_target "")

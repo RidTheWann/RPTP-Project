@@ -21,6 +21,7 @@ from tests.test_runtime_loader import build_elf
 from tools.rptp import oracle
 from tools.rptp.cfg import discover_program
 from tools.rptp.elf import parse_elf_bytes
+from tools.rptp.oracle import ExecutionError, Oracle
 from tools.rptp_gate0_spike import execute_oracle
 
 BINARY = os.environ.get("RPTP_RUN_BINARY", "")
@@ -474,6 +475,43 @@ class RuntimeExecutionCliTests(unittest.TestCase):
         self.assertEqual(2, result.returncode)
         document = json.loads(result.stdout)
         self.assertEqual("EXEC_MEMORY_FAULT", document["error"]["code"])
+
+    def test_unaligned_word_load_fails_closed_in_runtime_and_oracle(self) -> None:
+        words = [
+            encode_i(0x09, 0, 23, DATA),
+            encode_i(0x23, 23, 8, 2),
+            encode_r(31, 0, 0, 0, 0x08),  # jr ra
+            encode_r(0, 0, 0, 0, 0),  # nop (delay slot)
+        ]
+        image = build_program(words)
+        result, _ = self.run_cli(image, "--json")
+        self.assertEqual(2, result.returncode)
+        document = json.loads(result.stdout)
+        self.assertEqual("EXEC_MEMORY_FAULT", document["error"]["code"])
+        self.assertIn("unaligned word load", document["error"]["message"])
+
+        program = discover_program(parse_elf_bytes(image, path="unaligned_lw.elf"))
+        with self.assertRaisesRegex(ExecutionError, r"Unaligned LW"):
+            Oracle(program).run()
+
+    def test_unaligned_word_store_fails_closed_in_runtime_and_oracle(self) -> None:
+        words = [
+            encode_i(0x09, 0, 23, DATA),
+            encode_i(0x09, 0, 8, 1),
+            encode_i(0x2B, 23, 8, 2),
+            encode_r(31, 0, 0, 0, 0x08),  # jr ra
+            encode_r(0, 0, 0, 0, 0),  # nop (delay slot)
+        ]
+        image = build_program(words)
+        result, _ = self.run_cli(image, "--json")
+        self.assertEqual(2, result.returncode)
+        document = json.loads(result.stdout)
+        self.assertEqual("EXEC_MEMORY_FAULT", document["error"]["code"])
+        self.assertIn("unaligned word store", document["error"]["message"])
+
+        program = discover_program(parse_elf_bytes(image, path="unaligned_sw.elf"))
+        with self.assertRaisesRegex(ExecutionError, r"Unaligned SW"):
+            Oracle(program).run()
 
     def test_doubleword_load_past_the_segment_fails_closed(self) -> None:
         words = [
