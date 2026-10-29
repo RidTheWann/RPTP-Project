@@ -44,6 +44,16 @@ LIKELY_FORMS = (
     ("bgezall", 0x01, 0x13, "gez", True),
 )
 
+PLAIN_FORMS = (
+    # mnemonic, opcode, rt/sub-opcode, condition, link
+    ("blez", 0x06, 0, "lez", False),
+    ("bgtz", 0x07, 0, "gtz", False),
+    ("bltz", 0x01, 0x00, "ltz", False),
+    ("bgez", 0x01, 0x01, "gez", False),
+    ("bltzal", 0x01, 0x10, "ltz", True),
+    ("bgezal", 0x01, 0x11, "gez", True),
+)
+
 
 def encode_i(op: int, rs: int, rt: int, imm: int) -> int:
     return ((op & 0x3F) << 26) | ((rs & 0x1F) << 21) | ((rt & 0x1F) << 16) | (imm & 0xFFFF)
@@ -341,6 +351,42 @@ class RuntimeExecutionCliTests(unittest.TestCase):
                     expected_link = 0x00100014 if link else 0
                     self.assertEqual(expected_link, int(document["registers"][31], 16))
                     self.assertEqual(0, int(document["registers"][0], 16))
+
+    def test_plain_branch_forms_match_the_python_oracle(self) -> None:
+        for mnemonic, opcode, rt_field, condition, link in PLAIN_FORMS:
+            for taken in (False, True):
+                with self.subTest(mnemonic=mnemonic, taken=taken):
+                    document = self.assert_likely_matches_oracle(
+                        likely_form_words(opcode, rt_field, condition, taken)
+                    )
+                    self.assertEqual(8 if taken else 9, document["steps"])
+                    self.assertEqual(0, int(document["final_pc"], 16))
+                    self.assertEqual(0x11, int(document["registers"][4], 16))
+                    self.assertEqual(0 if taken else 0x22, int(document["registers"][5], 16))
+                    self.assertEqual(0x33, int(document["registers"][6], 16))
+                    self.assertEqual(0x00100014 if link else 0,
+                                     int(document["registers"][31], 16))
+                    self.assertEqual(0, int(document["registers"][0], 16))
+                    trace = [int(value, 16) for value in document["trace"]]
+                    self.assertIn(BASE + 0x10, trace)
+                    if taken:
+                        self.assertNotIn(BASE + 0x14, trace)
+                    else:
+                        self.assertIn(BASE + 0x14, trace)
+
+    def test_plain_link_forms_with_rs_31_fail_closed(self) -> None:
+        for label, rt_field in (("bltzal", 0x10), ("bgezal", 0x11)):
+            with self.subTest(label=label):
+                result, _ = self.run_cli(
+                    build_program([encode_i(0x01, 31, rt_field, 1),
+                                   encode_r(0, 0, 0, 0, 0)]),
+                    "--json",
+                )
+                self.assertEqual(2, result.returncode)
+                self.assertEqual("", result.stderr.strip())
+                document = json.loads(result.stdout)
+                self.assertEqual("error", document["status"])
+                self.assertEqual("EXEC_UNSUPPORTED_INSTRUCTION", document["error"]["code"])
 
     def test_likely_combined_program_matches_the_python_oracle(self) -> None:
         document = self.assert_likely_matches_oracle(likely_combined_words())
