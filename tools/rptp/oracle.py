@@ -337,16 +337,20 @@ class Oracle:
         state.trace.append(control.pc)
         state.steps += 1
         mnemonic = control.mnemonic
+        nullify_delay = False
         if mnemonic in {"syscall", "break", "eret"}:
             state.halted = True
             state.reason = mnemonic
             state.pc = control.pc
             return
-        if mnemonic in {"beq", "bne", "blez", "bgtz", "bltz", "bgez", "bltzal", "bgezal"}:
+        if mnemonic in {"beq", "bne", "blez", "bgtz", "bltz", "bgez", "bltzal", "bgezal",
+                        "beql", "bnel", "blezl", "bgtzl", "bltzl", "bgezl",
+                        "bltzall", "bgezall"}:
             take = self._branch_taken(control)
-            if mnemonic in {"bltzal", "bgezal"} and state.registers:
+            if mnemonic in {"bltzal", "bgezal", "bltzall", "bgezall"} and state.registers:
                 _write_u32(state, 31, (control.pc + 8) & MASK32)
             next_pc = (control.target or 0) if take else ((control.pc + 8) & MASK32)
+            nullify_delay = control.is_likely and not take
         elif mnemonic == "j":
             next_pc = control.target or 0
         elif mnemonic == "jal":
@@ -362,7 +366,7 @@ class Oracle:
             raise ExecutionError(f"Oracle has no control lowering for {control.text()}")
         state.registers[0] = 0
 
-        if delay is not None:
+        if delay is not None and not nullify_delay:
             state.trace.append(delay.pc)
             state.steps += 1
             if not self._execute_instruction(delay):
@@ -375,17 +379,17 @@ class Oracle:
         mnemonic = control.mnemonic
         rs = regs[control.rs or 0] & MASK64
         rt = regs[control.rt or 0] & MASK64
-        if mnemonic == "beq":
+        if mnemonic in {"beq", "beql"}:
             return rs == rt
-        if mnemonic == "bne":
+        if mnemonic in {"bne", "bnel"}:
             return rs != rt
-        if mnemonic == "blez":
+        if mnemonic in {"blez", "blezl"}:
             return _signed64(rs) <= 0
-        if mnemonic == "bgtz":
+        if mnemonic in {"bgtz", "bgtzl"}:
             return _signed64(rs) > 0
-        if mnemonic in {"bltz", "bltzal"}:
+        if mnemonic in {"bltz", "bltzal", "bltzl", "bltzall"}:
             return _signed64(rs) < 0
-        if mnemonic in {"bgez", "bgezal"}:
+        if mnemonic in {"bgez", "bgezal", "bgezl", "bgezall"}:
             return _signed64(rs) >= 0
         raise ExecutionError(f"Unknown branch {mnemonic}")
 

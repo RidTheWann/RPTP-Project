@@ -281,6 +281,30 @@ class Assembler:
     def bgezal(self, rs: int, label: str) -> None:
         self._regimm_branch(0x11, rs, label)
 
+    def beql(self, rs: int, rt: int, label: str) -> None:
+        self._branch(0x14, rs, rt, label)
+
+    def bnel(self, rs: int, rt: int, label: str) -> None:
+        self._branch(0x15, rs, rt, label)
+
+    def blezl(self, rs: int, label: str) -> None:
+        self._branch(0x16, rs, ZERO, label)
+
+    def bgtzl(self, rs: int, label: str) -> None:
+        self._branch(0x17, rs, ZERO, label)
+
+    def bltzl(self, rs: int, label: str) -> None:
+        self._regimm_branch(0x02, rs, label)
+
+    def bgezl(self, rs: int, label: str) -> None:
+        self._regimm_branch(0x03, rs, label)
+
+    def bltzall(self, rs: int, label: str) -> None:
+        self._regimm_branch(0x12, rs, label)
+
+    def bgezall(self, rs: int, label: str) -> None:
+        self._regimm_branch(0x13, rs, label)
+
     def _branch(self, op: int, rs: int, rt: int, label: str) -> None:
         self.fixups.append(_Fixup(len(self.words), "branch", label, self.pc))
         self.emit(encode_i(op, rt, rs, 0))
