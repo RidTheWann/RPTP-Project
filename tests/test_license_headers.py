@@ -9,6 +9,12 @@ from pathlib import Path, PurePosixPath
 
 ROOT = Path(__file__).resolve().parents[1]
 EXPECTED_HEADER = "# SPDX-License-Identifier: GPL-3.0-or-later"
+EXPECTED_CXX_HEADER = "// SPDX-License-Identifier: GPL-3.0-or-later"
+
+
+def expected_header(path: Path) -> str:
+    """C++ sources use a line comment; Python, CMake and workflow files use `#`."""
+    return EXPECTED_CXX_HEADER if path.suffix in {".hpp", ".cpp"} else EXPECTED_HEADER
 
 
 def tracked_project_files() -> list[Path]:
@@ -49,10 +55,17 @@ class LicenseHeaderTests(unittest.TestCase):
         for path in files:
             lines = path.read_text(encoding="utf-8").splitlines()
             index = 1 if lines and lines[0].startswith("#!") else 0
-            if len(lines) <= index or lines[index].strip() != EXPECTED_HEADER:
+            if len(lines) <= index or lines[index].strip() != expected_header(path):
                 failures.append(f"{path.relative_to(ROOT).as_posix()}: header at line {index + 1}")
 
         self.assertEqual([], failures, "Missing SPDX header:\n" + "\n".join(failures))
+
+    def test_expected_header_comment_style(self) -> None:
+        self.assertEqual(EXPECTED_CXX_HEADER, expected_header(Path("runtime/src/guest_memory.cpp")))
+        self.assertEqual(EXPECTED_CXX_HEADER, expected_header(Path("runtime/include/rptp/runtime/elf_loader.hpp")))
+        self.assertEqual(EXPECTED_HEADER, expected_header(Path("tools/rptp_doctor.py")))
+        self.assertEqual(EXPECTED_HEADER, expected_header(Path("CMakeLists.txt")))
+        self.assertEqual(EXPECTED_HEADER, expected_header(Path(".github/workflows/ci.yml")))
 
 
 if __name__ == "__main__":
