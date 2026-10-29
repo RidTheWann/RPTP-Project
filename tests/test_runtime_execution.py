@@ -97,7 +97,12 @@ def extended_words() -> list[int]:
         encode_r(26, 25, 27, 0, 0x2D),  # 0x58 daddu k1, k0, t9
         encode_r(26, 26, 28, 0, 0x2D),  # 0x5c daddu gp, k0, k0
         encode_r(8, 9, 0, 0, 0x2D),  # 0x60 daddu zero, t0, t1
-        encode_r(0, 0, 0, 0, 0),  # 0x64 nop
+        encode_r(8, 9, 2, 0, 0x23),  # 0x64 subu v0, t0, t1
+        encode_r(9, 8, 3, 0, 0x23),  # 0x68 subu v1, t1, t0
+        encode_r(10, 12, 4, 0, 0x23),  # 0x6c subu a0, t2, t4
+        encode_r(0, 8, 5, 0, 0x23),  # 0x70 subu a1, zero, t0
+        encode_r(8, 9, 0, 0, 0x23),  # 0x74 subu zero, t0, t1
+        encode_r(0, 0, 0, 0, 0),  # 0x78 nop
     ]
 
 
@@ -177,6 +182,10 @@ class RuntimeExecutionCliTests(unittest.TestCase):
         self.assertEqual(0xFFFFFFFFC0000000, int(document["registers"][27], 16))
         self.assertEqual(0xFFFFFFFF00000000, int(document["registers"][28], 16))
         self.assertEqual(0, int(document["registers"][0], 16))
+        self.assertEqual(0xFFFFFFFF80000001, int(document["registers"][2], 16))
+        self.assertEqual(0x000000007FFFFFFF, int(document["registers"][3], 16))
+        self.assertEqual(0xFFFFFFFFFFFFACF1, int(document["registers"][4], 16))
+        self.assertEqual(0xFFFFFFFFFFFFFFFF, int(document["registers"][5], 16))
 
     def test_output_is_deterministic(self) -> None:
         image = build_program(main_words())

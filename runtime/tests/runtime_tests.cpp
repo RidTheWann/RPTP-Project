@@ -566,7 +566,12 @@ void test_execution_extended_subset() {
       encode_r(26, 25, 27, 0, 0x2D),    // 0x58 daddu k1, k0, t9
       encode_r(26, 26, 28, 0, 0x2D),    // 0x5c daddu gp, k0, k0
       encode_r(8, 9, 0, 0, 0x2D),       // 0x60 daddu zero, t0, t1
-      encode_r(0, 0, 0, 0, 0),          // 0x64 nop
+      encode_r(8, 9, 2, 0, 0x23),       // 0x64 subu v0, t0, t1
+      encode_r(9, 8, 3, 0, 0x23),       // 0x68 subu v1, t1, t0
+      encode_r(10, 12, 4, 0, 0x23),     // 0x6c subu a0, t2, t4
+      encode_r(0, 8, 5, 0, 0x23),       // 0x70 subu a1, zero, t0
+      encode_r(8, 9, 0, 0, 0x23),       // 0x74 subu zero, t0, t1
+      encode_r(0, 0, 0, 0, 0),          // 0x78 nop
   };
   const ExecOutcome outcome = run_code(code);
   CHECK(outcome.ok());
@@ -597,6 +602,10 @@ void test_execution_extended_subset() {
   CHECK(outcome.result.registers[26] == 0xFFFFFFFF80000000ULL);
   CHECK(outcome.result.registers[27] == 0xFFFFFFFFC0000000ULL);
   CHECK(outcome.result.registers[28] == 0xFFFFFFFF00000000ULL);
+  CHECK(outcome.result.registers[2] == 0xFFFFFFFF80000001ULL);
+  CHECK(outcome.result.registers[3] == 0x000000007FFFFFFFULL);
+  CHECK(outcome.result.registers[4] == 0xFFFFFFFFFFFFACF1ULL);
+  CHECK(outcome.result.registers[5] == 0xFFFFFFFFFFFFFFFFULL);
   CHECK(outcome.result.registers[0] == 0U);
   CHECK(outcome.result.memory_writes.size() == 1U);
   if (outcome.result.memory_writes.size() == 1U) {
@@ -615,6 +624,12 @@ void test_execution_failures() {
                     "and with nonzero shamt");
   expect_exec_error(run_code({encode_r(8, 9, 10, 1, 0x2D)}), ExecErrorCode::UnsupportedInstruction,
                     "daddu with nonzero shamt");
+  expect_exec_error(run_code({encode_r(8, 9, 10, 1, 0x23)}), ExecErrorCode::UnsupportedInstruction,
+                    "subu with nonzero shamt");
+  expect_exec_error(run_code({encode_r(8, 9, 10, 0, 0x22)}), ExecErrorCode::UnsupportedInstruction,
+                    "trapping sub");
+  expect_exec_error(run_code({encode_r(8, 9, 10, 0, 0x2E)}), ExecErrorCode::UnsupportedInstruction,
+                    "dsubu");
   expect_exec_error(
       run_code({encode_i(0x09, 0, 11, 0x2000), encode_r(11, 0, 0, 0, 0x08), encode_r(0, 0, 0, 0, 0)}),
       ExecErrorCode::PcNotExecutable, "jr into data");

@@ -27,6 +27,7 @@ constexpr std::uint32_t kOpcodeJal = 0x03U;
 constexpr std::uint32_t kFunctSll = 0x00U;
 constexpr std::uint32_t kFunctJr = 0x08U;
 constexpr std::uint32_t kFunctAddu = 0x21U;
+constexpr std::uint32_t kFunctSubu = 0x23U;
 constexpr std::uint32_t kFunctDaddu = 0x2DU;
 constexpr std::uint32_t kFunctAnd = 0x24U;
 constexpr std::uint32_t kFunctOr = 0x25U;
@@ -39,6 +40,7 @@ enum class Op {
   Nop,
   Addiu,
   Addu,
+  Subu,
   Daddu,
   Slti,
   Sltiu,
@@ -196,6 +198,10 @@ bool decode(std::uint32_t word, std::uint32_t pc, Instruction& instruction) {
     case 0:
       if (funct == kFunctAddu && shamt == 0) {
         instruction = {Op::Addu, rs, rt, rd, 0, 0, 0};
+        return true;
+      }
+      if (funct == kFunctSubu && shamt == 0) {
+        instruction = {Op::Subu, rs, rt, rd, 0, 0, 0};
         return true;
       }
       if (funct == kFunctDaddu && shamt == 0) {
@@ -366,6 +372,12 @@ ExecOutcome execute_loaded(const LoadReport& report, GuestMemory& memory, const 
         const auto sum = static_cast<std::uint32_t>(static_cast<std::uint32_t>(registers[instruction.rs]) +
                                                     static_cast<std::uint32_t>(registers[instruction.rt]));
         write_register(instruction.rd, sign_extend_32(sum));
+        break;
+      }
+      case Op::Subu: {
+        const auto difference = static_cast<std::uint32_t>(static_cast<std::uint32_t>(registers[instruction.rs]) -
+                                                           static_cast<std::uint32_t>(registers[instruction.rt]));
+        write_register(instruction.rd, sign_extend_32(difference));
         break;
       }
       case Op::Daddu:
