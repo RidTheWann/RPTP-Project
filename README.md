@@ -20,9 +20,9 @@ RPTP is an open-source research project exploring how to transform a user-owned 
 
 ## Current status
 
-[![Foundation checklist: 77.8% verified](https://ridthewann.github.io/RPTP-Project/assets/badge-foundation.svg?v=2026-10-29-fe0daceb7299)](https://ridthewann.github.io/RPTP-Project/progress.html) [![Runtime checklist: 5.0% verified](https://ridthewann.github.io/RPTP-Project/assets/badge-runtime.svg?v=2026-10-29-9b12a9028ce1)](https://ridthewann.github.io/RPTP-Project/progress.html)
+[![Foundation checklist: 77.8% verified](https://ridthewann.github.io/RPTP-Project/assets/badge-foundation.svg?v=2026-10-30-fe0daceb7299)](https://ridthewann.github.io/RPTP-Project/progress.html) [![Runtime checklist: 5.0% verified](https://ridthewann.github.io/RPTP-Project/assets/badge-runtime.svg?v=2026-10-30-9b12a9028ce1)](https://ridthewann.github.io/RPTP-Project/progress.html)
 
-[![RPTP progress map](https://ridthewann.github.io/RPTP-Project/assets/progress.svg?v=2026-10-29-f5827163c783)](https://ridthewann.github.io/RPTP-Project/progress.html)
+[![RPTP progress map](https://ridthewann.github.io/RPTP-Project/assets/progress.svg?v=2026-10-30-cc56ff3003a8)](https://ridthewann.github.io/RPTP-Project/progress.html)
 
 *Foundation (18 items) and runtime (20 items) are scope checklists; policy decisions are recorded in the ADRs and are not counted as verified. Percentages are not overall completion, boot support or game compatibility.*
 
