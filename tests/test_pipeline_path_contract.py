@@ -2,11 +2,12 @@
 """Pin the documented capability split between the RPTP analysis paths.
 
 This is a contract test, not a semantic differential.  It records which of the
-42 Level B operations the legacy ``tools/rptp_ir.py`` / ``tools/rptp_lower.py``
-pipeline implements and proves that the fourteen branch forms it does not
-implement fail closed with the shared diagnostic instead of being silently
-lowered.  The new ``tools/rptp`` decoder accepts the same words, so a change on
-either side has to update the contracts, the semantics matrix and this test.
+51 Level B operations the legacy ``tools/rptp_ir.py`` / ``tools/rptp_lower.py``
+pipeline implements and proves that the fourteen branch forms and the nine
+doubleword shifts it does not implement fail closed with the shared diagnostic
+instead of being silently lowered.  The new ``tools/rptp`` decoder accepts the
+same words, so a change on either side has to update the contracts, the
+semantics matrix and this test.
 
 ADR-0005 (Proposed) uses this split as evidence for its canonical-path
 recommendation; this module neither changes semantics nor settles the ADR.
@@ -53,7 +54,13 @@ LIKELY_BRANCH_FORMS = frozenset({
 })
 
 NEW_PATH_ONLY_OPERATIONS = ORDINARY_BRANCH_FORMS | LIKELY_BRANCH_FORMS
-LEVEL_B_OPERATIONS = LEGACY_OPERATIONS | NEW_PATH_ONLY_OPERATIONS
+
+DSHIFT_OPERATIONS = frozenset({
+    "dsll", "dsll32", "dsllv", "dsra", "dsra32", "dsrav",
+    "dsrl", "dsrl32", "dsrlv",
+})
+
+LEVEL_B_OPERATIONS = LEGACY_OPERATIONS | NEW_PATH_ONLY_OPERATIONS | DSHIFT_OPERATIONS
 
 
 def build_branch_program(form: str) -> tuple[list[int], int]:
@@ -67,6 +74,21 @@ def build_branch_program(form: str) -> tuple[list[int], int]:
     assembler.nop()
     assembler.addiu(fixtures.T1, fixtures.ZERO, 1)
     assembler.label("done")
+    assembler.jr(fixtures.RA)
+    assembler.nop()
+    return assembler.resolve(), spike.BASE + 4
+
+
+def build_shift_program(form: str) -> tuple[list[int], int]:
+    """Return words for ``addiu; <form>; nop; addiu; jr; nop`` and the shift PC."""
+    assembler = fixtures.Assembler(base=spike.BASE)
+    assembler.addiu(fixtures.T0, fixtures.ZERO, 1)
+    if form in {"dsllv", "dsrlv", "dsrav"}:
+        getattr(assembler, form)(fixtures.T1, fixtures.T0, fixtures.T2)
+    else:
+        getattr(assembler, form)(fixtures.T1, fixtures.T0, 1)
+    assembler.nop()
+    assembler.addiu(fixtures.T2, fixtures.ZERO, 2)
     assembler.jr(fixtures.RA)
     assembler.nop()
     return assembler.resolve(), spike.BASE + 4
@@ -97,8 +119,9 @@ def build_shared_subset_program() -> bytes:
 class PipelinePathContractTests(unittest.TestCase):
     def test_legacy_lowering_set_is_the_documented_shared_subset(self) -> None:
         self.assertEqual(set(legacy_lower._SUPPORTED_OPS), set(LEGACY_OPERATIONS))
-        self.assertEqual(len(LEVEL_B_OPERATIONS), 42)
+        self.assertEqual(len(LEVEL_B_OPERATIONS), 51)
         self.assertTrue(LEGACY_OPERATIONS.isdisjoint(NEW_PATH_ONLY_OPERATIONS))
+        self.assertTrue(LEGACY_OPERATIONS.isdisjoint(DSHIFT_OPERATIONS))
         self.assertTrue(LEVEL_B_OPERATIONS <= isa.SUPPORTED_MNEMONICS)
 
     def test_legacy_pipeline_rejects_the_fourteen_new_path_forms(self) -> None:
@@ -118,6 +141,23 @@ class PipelinePathContractTests(unittest.TestCase):
                 self.assertEqual(decoded.mnemonic, form)
                 self.assertTrue(decoded.supported)
                 self.assertEqual(decoded.is_likely, form in LIKELY_BRANCH_FORMS)
+
+    def test_legacy_pipeline_rejects_the_nine_doubleword_shifts(self) -> None:
+        for form in sorted(DSHIFT_OPERATIONS):
+            with self.subTest(form=form):
+                words, shift_pc = build_shift_program(form)
+                rows = [
+                    (spike.BASE + 4 * index, f"word_{index}", word)
+                    for index, word in enumerate(words)
+                ]
+                with self.assertRaises(legacy_ir.AnalysisError) as caught:
+                    legacy_ir.analyze_elf(spike.build_elf_from_rows(rows))
+                self.assertEqual(caught.exception.code, legacy_ir.IR_UNSUPPORTED_INSTRUCTION)
+                self.assertEqual(caught.exception.pc, shift_pc)
+
+                decoded = isa.decode_instruction(words[1], shift_pc)
+                self.assertEqual(decoded.mnemonic, form)
+                self.assertTrue(decoded.supported)
 
     def test_legacy_pipeline_still_accepts_and_lowers_the_shared_subset(self) -> None:
         result = legacy_ir.analyze_elf(build_shared_subset_program())
