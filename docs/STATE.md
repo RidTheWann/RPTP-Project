@@ -2,7 +2,7 @@
 
 - **Snapshot date:** 2026-10-30
 - **Remote repository:** RidTheWann/RPTP-Project, public.
-- **Publication and CI status:** PRs #10–#57 merged every increment through the native harness, census and status synchronization. Latest merges: PR #57 `5326059` (run `41008593520`, pages `41008593428`), PR #56 `f8f7548` (run `41006977122`, pages `41006976205`) and PR #54 `90e4f62` (run `41005859751`); all green. Results: [VERIFICATION_LOG.md](VERIFICATION_LOG.md); local checks are not hosted CI.
+- **Publication and CI status:** PRs #10–#60 merged every increment through the native harness, census and status synchronization. Latest merges: PR #60 `c1f1ade` (run `41012644771`, pages `41012644318`), PR #59 `7a2b98f` (run `41009361036`, pages `41009360784`) and PR #57 `5326059` (run `41008593520`); all green. Results: [VERIFICATION_LOG.md](VERIFICATION_LOG.md); local checks are not hosted CI.
 - **Git workflow:** `main` integrates; use isolated worktrees, explicit staging, local verification/review, both exact-head compiler jobs, pinned-head merges and merge-commit CI, as authorized in [AGENTS.md](../AGENTS.md). No direct main push, force-push, history rewrite or administrative override.
 - **Manual automation:** user-profile `/rptp-develop` and read-only guards stay outside the repository; GitHub CLI write access is verified. Accepted clean-room/Gate boundaries are unchanged.
 - **Architecture:** from-scratch static ahead-of-time recompilation of supported Emotion Engine code to C++, plus a native Windows x64 runtime planned.
@@ -33,11 +33,11 @@ The accepted Gate 0 scope is the synthetic ELF32/EM_MIPS fixture and only ADDIU,
 4. **License (resolved):** GPL-3.0-or-later confirmed 2026-10-21; SPDX headers cover project source, build and workflow files.
 5. **Renderer (open):** none selected or tested; ADR-0002 remains a plan.
 6. **Dependencies:** no runtime dependency is vendored or linked; record license, version and notices before adding one.
-7. **Path divergence (open, `R-031`):** the Gate 0 spike, `tools/rptp`, the older `rptp_ir`/`rptp_lower` pipeline and the C++ harness model instructions separately. Branch-likely, the six ordinary forms and the alignment policy agree across `tools/rptp`, the harness and the cross-path suite, but the older paths reject the ordinary forms. [ADR-0005](DECISIONS/ADR-0005-canonical-execution-path.md) (Proposed; owner acceptance required) proposes `tools/rptp` plus the harness as canonical, freezes the legacy paths and defines E1–E4; `tests/test_path_contract.py` covers E1/E2. No canonical path is declared.
+7. **Path divergence (open, `R-031`):** the Gate 0 spike, `tools/rptp`, the older `rptp_ir`/`rptp_lower` pipeline and the C++ harness model instructions separately. Branch-likely, the six ordinary forms and the alignment policy agree across `tools/rptp`, the harness and the cross-path suite, but the older paths reject the ordinary forms. [ADR-0005](DECISIONS/ADR-0005-canonical-execution-path.md) (Proposed; owner acceptance required) proposes `tools/rptp` plus the harness as canonical, freezes the legacy paths and defines E1–E4; `tests/test_path_contract.py` covers E1/E2 and `tests/test_native_legacy_equivalence.py` covers E3. E4 remains open; no path is canonical.
 
 ## Next steps
 
-1. Owner accepts or rejects [ADR-0005](DECISIONS/ADR-0005-canonical-execution-path.md); then implement E3 (native legacy/canonical comparison) and E4 (fail-closed parity) before any retirement.
+1. Owner accepts or rejects [ADR-0005](DECISIONS/ADR-0005-canonical-execution-path.md); E3 evidence exists; complete E4 (fail-closed parity) before any retirement.
 2. Apply the per-instruction semantics matrix from PR #45 to choose the next instruction family from the refreshed census distribution, under [PROVENANCE_PLAN.md](PROVENANCE_PLAN.md): permitted references, independent tests, fail-closed diagnostics and an informative commit body.
 3. Continue Gate 3 with the next narrow, tested step; keep function discovery conservative and never infer extents or reachability from candidate lists.
 4. Commission the remaining provenance reviews; never claim clean-room certification or compatibility first, and do not infer boot support from an inspection, loaded image or generated artifact.
