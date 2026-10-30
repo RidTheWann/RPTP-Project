@@ -1368,3 +1368,12 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-msvc.ps1
 - Post-merge: merge-commit `RPTP CI` run `41141547211` completed successfully on `40eea22`, with `Linux / GCC` finished at 2026-10-30T22:59:06Z and `Windows x64 / MSVC` at 2026-10-30T23:00:38Z; Pages run `41141546473` also completed successfully.
 - Pointers: the documents cite the PR #68 merge `40eea22` as the latest merge, with PR #67 `b118a71` immediately before it; the increment ledger adds the PR #68 row.
 - Limitations: the hosted evidence covers only the named commits; it is not a compatibility, boot, Gate or clean-room result. No ISO, BIOS or game content was accessed.
+
+## 2026-10-31 — merge record for PR #69
+
+- Scope: records that PR #69 "test(e4): assert unsupported-encoding fail-closed parity" (head commits `b2fb0c9` and `5ad46ac`) was merged and that the post-merge hosted runs passed. The increment added `tests/test_fail_closed_unsupported.py`, the E4 unsupported-encoding evidence and the documentation pointers to the PR #68 merge `40eea22`; it changed no decoder, oracle, emitter, runtime or build behavior and no Gate, provenance or compatibility status.
+- Exact-head evidence: `RPTP CI` pull-request run `41142573977` and push run `41142548382` completed successfully on head `5ad46ac4b5438b9b8539ecf7be98a4f494d3dcb2`, with `Windows x64 / MSVC` and `Linux / GCC` both `success`, read from the GitHub REST API on 2026-10-31.
+- Merge: PR #69 merged as `c575c9036f226bc664c95a04199274627ead44a4`, with `merged_at` 2026-10-30T23:11:20Z, head `5ad46ac` and base `40eea22f96b4650e83ba6fee75605db5d692e8bc`; the merge API call pinned `sha=5ad46ac4b5438b9b8539ecf7be98a4f494d3dcb2` and returned `merged: true`.
+- Post-merge: merge-commit `RPTP CI` run `41142932425` completed successfully on `c575c90`, with `Linux / GCC` finished at 2026-10-30T23:12:05Z and `Windows x64 / MSVC` at 2026-10-30T23:13:37Z; Pages run `41142931779` also completed successfully.
+- Pointers: the documents cite the PR #69 merge `c575c90` as the latest merge, with PR #68 `40eea22` immediately before it; the increment ledger backfills the PR #69 rows.
+- Limitations: the hosted evidence covers only the named commits; it is not a compatibility, boot, Gate or clean-room result. The harness leg of the new fail-closed suite skips unless `RPTP_RUN_BINARY` names a built executable, and a skip is not a pass. No ISO, BIOS or game content was accessed.
