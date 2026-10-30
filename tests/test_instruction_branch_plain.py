@@ -377,6 +377,21 @@ class PlainBranchCombinedTests(unittest.TestCase):
         self.assertEqual(control.target, target_pc)
         self.assertEqual(control.fallthrough, fallthrough_pc)
 
+    def test_branch_target_zero_is_not_replaced_by_the_fallthrough(self):
+        # beq $0, $0 at 0x1000 with immediate 0xFBFF targets address 0:
+        # 0x1000 + 4 + (-1025 * 4) == 0.  The IR must keep the literal target.
+        words = [0x1000FBFF, 0x00000000, 0x00000000]
+        program = discover_program(parse_elf_bytes(build_elf(words, base=0x1000)))
+        self.assertEqual(program.blocks[0x1000].instructions[0].target, 0)
+        result = ir.lower_program(program, block_starts=[0x1000])
+        self.assertEqual(result.errors, [])
+        control = result.blocks[0x1000].control
+        self.assertEqual(control.kind, "branch")
+        self.assertEqual(control.target, 0)
+        self.assertEqual(control.fallthrough, 0x1008)
+        generated = codegen.generate(program, result)
+        self.assertIn("taken ? 0x00000000u : 0x00001008u", generated.source)
+
     def test_link_control_records_gpr_31(self):
         asm = Assembler()
         asm.addiu(T0, ZERO, -1)
@@ -416,6 +431,57 @@ class PlainBranchCombinedTests(unittest.TestCase):
         expected = oracle.run_oracle(program, max_steps=MAX_STEPS)
         actual = native.run_differential(image, max_steps=MAX_STEPS)
         self.assertEqual(actual, expected)
+
+
+class PlainBranchDelaySlotOrderingTests(unittest.TestCase):
+    """R-032: delay-slot effects survive a taken branch, and the link write is
+    visible to the delay slot before it executes."""
+
+    def test_taken_branch_delay_slot_store_keeps_a_nonzero_value(self):
+        asm = Assembler()
+        asm.lui(T4, DATA_BASE >> 16)
+        asm.addiu(T0, ZERO, 0)
+        asm.addiu(T1, ZERO, 0x2A)
+        asm.blez(T0, "target")
+        asm.sw(T1, 0, T4)          # delay slot of a taken branch
+        asm.addiu(A0, ZERO, 0x22)  # skipped fall-through
+        asm.label("target")
+        asm.addiu(A1, ZERO, 0x33)
+        asm.jr(RA)
+        asm.nop()
+        state = execute(asm)
+        self.assertEqual(state["registers"][A0], pair(0))
+        self.assertEqual(state["registers"][A1], pair(0x33))
+        self.assertEqual(
+            state["memory"],
+            [[DATA_BASE, 0x2A], [DATA_BASE + 1, 0],
+             [DATA_BASE + 2, 0], [DATA_BASE + 3, 0]],
+        )
+
+    def test_delay_slot_reads_the_link_written_by_the_branch(self):
+        for form, taken in (("bgezal", True), ("bltzal", False)):
+            with self.subTest(form=form, taken=taken):
+                asm = Assembler()
+                asm.addu(S7, RA, ZERO)          # preserve the initial return value (0)
+                asm.addiu(RA, ZERO, 0x7FFF)     # stale $ra the link must overwrite
+                asm.addiu(T0, ZERO, 0)          # bgezal taken / bltzal not taken
+                branch_pc = asm.pc
+                getattr(asm, form)(T0, "target")
+                delay_pc = asm.pc
+                asm.addiu(A0, RA, 0)            # delay slot observes the new $ra
+                asm.addiu(A1, ZERO, 0x22)       # fall-through
+                asm.label("target")
+                asm.addiu(A2, RA, 0)            # target block also sees the new $ra
+                asm.jr(S7)
+                asm.nop()
+                state = execute(asm)
+                self.assertTrue(state["halted"])
+                self.assertEqual(
+                    state["trace"][state["trace"].index(branch_pc) + 1], delay_pc)
+                self.assertEqual(state["registers"][A0], pair(branch_pc + 8))
+                self.assertEqual(state["registers"][RA], pair(branch_pc + 8))
+                self.assertEqual(state["registers"][A1], pair(0 if taken else 0x22))
+                self.assertEqual(state["registers"][A2], pair(branch_pc + 8))
 
 
 class PlainBranchFailClosedTests(unittest.TestCase):

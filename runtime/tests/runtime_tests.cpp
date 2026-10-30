@@ -943,6 +943,88 @@ void test_execution_plain_branch_forms() {
   }
 }
 
+void test_execution_plain_branch_delay_slot_store() {
+  // A taken BLEZ whose delay slot stores a nonzero word: the store must land
+  // in memory even though the fall-through block is skipped.
+  const std::vector<std::uint32_t> code{
+      encode_i(0x09, 0, 10, static_cast<std::int32_t>(kDataBase)),  // 0x00 addiu t2, zero, 0x2000
+      encode_i(0x09, 0, 8, 0),                                     // 0x04 addiu t0, zero, 0
+      encode_i(0x09, 0, 9, 0x2A),                                  // 0x08 addiu t1, zero, 0x2a
+      encode_i(0x06, 8, 0, 2),                                     // 0x0c blez t0, 0x18
+      encode_i(0x2B, 10, 9, 0),                                    // 0x10 sw t1, 0(t2) (delay slot)
+      encode_i(0x09, 0, 4, 0x22),                                  // 0x14 addiu a0, zero, 0x22 (skipped)
+      encode_i(0x23, 10, 11, 0),                                   // 0x18 lw t3, 0(t2)
+      encode_i(0x09, 0, 5, 0x33),                                  // 0x1c addiu a1, zero, 0x33
+  };
+  ExecOptions options;
+  options.trace = true;
+  const ExecOutcome outcome = run_code(code, options);
+  if (!outcome.ok()) {
+    std::cerr << "FAIL plain branch delay-slot store: execution failed with "
+              << to_string(outcome.error->code) << '\n';
+    ++failures;
+    return;
+  }
+  CHECK(outcome.result.steps == 7U);
+  CHECK(outcome.result.registers[11] == 0x2AU);
+  CHECK(outcome.result.registers[4] == 0U);
+  CHECK(outcome.result.registers[5] == 0x33U);
+  CHECK(outcome.result.registers[31] == 0U);
+  CHECK((outcome.result.trace == std::vector<std::uint32_t>{
+                                     kExecutableBase, kExecutableBase + 4U, kExecutableBase + 8U,
+                                     kExecutableBase + 12U, kExecutableBase + 16U,
+                                     kExecutableBase + 24U, kExecutableBase + 28U}));
+}
+
+void test_execution_plain_branch_link_in_delay_slot() {
+  // The link write happens before the delay slot executes, so a delay slot that
+  // reads $31 observes pc + 8 on both outcomes, and the stale value is gone.
+  {
+    const std::vector<std::uint32_t> code{
+        encode_i(0x09, 0, 31, 0x7FFF),  // 0x00 addiu ra, zero, 0x7fff (stale link)
+        encode_i(0x09, 0, 8, 0),        // 0x04 addiu t0, zero, 0
+        encode_i(0x01, 8, 0x11, 2),     // 0x08 bgezal t0, 0x14 (taken)
+        encode_r(31, 0, 4, 0, 0x21),    // 0x0c addu a0, ra, zero (delay slot)
+        encode_i(0x09, 0, 5, 0x22),     // 0x10 addiu a1, zero, 0x22 (skipped)
+        encode_r(31, 0, 6, 0, 0x21),    // 0x14 addu a2, ra, zero (target)
+    };
+    const ExecOutcome outcome = run_code(code);
+    if (!outcome.ok()) {
+      std::cerr << "FAIL plain branch link taken: execution failed with "
+                << to_string(outcome.error->code) << '\n';
+      ++failures;
+    } else {
+      CHECK(outcome.result.registers[31] == kExecutableBase + 16U);
+      CHECK(outcome.result.registers[4] == kExecutableBase + 16U);
+      CHECK(outcome.result.registers[5] == 0U);
+      CHECK(outcome.result.registers[6] == kExecutableBase + 16U);
+    }
+  }
+  {
+    const std::vector<std::uint32_t> code{
+        encode_i(0x09, 0, 31, 0x7FFF),  // 0x00 addiu ra, zero, 0x7fff (stale link)
+        encode_i(0x09, 0, 8, 0),        // 0x04 addiu t0, zero, 0
+        encode_i(0x01, 8, 0x10, 3),     // 0x08 bltzal t0, 0x18 (not taken)
+        encode_r(31, 0, 4, 0, 0x21),    // 0x0c addu a0, ra, zero (delay slot)
+        encode_i(0x09, 0, 5, 0x22),     // 0x10 addiu a1, zero, 0x22 (fall-through)
+        encode_i(0x09, 0, 6, 0x33),     // 0x14 addiu a2, zero, 0x33
+        encode_r(31, 0, 7, 0, 0x21),    // 0x18 addu a3, ra, zero (target)
+    };
+    const ExecOutcome outcome = run_code(code);
+    if (!outcome.ok()) {
+      std::cerr << "FAIL plain branch link not-taken: execution failed with "
+                << to_string(outcome.error->code) << '\n';
+      ++failures;
+    } else {
+      CHECK(outcome.result.registers[31] == kExecutableBase + 16U);
+      CHECK(outcome.result.registers[4] == kExecutableBase + 16U);
+      CHECK(outcome.result.registers[5] == 0x22U);
+      CHECK(outcome.result.registers[6] == 0x33U);
+      CHECK(outcome.result.registers[7] == kExecutableBase + 16U);
+    }
+  }
+}
+
 void test_execution_plain_branch_failures() {
   ExecOptions traced;
   traced.trace = true;
@@ -1238,6 +1320,8 @@ int main() {
   test_execution_likely_nullification_and_failures();
   test_execution_likely_pc_masking();
   test_execution_plain_branch_forms();
+  test_execution_plain_branch_delay_slot_store();
+  test_execution_plain_branch_link_in_delay_slot();
   test_execution_plain_branch_failures();
   test_execution_extended_subset();
   test_execution_doubleword_memory();

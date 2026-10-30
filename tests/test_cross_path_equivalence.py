@@ -18,7 +18,9 @@ the three models, and ends with a jump outside every loaded segment.  It covers
 arithmetic, logic, shifts, LW/SW, a signed/unsigned 64-bit boundary loaded with
 LD, taken/not-taken BEQ/BNE branches, and the six non-likely branch forms whose
 delay slots always execute; BLTZAL/BGEZAL additionally exercise the
-unconditional ``$ra = PC + 8`` link write.
+unconditional ``$ra = PC + 8`` link write.  The closing R-032 section adds a
+taken-branch delay-slot store with a nonzero value and a delay slot that reads
+the freshly written link register.
 """
 from __future__ import annotations
 
@@ -172,6 +174,21 @@ def shared_program() -> tuple[list[int], dict[str, int]]:
     asm.addiu(fixtures.S4, fixtures.ZERO, 3333)               # skipped
     asm.label("plain_bgezal")
 
+    # R-032: a taken branch whose delay slot stores a nonzero word, and a
+    # BGEZAL whose delay slot reads the freshly written link register.
+    asm.addiu(fixtures.AT, fixtures.ZERO, 0x2A)
+    asm.addiu(fixtures.V0, fixtures.ZERO, 0)
+    asm.blez(fixtures.V0, "delay_store_done")                 # taken
+    asm.sw(fixtures.AT, 20, fixtures.T0)                      # delay slot store
+    asm.addiu(fixtures.V1, fixtures.ZERO, 1234)               # skipped
+    asm.label("delay_store_done")
+
+    asm.addiu(fixtures.V0, fixtures.ZERO, 0)
+    asm.label("link_delay_branch")
+    asm.bgezal(fixtures.V0, "link_delay_done")                # taken, $ra = pc + 8
+    asm.addu(fixtures.A3, fixtures.RA, fixtures.ZERO)         # delay slot reads the new $ra
+    asm.label("link_delay_done")
+
     asm.emit(fixtures.encode_j(0x02, EXIT_PC))                # halt outside every segment
     asm.nop()                                                 # delay slot
     return asm.resolve(), dict(asm.labels)
@@ -250,16 +267,17 @@ class CrossPathEquivalenceTests(unittest.TestCase):
         self.assertEqual("pc_outside_code", state["reason"])
         self.assertEqual(EXIT_PC, state["pc"])
         registers = state["registers"]
-        self.assertEqual(self.labels["plain_bgezal_branch"] + 8, registers[fixtures.RA])
+        self.assertEqual(self.labels["link_delay_branch"] + 8, registers[fixtures.RA])
         self.assertEqual(0xFFFFFFFFAABBCCDD, registers[fixtures.T1])
         self.assertEqual(0x8000000000000000, registers[fixtures.T8])
         self.assertEqual(1, registers[fixtures.T9])
-        self.assertEqual(1, registers[fixtures.V0])
+        self.assertEqual(0, registers[fixtures.V0])
         self.assertEqual(1, registers[fixtures.V1])
         self.assertEqual(1, registers[fixtures.A0])
         self.assertEqual(1, registers[fixtures.A1])
         self.assertEqual(0, registers[fixtures.A2])
-        self.assertEqual(99, registers[fixtures.A3])
+        self.assertEqual(self.labels["link_delay_branch"] + 8, registers[fixtures.A3])
+        self.assertEqual(0x2A, registers[fixtures.AT])
         self.assertEqual(99, registers[fixtures.T2])
         self.assertEqual(45, registers[fixtures.T3])
         self.assertEqual(55, registers[fixtures.T4])
@@ -286,6 +304,7 @@ class CrossPathEquivalenceTests(unittest.TestCase):
             (0xAABBCCDD + 0x11223344) & 0xFFFFFFFF,
             int.from_bytes(data[0:4], "little"))
         self.assertEqual(0x00000037, int.from_bytes(data[16:20], "little"))
+        self.assertEqual(0x0000002A, int.from_bytes(data[20:24], "little"))
         self.assertEqual(0x11223344, int.from_bytes(data[4:8], "little"))
         self.assertEqual(0x8000000000000000, int.from_bytes(data[8:16], "little"))
 
