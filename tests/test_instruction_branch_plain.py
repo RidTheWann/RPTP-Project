@@ -19,7 +19,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from tools.rptp import codegen, isa, ir, native, oracle
-from tools.rptp.cfg import discover_program
+from tools.rptp.cfg import BasicBlock, discover_program
 from tools.rptp.elf import parse_elf_bytes
 from tools.rptp.fixtures import (
     A0,
@@ -125,11 +125,13 @@ def _combined_program() -> Assembler:
     asm.addu(S7, RA, ZERO)
     asm.lui(T4, DATA_BASE >> 16)
 
-    # blez taken: the delay-slot store executes, the fall-through is skipped.
+    # blez taken: the delay-slot store executes with a nonzero value, the
+    # fall-through is skipped.
     asm.addiu(T0, ZERO, 0)
+    asm.addiu(T1, ZERO, 0x5A)
     asm.label("case0")
     asm.blez(T0, "case0_target")
-    asm.sw(T0, 0, T4)
+    asm.sw(T1, 0, T4)
     asm.addiu(V0, ZERO, 0x12)
     asm.label("case0_target")
 
@@ -238,6 +240,33 @@ class PlainBranchSemanticsTests(unittest.TestCase):
                         self.assertEqual(
                             state["trace"][index + 2], fallthrough_pc, form)
 
+    def test_link_write_is_visible_to_the_delay_slot(self):
+        for form in LINK_FORMS:
+            for taken in (True, False):
+                with self.subTest(form=form, taken=taken):
+                    asm = Assembler()
+                    asm.addu(S7, RA, ZERO)
+                    taken_value, not_taken_value = CONDITION_VALUES[form]
+                    asm.addiu(T0, ZERO, taken_value if taken else not_taken_value)
+                    branch_pc = asm.pc
+                    getattr(asm, form)(T0, "target")
+                    delay_pc = asm.pc
+                    asm.addu(A0, RA, ZERO)      # delay slot observes the link write
+                    asm.addiu(A1, ZERO, 0x22)
+                    asm.label("target")
+                    asm.addiu(A2, ZERO, 0x33)
+                    asm.jr(S7)
+                    asm.nop()
+                    state = execute(asm)
+                    self.assertEqual(
+                        state["registers"][A0], pair(branch_pc + 8),
+                        f"{form}: delay slot must observe GPR[31] = pc + 8")
+                    self.assertEqual(state["registers"][A1],
+                                     pair(0 if taken else 0x22))
+                    self.assertEqual(state["registers"][A2], pair(0x33))
+                    index = state["trace"].index(branch_pc)
+                    self.assertEqual(state["trace"][index + 1], delay_pc)
+
     def test_not_taken_delay_slot_writes_memory(self):
         asm = Assembler()
         asm.lui(T4, DATA_BASE >> 16)
@@ -334,7 +363,7 @@ class PlainBranchCombinedTests(unittest.TestCase):
         self.assertEqual(state["registers"][RA], pair(pcs["case5"] + 8))
         self.assertEqual(
             state["memory"],
-            [[DATA_BASE, 0], [DATA_BASE + 1, 0],
+            [[DATA_BASE, 0x5A], [DATA_BASE + 1, 0],
              [DATA_BASE + 2, 0], [DATA_BASE + 3, 0],
              [DATA_BASE + 4, 1], [DATA_BASE + 5, 0],
              [DATA_BASE + 6, 0], [DATA_BASE + 7, 0]],
@@ -376,6 +405,22 @@ class PlainBranchCombinedTests(unittest.TestCase):
         self.assertIsNone(control.link_reg)
         self.assertEqual(control.target, target_pc)
         self.assertEqual(control.fallthrough, fallthrough_pc)
+
+    def test_zero_address_branch_target_survives_lowering(self):
+        word = (0x06 << 26) | (T0 << 21) | 0xFFFF  # blez t0, pc - 4 -> target 0
+        instruction = isa.decode_instruction(word, 0)
+        self.assertEqual(0, instruction.target)
+        block = BasicBlock(
+            start=0,
+            instructions=[instruction, isa.decode_instruction(0, 4)],
+            kind="branch",
+            successors=(0, 8),
+            delay_slot_pc=4,
+        )
+        control = ir.lower_block(block).control
+        self.assertEqual("branch", control.kind)
+        self.assertEqual(0, control.target)
+        self.assertEqual(8, control.fallthrough)
 
     def test_link_control_records_gpr_31(self):
         asm = Assembler()
