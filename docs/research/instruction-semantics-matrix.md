@@ -231,6 +231,8 @@ The six non-likely branch forms are rows 37-42. Their shared implementation cont
 
 ## 5. Discrepancies and asymmetries
 
+[ADR-0005](../DECISIONS/ADR-0005-canonical-execution-path.md) (Proposed; owner acceptance required) proposes `tools/rptp` plus the native harness as the canonical path, freezes the legacy paths and defines the E1–E4 equivalence gates before any retirement. The asymmetries below remain factual and open.
+
 ### 5.1 Branch-likely exists in `tools/rptp` and the C++ runtime but not in the legacy pipeline
 
 | Surface | Branch-likely present? | Evidence |
