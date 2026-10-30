@@ -318,7 +318,7 @@ Rules for reading this matrix:
 
 **Reference gaps (no approved source exists in this repository):** platform memory map and alias windows; exception/interrupt model; kernel service interface; BIOS service numbering and semantics; CDVD command protocol; IOP CPU/RPC; controller protocol; audio protocol; timing model. These gaps, not coding effort, are what currently block Gate 4a.
 
-**Provenance:** this note is a design record derived from the repository and the approved generic references. It adds no reference row, accesses no sealed material, and makes no clean-room, Gate or compatibility claim. Proposed ADR identifiers in this note (if any are later opened) would start at ADR-0005 and must be created with status Proposed; only the owner may accept them.
+**Provenance:** this note is a design record derived from the repository and the approved generic references. It adds no reference row, accesses no sealed material, and makes no clean-room, Gate or compatibility claim. Proposed ADR identifiers in this note (if any are later opened) would start at ADR-0006 and must be created with status Proposed; only the owner may accept them.
 
 ## 9. Non-goals of this note
 

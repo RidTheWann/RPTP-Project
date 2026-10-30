@@ -45,6 +45,7 @@ Every increment must review and update every document affected by its change bef
 - `docs/DECISIONS/ADR-0002-renderer-spike-plan.md` — renderer spike plan; selection remains open.
 - `docs/DECISIONS/ADR-0003-sealed-source-clean-room-policy.md` — accepted sealed-source policy.
 - `docs/DECISIONS/ADR-0004-gate2-read-only-scope.md` — read-only Gate 2 scope; extraction deferred.
+- `docs/DECISIONS/ADR-0005-canonical-pipeline.md` — proposed canonical pipeline and legacy-path freeze.
 
 ## Research notes
 

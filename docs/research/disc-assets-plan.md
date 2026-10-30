@@ -278,7 +278,7 @@ Default policy:
 
 ## 4. Separate-ADR outline for future extraction/materialization
 
-This is an outline only. It does not create an ADR, approve a write path or authorize any implementation. The owner assigns the number; ADR-0005 is used here only as a placeholder.
+This is an outline only. It does not create an ADR, approve a write path or authorize any implementation. The owner assigns the number; ADR-0006 is used here only as a placeholder.
 
 ### 4.1 Decision to be made
 

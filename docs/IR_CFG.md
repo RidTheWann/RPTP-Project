@@ -112,7 +112,7 @@ The lowerer raises `LoweringError` with a stable code: `LOWER_INVALID_RESULT`, `
 
 ## Branch-likely contract (`tools/rptp` package)
 
-The sections above describe the `tools/rptp_ir.py` / `tools/rptp_lower.py` pipeline. The newer `tools/rptp` package (decoder, CFG, host IR, oracle and C++ emitter) implements branch-likely in addition to that ordinary subset. The legacy pipeline is unchanged and does not claim these forms.
+The sections above describe the `tools/rptp_ir.py` / `tools/rptp_lower.py` pipeline. The newer `tools/rptp` package (decoder, CFG, host IR, oracle and C++ emitter) implements branch-likely in addition to that ordinary subset. The legacy pipeline is unchanged and does not claim these forms. [ADR-0005](DECISIONS/ADR-0005-canonical-pipeline.md) (Proposed) records the recommended canonical-path split between the two pipelines; it changes no behavior while the owner decision is pending.
 
 Supported forms:
 

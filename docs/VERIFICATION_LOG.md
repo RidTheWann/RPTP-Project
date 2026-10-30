@@ -1160,3 +1160,18 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-msvc.ps1
 - Independent read-only audit at head `9bd6268` returned APPROVE after the earlier REQUEST CHANGES was addressed (`docs/CLEAN_ROOM_AUDIT.md` and `docs/IR_CFG.md` still cited `a4b18bf` as the latest merge). Documentation freshness, budget, progress-consistency and game-record tests passed at that head.
 - This entry makes PR #52 the latest merge recorded here; STATE and HANDOFF now cite `ed934de` and the PR range through #52. The follow-up promised by the previous entry is complete.
 - Limitation: the merge run verifies the tree at `ed934de`, not later commits. `R-031` and `R-032` stay open; the next increment addresses `R-032` only after this documentation synchronization merges.
+
+## 2026-10-30 — canonical-path proposal and legacy path contract (local evidence)
+
+- Scope: process/contract increment for `R-031`. Adds [ADR-0005](DECISIONS/ADR-0005-canonical-pipeline.md) as **Proposed** (canonical `tools/rptp` + `runtime/`, frozen legacy paths, equivalence criteria, migration stages) and [tests/test_pipeline_path_contract.py](../tests/test_pipeline_path_contract.py), which pins the legacy 28-operation lowering set and its explicit `IR_UNSUPPORTED_INSTRUCTION` rejection of the fourteen ordinary/likely branch forms at the branch PC while the `tools/rptp` decoder accepts the same words. No decoder, IR, oracle, emitter, runtime, build, fixture or dependency change; no Gate, provenance or compatibility status changed.
+- Branch `automation/d9e7947a7c704bd886c84e10f25847bb`. The PR number, hosted exact-head runs and merge identifiers are recorded by the follow-up evidence PR because this entry is written before the PR exists.
+- Local commands and results in the x64 MSVC environment (`VsDevCmd.bat -arch=x64 -host_arch=x64`, MSVC 14.51.36231, 2026-10-30):
+  - `python tools/rptp_doctor.py` → Overall status: PASS.
+  - `python tools/check_forbidden_artifacts.py --root .` → passed.
+  - `python -m compileall -q tools tests` → OK.
+  - `cmake --preset windows-msvc`, `cmake --build --preset windows-msvc` → succeeded; `ctest --test-dir build/cmake-msvc --output-on-failure` → 7/7 tests passed under the MSVC environment.
+  - `python -m unittest discover -s tests -v` with `RPTP_LOAD_BINARY` and `RPTP_RUN_BINARY` set to the built tools → 522 tests, OK, 0 skipped, 1 expected failure.
+  - `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-msvc.ps1` → artifact guard, Gate 0 spike and the full suite passed.
+  - Focused modules: `tests.test_pipeline_path_contract` 3 tests, `tests.test_doc_budget`, `tests.test_doc_freshness` and `tests.test_license_headers` → 11 tests, OK. `git diff --check` → no whitespace errors.
+- An independent read-only correctness review of the ADR, test and documentation edits returned REQUEST CHANGES on three documentation facts (legacy option wording, the legacy differential evidence sentence and two out-of-date ADR-0005 placeholder notes); all were fixed before the final chain rerun. The review is not an independent provenance or clean-room review.
+- Limitations: local results are not hosted CI. The ADR remains Proposed; only the owner may accept or reject it. No ISO, BIOS, game code or extracted asset was accessed, uploaded, committed or executed.

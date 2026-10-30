@@ -33,11 +33,11 @@ The accepted Gate 0 scope is the synthetic ELF32/EM_MIPS fixture and only ADDIU,
 4. **License (resolved):** GPL-3.0-or-later confirmed 2026-10-21; SPDX headers cover project source, build and workflow files.
 5. **Renderer (open):** none selected or tested; ADR-0002 remains a plan.
 6. **Dependencies:** no runtime dependency is vendored or linked; record license, version and notices before adding one.
-7. **Path divergence (open, `R-031`):** the Gate 0 spike, `tools/rptp`, the older `rptp_ir`/`rptp_lower` pipeline and the C++ harness model instructions separately. Branch-likely, the six ordinary forms and the `LW`/`SW` alignment policy agree across `tools/rptp`, the harness and the cross-path suite (PRs #41/#43/#51), but the older `rptp_ir`/`rptp_lower` path rejects the ordinary forms and no canonical product path is declared.
+7. **Path divergence (open, `R-031`):** the Gate 0 spike, `tools/rptp`, the older `rptp_ir`/`rptp_lower` pipeline and the C++ harness model instructions separately. Branch-likely, the six ordinary forms and the `LW`/`SW` alignment policy agree across `tools/rptp`, the harness and the cross-path suite (PRs #41/#43/#51), but the older `rptp_ir`/`rptp_lower` path rejects the ordinary forms; ADR-0005 (Proposed) awaits the owner decision.
 
 ## Next steps
 
-1. Declare the canonical product path and extend the cross-path matrix to the legacy paths and errors before treating any path as semantic proof.
+1. Decide ADR-0005 (Proposed), then extend the cross-path matrix to the legacy paths and errors before treating any path as semantic proof.
 2. Apply the per-instruction semantics matrix from PR #45 to choose the next instruction family from the refreshed census distribution, under [PROVENANCE_PLAN.md](PROVENANCE_PLAN.md): permitted references, independent tests, fail-closed diagnostics and an informative commit body.
 3. Continue Gate 3 with the next narrow, tested step; keep function discovery conservative and never infer extents or reachability from candidate lists.
 4. Commission the remaining provenance reviews; never claim clean-room certification or compatibility first, and do not infer boot support from an inspection, loaded image or generated artifact.
