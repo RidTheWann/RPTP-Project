@@ -394,7 +394,12 @@ class NativeLegacyEquivalenceTests(unittest.TestCase):
                          data_snapshot(generated["memory"]))
 
     def test_comparison_rejects_each_divergence_class(self) -> None:
-        baseline = self._legacy_or_skip()
+        baselines: list[tuple[str, dict]] = [("oracle", copy.deepcopy(self.oracle_result))]
+        try:
+            legacy = self._legacy_or_skip()
+            baselines.append(("legacy", copy.deepcopy(legacy)))
+        except unittest.SkipTest:
+            pass
 
         def flip_register(state: dict) -> None:
             state["registers"][fixtures.T7] ^= 1
@@ -409,14 +414,16 @@ class NativeLegacyEquivalenceTests(unittest.TestCase):
             "step count": lambda state: state.__setitem__("steps", state["steps"] + 1),
             "final pc": lambda state: state.__setitem__("pc", state["pc"] + 4),
             "halted flag": lambda state: state.__setitem__("halted", False),
+            "halt reason": lambda state: state.__setitem__("reason", "divergent-reason"),
         }
-        for label, mutate in mutations.items():
-            with self.subTest(field=label):
-                mutated = copy.deepcopy(baseline)
-                mutate(mutated)
-                with self.assertRaises(AssertionError):
-                    self.assert_equivalent("oracle", self.oracle_result,
-                                           "legacy", mutated)
+        for base_name, base_state in baselines:
+            for label, mutate in mutations.items():
+                with self.subTest(baseline=base_name, field=label):
+                    mutated = copy.deepcopy(base_state)
+                    mutate(mutated)
+                    with self.assertRaises(AssertionError):
+                        self.assert_equivalent("oracle", self.oracle_result,
+                                               base_name, mutated)
 
 
 if __name__ == "__main__":
