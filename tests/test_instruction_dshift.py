@@ -152,6 +152,16 @@ class DoublewordShiftDecodeTests(unittest.TestCase):
                                  (instruction.rs, instruction.rt,
                                   instruction.rd, instruction.shamt))
 
+    def test_canonical_decoder_accepts_a_nonzero_reserved_shamt(self) -> None:
+        for mnemonic, funct, destination, source, amount_reg, _expected in VARIABLE_FORMS:
+            with self.subTest(mnemonic=mnemonic):
+                word = encode_r(funct, destination, amount_reg, source, 1)
+                instruction = isa.decode_instruction(word, CODE_BASE)
+                self.assertEqual(mnemonic, instruction.mnemonic)
+                self.assertTrue(instruction.supported)
+                self.assertTrue(instruction.valid)
+                self.assertEqual(1, instruction.shamt)
+
     def test_cfg_marks_the_family_supported(self) -> None:
         program = build_program()
         self.assertEqual([], program.unsupported_blocks())
