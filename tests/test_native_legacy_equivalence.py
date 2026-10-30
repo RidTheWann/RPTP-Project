@@ -173,6 +173,7 @@ def normalize_legacy(payload: dict) -> dict:
     return {
         "halted": bool(payload["halted"]),
         "pc": int(payload["pc"]),
+        # The legacy JSON has no reason field; an unknown PC is its only halt path.
         "reason": "pc_outside_code" if payload["halted"] else "not_halted",
         "steps": len(trace),
         "registers": [int(value) & MASK64 for value in payload["registers"]],
@@ -263,11 +264,12 @@ class NativeLegacyEquivalenceTests(unittest.TestCase):
                 path = Path(directory) / "native_legacy_equivalence.elf"
                 path.write_bytes(self.image)
                 completed = subprocess.run(
-                    [BINARY, "--json", "--trace", str(path)],
+                    [BINARY, "--json", "--trace", "--max-steps", str(MAX_STEPS), str(path)],
                     capture_output=True,
                     text=True,
                     encoding="utf-8",
                     errors="replace",
+                    timeout=native.RUN_TIMEOUT_SECONDS,
                     check=False,
                 )
             self.assertEqual(0, completed.returncode, completed.stderr)
