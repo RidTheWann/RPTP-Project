@@ -462,7 +462,7 @@ class PlainBranchDelaySlotOrderingTests(unittest.TestCase):
         for form, taken in (("bgezal", True), ("bltzal", False)):
             with self.subTest(form=form, taken=taken):
                 asm = Assembler()
-                asm.addu(S7, RA, ZERO)          # preserve the initial return value (0)
+                asm.addu(S7, RA, ZERO)          # keep the initial $ra (RETURN_SENTINEL) as the return
                 asm.addiu(RA, ZERO, 0x7FFF)     # stale $ra the link must overwrite
                 asm.addiu(T0, ZERO, 0)          # bgezal taken / bltzal not taken
                 branch_pc = asm.pc
