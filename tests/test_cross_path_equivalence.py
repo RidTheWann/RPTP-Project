@@ -18,7 +18,8 @@ the three models, and ends with a jump outside every loaded segment.  It covers
 arithmetic, logic, shifts, LW/SW, a signed/unsigned 64-bit boundary loaded with
 LD, taken/not-taken BEQ/BNE branches, and the six non-likely branch forms whose
 delay slots always execute; BLTZAL/BGEZAL additionally exercise the
-unconditional ``$ra = PC + 8`` link write.
+unconditional ``$ra = PC + 8`` link write, and the taken BGEZAL delay slot reads
+``$ra`` so all three paths must write the link before the delay slot runs.
 """
 from __future__ import annotations
 
@@ -168,7 +169,7 @@ def shared_program() -> tuple[list[int], dict[str, int]]:
     asm.addiu(fixtures.S2, fixtures.ZERO, 0)
     asm.label("plain_bgezal_branch")
     asm.bgezal(fixtures.S2, "plain_bgezal")                   # taken, link written
-    asm.addiu(fixtures.S3, fixtures.ZERO, 2222)               # delay slot
+    asm.addu(fixtures.S3, fixtures.RA, fixtures.ZERO)         # delay slot reads the new $ra
     asm.addiu(fixtures.S4, fixtures.ZERO, 3333)               # skipped
     asm.label("plain_bgezal")
 
@@ -270,7 +271,9 @@ class CrossPathEquivalenceTests(unittest.TestCase):
         self.assertEqual(999, registers[fixtures.S0])
         self.assertEqual(1111, registers[fixtures.S1])
         self.assertEqual(0, registers[fixtures.S2])
-        self.assertEqual(2222, registers[fixtures.S3])
+        # The BGEZAL delay slot copied $ra after the link write, on all paths.
+        self.assertEqual(self.labels["plain_bgezal_branch"] + 8,
+                         registers[fixtures.S3])
         self.assertEqual(333, registers[fixtures.S4])
         self.assertEqual(444, registers[fixtures.S5])
         self.assertEqual(0xFFFFFFFFFFFFFFFF, registers[fixtures.S6])

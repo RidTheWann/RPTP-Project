@@ -258,7 +258,8 @@ def lower_block(block: BasicBlock) -> BlockIR:
             kind="branch", pc=control_instruction.pc, mnemonic=mnemonic,
             cond=_branch_condition(control_instruction),
             rs=control_instruction.rs, rt=control_instruction.rt,
-            target=control_instruction.target or next_pc,
+            target=(control_instruction.target
+                    if control_instruction.target is not None else next_pc),
             fallthrough=next_pc,
             link_reg=link_reg,
             likely=control_instruction.is_likely,
