@@ -15,11 +15,12 @@ toolchain or binary is unavailable; a missing leg is never reported as a pass.
 The program deliberately avoids ``$ra`` control flow so that all three paths
 start from the same observable state, uses only the instruction intersection of
 the three models, and ends with a jump outside every loaded segment.  It covers
-arithmetic, logic, shifts, LW/SW, a signed/unsigned 64-bit boundary loaded with
-LD, taken/not-taken BEQ/BNE branches, and the six non-likely branch forms whose
-delay slots always execute; BLTZAL/BGEZAL additionally exercise the
-unconditional ``$ra = PC + 8`` link write, and the taken BGEZAL delay slot reads
-``$ra`` so all three paths must write the link before the delay slot runs.
+arithmetic, logic, 32-bit and 64-bit shifts, LW/SW, a signed/unsigned 64-bit
+boundary loaded with LD, taken/not-taken BEQ/BNE branches, and the six
+non-likely branch forms whose delay slots always execute; BLTZAL/BGEZAL
+additionally exercise the unconditional ``$ra = PC + 8`` link write, and the
+taken BGEZAL delay slot reads ``$ra`` so all three paths must write the link
+before the delay slot runs.
 """
 from __future__ import annotations
 
@@ -55,7 +56,7 @@ HALT_REASON_MAP = {
 
 
 def initial_data() -> bytes:
-    return struct.pack("<IIQ", 0xAABBCCDD, 0x11223344, 0x8000000000000000) + bytes(8)
+    return struct.pack("<IIQ", 0xAABBCCDD, 0x11223344, 0x8000000000000000) + bytes(16)
 
 
 def build_cross_path_image(words: list[int]) -> bytes:
@@ -133,6 +134,21 @@ def shared_program() -> tuple[list[int], dict[str, int]]:
 
     asm.sw(fixtures.T4, 16, fixtures.T0)                      # 55 at 0x2010
     asm.lw(fixtures.T6, 16, fixtures.T0)                      # read it back
+
+    # Doubleword shifts: the immediate forms use an encoded amount, the
+    # register-controlled forms read bits 5..0 of GPR[rs].  The arithmetic
+    # result survives in $at and the logical result in $t7; the DSLL result is
+    # stored so all three paths must agree on the 64-bit bytes.
+    asm.dsll(fixtures.S0, fixtures.T1, 1)
+    asm.dsll32(fixtures.S1, fixtures.T1, 0)
+    asm.dsllv(fixtures.S2, fixtures.T1, fixtures.T9)
+    asm.dsrl(fixtures.S3, fixtures.T1, 1)
+    asm.dsrl32(fixtures.T7, fixtures.T1, 0)
+    asm.dsrlv(fixtures.S4, fixtures.T1, fixtures.T9)
+    asm.dsra(fixtures.AT, fixtures.T1, 1)
+    asm.dsra32(fixtures.S5, fixtures.T1, 0)
+    asm.dsrav(fixtures.K0, fixtures.T1, fixtures.T9)
+    asm.sd(fixtures.S0, 24, fixtures.T0)
 
     asm.addiu(fixtures.S0, fixtures.ZERO, 0)
     asm.blez(fixtures.S0, "plain_blez")                       # taken
@@ -284,6 +300,8 @@ class CrossPathEquivalenceTests(unittest.TestCase):
         self.assertEqual(0, registers[fixtures.SP])
         self.assertEqual(0, registers[fixtures.FP])
         self.assertEqual(0, registers[0])
+        self.assertEqual(0xFFFFFFFFD55DE66E, registers[fixtures.AT])
+        self.assertEqual(0x00000000FFFFFFFF, registers[fixtures.T7])
         data = final_data(state)
         self.assertEqual(
             (0xAABBCCDD + 0x11223344) & 0xFFFFFFFF,
@@ -291,6 +309,7 @@ class CrossPathEquivalenceTests(unittest.TestCase):
         self.assertEqual(0x00000037, int.from_bytes(data[16:20], "little"))
         self.assertEqual(0x11223344, int.from_bytes(data[4:8], "little"))
         self.assertEqual(0x8000000000000000, int.from_bytes(data[8:16], "little"))
+        self.assertEqual(0xFFFFFFFF557799BA, int.from_bytes(data[24:32], "little"))
 
     def _native_or_skip(self) -> dict:
         try:

@@ -52,6 +52,15 @@ constexpr std::uint32_t kFunctXor = 0x26U;
 constexpr std::uint32_t kFunctNor = 0x27U;
 constexpr std::uint32_t kFunctSlt = 0x2AU;
 constexpr std::uint32_t kFunctSltu = 0x2BU;
+constexpr std::uint32_t kFunctDsllv = 0x14U;
+constexpr std::uint32_t kFunctDsrlv = 0x16U;
+constexpr std::uint32_t kFunctDsrav = 0x17U;
+constexpr std::uint32_t kFunctDsll = 0x38U;
+constexpr std::uint32_t kFunctDsrl = 0x3AU;
+constexpr std::uint32_t kFunctDsra = 0x3BU;
+constexpr std::uint32_t kFunctDsll32 = 0x3CU;
+constexpr std::uint32_t kFunctDsrl32 = 0x3EU;
+constexpr std::uint32_t kFunctDsra32 = 0x3FU;
 
 enum class Op {
   Nop,
@@ -73,6 +82,15 @@ enum class Op {
   Slt,
   Sltu,
   Sll,
+  Dsll,
+  Dsll32,
+  Dsllv,
+  Dsrl,
+  Dsrl32,
+  Dsrlv,
+  Dsra,
+  Dsra32,
+  Dsrav,
   Lw,
   Sw,
   Ld,
@@ -135,6 +153,16 @@ std::uint64_t sign_extend_32(std::uint32_t value) {
   return (value & 0x80000000U) != 0
              ? (static_cast<std::uint64_t>(value) | 0xFFFFFFFF00000000ULL)
              : static_cast<std::uint64_t>(value);
+}
+
+std::uint64_t shift_right_arithmetic_64(std::uint64_t value, std::uint32_t amount) {
+  if (amount == 0U) {
+    return value;
+  }
+  if ((value & 0x8000000000000000ULL) == 0U) {
+    return value >> amount;
+  }
+  return (value >> amount) | (~std::uint64_t{0} << (64U - amount));
 }
 
 std::uint32_t read_le32(const std::uint8_t* bytes) {
@@ -336,6 +364,28 @@ bool decode(std::uint32_t word, std::uint32_t pc, Instruction& instruction) {
           return false;
         }
         instruction = {Op::Sll, rs, rt, rd, shamt, 0, 0};
+        return true;
+      }
+      if (funct == kFunctDsll || funct == kFunctDsll32 || funct == kFunctDsrl ||
+          funct == kFunctDsrl32 || funct == kFunctDsra || funct == kFunctDsra32) {
+        if (rs != 0) {
+          return false;
+        }
+        const Op op = funct == kFunctDsll     ? Op::Dsll
+                      : funct == kFunctDsll32 ? Op::Dsll32
+                      : funct == kFunctDsrl   ? Op::Dsrl
+                      : funct == kFunctDsrl32 ? Op::Dsrl32
+                      : funct == kFunctDsra   ? Op::Dsra
+                                              : Op::Dsra32;
+        instruction = {op, 0, rt, rd, shamt, 0, 0};
+        return true;
+      }
+      if ((funct == kFunctDsllv || funct == kFunctDsrlv || funct == kFunctDsrav) &&
+          shamt == 0) {
+        const Op op = funct == kFunctDsllv ? Op::Dsllv
+                      : funct == kFunctDsrlv ? Op::Dsrlv
+                                             : Op::Dsrav;
+        instruction = {op, rs, rt, rd, 0, 0, 0};
         return true;
       }
       return false;
@@ -556,6 +606,39 @@ ExecOutcome execute_loaded(const LoadReport& report, GuestMemory& memory, const 
         write_register(instruction.rd, sign_extend_32(value));
         break;
       }
+      case Op::Dsll:
+        write_register(instruction.rd, registers[instruction.rt] << instruction.shamt);
+        break;
+      case Op::Dsll32:
+        write_register(instruction.rd, registers[instruction.rt] << (instruction.shamt + 32U));
+        break;
+      case Op::Dsllv:
+        write_register(instruction.rd, registers[instruction.rt] <<
+                                           (static_cast<std::uint32_t>(registers[instruction.rs]) & 63U));
+        break;
+      case Op::Dsrl:
+        write_register(instruction.rd, registers[instruction.rt] >> instruction.shamt);
+        break;
+      case Op::Dsrl32:
+        write_register(instruction.rd, registers[instruction.rt] >> (instruction.shamt + 32U));
+        break;
+      case Op::Dsrlv:
+        write_register(instruction.rd, registers[instruction.rt] >>
+                                           (static_cast<std::uint32_t>(registers[instruction.rs]) & 63U));
+        break;
+      case Op::Dsra:
+        write_register(instruction.rd,
+                       shift_right_arithmetic_64(registers[instruction.rt], instruction.shamt));
+        break;
+      case Op::Dsra32:
+        write_register(instruction.rd, shift_right_arithmetic_64(
+                                           registers[instruction.rt], instruction.shamt + 32U));
+        break;
+      case Op::Dsrav:
+        write_register(instruction.rd, shift_right_arithmetic_64(
+                                           registers[instruction.rt],
+                                           static_cast<std::uint32_t>(registers[instruction.rs]) & 63U));
+        break;
       case Op::Lw: {
         const auto address = static_cast<std::uint32_t>(static_cast<std::uint32_t>(registers[instruction.rs]) +
                                                         instruction.immediate);

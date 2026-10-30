@@ -407,23 +407,29 @@ std::uint32_t encode_j(std::uint32_t op, std::uint32_t target) {
 
 std::vector<std::uint8_t> make_runnable_image(const std::vector<std::uint32_t>& code,
                                               std::uint32_t entry_offset = 0U,
-                                              std::uint32_t data_memsz = 4U) {
+                                              std::uint32_t data_memsz = 4U,
+                                              std::span<const std::uint8_t> data = {}) {
   constexpr std::uint32_t kDataOffset = 0x100U;
   constexpr std::uint32_t kCodeOffset = 0x200U;
   const auto code_size = static_cast<std::uint32_t>(code.size() * sizeof(std::uint32_t));
-  const SegmentSpec data{kDataOffset, kDataBase, 4U, data_memsz, 6U, 4U};
+  const auto data_file_size = static_cast<std::uint32_t>(data.empty() ? 4U : data.size());
+  const SegmentSpec data_segment{kDataOffset, kDataBase, data_file_size,
+                                 std::max(data_memsz, data_file_size), 6U, 4U};
   const SegmentSpec text{kCodeOffset, kExecutableBase, code_size, code_size, 5U, 4U};
   std::vector<std::uint8_t> image =
-      make_elf(kExecutableBase + entry_offset, {data, text}, kCodeOffset + code_size);
+      make_elf(kExecutableBase + entry_offset, {data_segment, text}, kCodeOffset + code_size);
   for (std::size_t index = 0; index < code.size(); ++index) {
     put32(image, kCodeOffset + static_cast<std::uint32_t>(index) * 4U, code[index]);
+  }
+  if (!data.empty()) {
+    write_bytes(image, kDataOffset, data);
   }
   return image;
 }
 
 ExecOutcome run_code(const std::vector<std::uint32_t>& code, const ExecOptions& options = {},
-                     std::uint32_t data_memsz = 4U) {
-  std::vector<std::uint8_t> image = make_runnable_image(code, 0U, data_memsz);
+                     std::uint32_t data_memsz = 4U, std::span<const std::uint8_t> data = {}) {
+  std::vector<std::uint8_t> image = make_runnable_image(code, 0U, data_memsz, data);
   LoadOutcome loaded = load_elf(image);
   if (!loaded.ok()) {
     std::cerr << "FAIL runnable image did not load: " << to_string(loaded.error->code) << '\n';
@@ -793,7 +799,7 @@ void test_execution_likely_nullification_and_failures() {
                     ExecErrorCode::UnsupportedInstruction, "bgezall with rs=31");
   expect_exec_error(run_code({encode_i(0x15, 8, 8, 1), encode_j(0x02, kExecutableBase)}),
                     ExecErrorCode::DelaySlotControl, "control in a nullified delay slot");
-  expect_exec_error(run_code({encode_i(0x15, 8, 8, 1), 0x0000003FU}),
+  expect_exec_error(run_code({encode_i(0x15, 8, 8, 1), 0x00000015U}),
                     ExecErrorCode::UnsupportedInstruction, "unsupported word in a nullified delay slot");
   expect_exec_error(run_code({encode_i(0x15, 8, 8, 1)}), ExecErrorCode::DelaySlotMissing,
                     "missing nullified delay slot");
@@ -1155,8 +1161,79 @@ void test_execution_word_memory_alignment() {
   }
 }
 
+void test_execution_doubleword_shifts() {
+  const std::array<std::uint8_t, 24> data{
+      0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80,  // 0x8000000000000001
+      0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00,  // 0x0000000080000000
+      0x00, 0x00, 0x00, 0x80, 0xFF, 0xFF, 0xFF, 0xFF,  // 0xFFFFFFFF80000000
+  };
+  const std::vector<std::uint32_t> code{
+      encode_i(0x09, 0, 8, static_cast<std::int32_t>(kDataBase)),  // addiu t0, zero, data
+      encode_i(0x37, 8, 9, 0),    // ld t1, 0(t0)
+      encode_i(0x37, 8, 10, 8),   // ld t2, 8(t0)
+      encode_i(0x37, 8, 11, 16),  // ld t3, 16(t0)
+      encode_i(0x09, 0, 12, 1),   // addiu t4, zero, 1
+      encode_i(0x09, 0, 13, 33),  // addiu t5, zero, 33
+      encode_i(0x09, 0, 14, 65),  // addiu t6, zero, 65
+      encode_r(0, 9, 15, 1, 0x38),    // dsll t7, t1, 1
+      encode_r(0, 9, 16, 0, 0x3C),    // dsll32 s0, t1, 0
+      encode_r(13, 9, 17, 0, 0x14),   // dsllv s1, t1, t5
+      encode_r(0, 9, 18, 1, 0x3A),    // dsrl s2, t1, 1
+      encode_r(0, 9, 19, 0, 0x3E),    // dsrl32 s3, t1, 0
+      encode_r(14, 9, 20, 0, 0x16),   // dsrlv s4, t1, t6 (65 & 63 = 1)
+      encode_r(0, 9, 21, 1, 0x3B),    // dsra s5, t1, 1
+      encode_r(0, 11, 22, 0, 0x3F),   // dsra32 s6, t3, 0
+      encode_r(12, 11, 26, 0, 0x17),  // dsrav k0, t3, t4
+      encode_r(12, 10, 27, 0, 0x14),  // dsllv k1, t2, t4
+      encode_r(12, 9, 0, 0, 0x14),    // dsllv zero, t1, t4 (discarded)
+  };
+  const ExecOutcome outcome = run_code(code, ExecOptions{}, 24U, data);
+  CHECK(outcome.ok());
+  if (!outcome.ok()) {
+    return;
+  }
+  CHECK(outcome.result.registers[9] == 0x8000000000000001ULL);
+  CHECK(outcome.result.registers[10] == 0x0000000080000000ULL);
+  CHECK(outcome.result.registers[11] == 0xFFFFFFFF80000000ULL);
+  CHECK(outcome.result.registers[15] == 0x0000000000000002ULL);
+  CHECK(outcome.result.registers[16] == 0x0000000100000000ULL);
+  CHECK(outcome.result.registers[17] == 0x0000000200000000ULL);
+  CHECK(outcome.result.registers[18] == 0x4000000000000000ULL);
+  CHECK(outcome.result.registers[19] == 0x0000000080000000ULL);
+  CHECK(outcome.result.registers[20] == 0x4000000000000000ULL);
+  CHECK(outcome.result.registers[21] == 0xC000000000000000ULL);
+  CHECK(outcome.result.registers[22] == 0xFFFFFFFFFFFFFFFFULL);
+  CHECK(outcome.result.registers[26] == 0xFFFFFFFFC0000000ULL);
+  CHECK(outcome.result.registers[27] == 0x0000000100000000ULL);
+  CHECK(outcome.result.registers[0] == 0U);
+  CHECK(outcome.result.memory_writes.empty());
+}
+
+void test_execution_doubleword_shift_failures() {
+  expect_exec_error(run_code({encode_r(1, 9, 15, 1, 0x38)}), ExecErrorCode::UnsupportedInstruction,
+                    "dsll with nonzero rs");
+  expect_exec_error(run_code({encode_r(1, 9, 15, 0, 0x3C)}), ExecErrorCode::UnsupportedInstruction,
+                    "dsll32 with nonzero rs");
+  expect_exec_error(run_code({encode_r(1, 9, 15, 1, 0x3A)}), ExecErrorCode::UnsupportedInstruction,
+                    "dsrl with nonzero rs");
+  expect_exec_error(run_code({encode_r(1, 9, 15, 0, 0x3E)}), ExecErrorCode::UnsupportedInstruction,
+                    "dsrl32 with nonzero rs");
+  expect_exec_error(run_code({encode_r(1, 9, 15, 1, 0x3B)}), ExecErrorCode::UnsupportedInstruction,
+                    "dsra with nonzero rs");
+  expect_exec_error(run_code({encode_r(1, 9, 15, 0, 0x3F)}), ExecErrorCode::UnsupportedInstruction,
+                    "dsra32 with nonzero rs");
+  expect_exec_error(run_code({encode_r(13, 9, 15, 1, 0x14)}), ExecErrorCode::UnsupportedInstruction,
+                    "dsllv with nonzero shamt");
+  expect_exec_error(run_code({encode_r(13, 9, 15, 1, 0x16)}), ExecErrorCode::UnsupportedInstruction,
+                    "dsrlv with nonzero shamt");
+  expect_exec_error(run_code({encode_r(13, 9, 15, 1, 0x17)}), ExecErrorCode::UnsupportedInstruction,
+                    "dsrav with nonzero shamt");
+  expect_exec_error(run_code({encode_r(0, 9, 15, 0, 0x15)}), ExecErrorCode::UnsupportedInstruction,
+                    "reserved SPECIAL funct 0x15");
+}
+
 void test_execution_failures() {
-  expect_exec_error(run_code({0x0000003FU}), ExecErrorCode::UnsupportedInstruction, "unsupported");
+  expect_exec_error(run_code({0x00000015U}), ExecErrorCode::UnsupportedInstruction, "unsupported");
   expect_exec_error(run_code({encode_i(0x0F, 1, 8, 0)}), ExecErrorCode::UnsupportedInstruction,
                     "lui with nonzero rs");
   expect_exec_error(run_code({encode_r(1, 8, 9, 0, 0x00)}), ExecErrorCode::UnsupportedInstruction,
@@ -1241,6 +1318,8 @@ int main() {
   test_execution_plain_branch_failures();
   test_execution_extended_subset();
   test_execution_doubleword_memory();
+  test_execution_doubleword_shifts();
+  test_execution_doubleword_shift_failures();
   test_execution_word_memory_alignment();
   test_execution_failures();
   test_execution_is_deterministic();

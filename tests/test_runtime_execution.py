@@ -136,6 +136,40 @@ def extended_words() -> list[int]:
     ]
 
 
+DSHIFT_DATA = struct.pack(
+    "<QQQ",
+    0x8000000000000001,
+    0x0000000080000000,
+    0xFFFFFFFF80000000,
+) + bytes(8)
+
+
+def dshift_words() -> list[int]:
+    return [
+        encode_i(0x09, 0, 8, DATA),  # 0x00 addiu t0, zero, data base
+        encode_i(0x37, 8, 9, 0),  # 0x04 ld t1, 0(t0)
+        encode_i(0x37, 8, 10, 8),  # 0x08 ld t2, 8(t0)
+        encode_i(0x37, 8, 11, 16),  # 0x0c ld t3, 16(t0)
+        encode_i(0x09, 0, 12, 1),  # 0x10 addiu t4, zero, 1
+        encode_i(0x09, 0, 13, 33),  # 0x14 addiu t5, zero, 33
+        encode_i(0x09, 0, 14, 65),  # 0x18 addiu t6, zero, 65
+        encode_r(0, 9, 15, 1, 0x38),  # 0x1c dsll t7, t1, 1
+        encode_r(0, 9, 16, 0, 0x3C),  # 0x20 dsll32 s0, t1, 0
+        encode_r(13, 9, 17, 0, 0x14),  # 0x24 dsllv s1, t1, t5
+        encode_r(0, 9, 18, 1, 0x3A),  # 0x28 dsrl s2, t1, 1
+        encode_r(0, 9, 19, 0, 0x3E),  # 0x2c dsrl32 s3, t1, 0
+        encode_r(14, 9, 20, 0, 0x16),  # 0x30 dsrlv s4, t1, t6 (65 & 63 = 1)
+        encode_r(0, 9, 21, 1, 0x3B),  # 0x34 dsra s5, t1, 1
+        encode_r(0, 11, 22, 0, 0x3F),  # 0x38 dsra32 s6, t3, 0
+        encode_r(12, 11, 26, 0, 0x17),  # 0x3c dsrav k0, t3, t4
+        encode_r(12, 10, 27, 0, 0x14),  # 0x40 dsllv k1, t2, t4
+        encode_i(0x3F, 8, 21, 24),  # 0x44 sd s5, 24(t0)
+        encode_i(0x37, 8, 30, 24),  # 0x48 ld fp, 24(t0)
+        encode_r(31, 0, 0, 0, 0x08),  # 0x4c jr ra
+        encode_r(0, 0, 0, 0, 0),  # 0x50 nop (delay slot)
+    ]
+
+
 def likely_form_words(opcode: int, rt_field: int, condition: str, taken: bool) -> list[int]:
     t0 = 0
     t1 = 0
@@ -363,6 +397,52 @@ class RuntimeExecutionCliTests(unittest.TestCase):
         self.assertEqual(0x00000000, actual_memory[0x00002008])
         self.assertEqual(0xFFFFFFFF, actual_memory[0x0000200C])
 
+    def test_doubleword_shift_family_matches_the_python_oracle(self) -> None:
+        document = self.assert_likely_matches_oracle(dshift_words(), data=DSHIFT_DATA)
+        self.assertEqual(21, document["steps"])
+        expected = {
+            9: 0x8000000000000001,
+            10: 0x0000000080000000,
+            11: 0xFFFFFFFF80000000,
+            15: 0x0000000000000002,
+            16: 0x0000000100000000,
+            17: 0x0000000200000000,
+            18: 0x4000000000000000,
+            19: 0x0000000080000000,
+            20: 0x4000000000000000,
+            21: 0xC000000000000000,
+            22: 0xFFFFFFFFFFFFFFFF,
+            26: 0xFFFFFFFFC0000000,
+            27: 0x0000000100000000,
+            30: 0xC000000000000000,
+        }
+        for index, value in expected.items():
+            self.assertEqual(value, int(document["registers"][index], 16),
+                             f"register {index}")
+
+    def test_doubleword_shift_reserved_fields_fail_closed(self) -> None:
+        cases = (
+            ("dsll with rs=1", encode_r(1, 9, 15, 1, 0x38)),
+            ("dsll32 with rs=1", encode_r(1, 9, 15, 0, 0x3C)),
+            ("dsrl with rs=1", encode_r(1, 9, 15, 1, 0x3A)),
+            ("dsrl32 with rs=1", encode_r(1, 9, 15, 0, 0x3E)),
+            ("dsra with rs=1", encode_r(1, 9, 15, 1, 0x3B)),
+            ("dsra32 with rs=1", encode_r(1, 9, 15, 0, 0x3F)),
+            ("dsllv with shamt=1", encode_r(13, 9, 15, 1, 0x14)),
+            ("dsrlv with shamt=1", encode_r(13, 9, 15, 1, 0x16)),
+            ("dsrav with shamt=1", encode_r(13, 9, 15, 1, 0x17)),
+            ("reserved SPECIAL funct 0x15", encode_r(0, 9, 15, 0, 0x15)),
+        )
+        for label, word in cases:
+            with self.subTest(label=label):
+                result, _ = self.run_cli(build_program([word]), "--json")
+                self.assertEqual(2, result.returncode)
+                self.assertEqual("", result.stderr.strip())
+                document = json.loads(result.stdout)
+                self.assertEqual("error", document["status"])
+                self.assertEqual("EXEC_UNSUPPORTED_INSTRUCTION", document["error"]["code"])
+                self.assertIn(f"at 0x{BASE:08x}", document["error"]["message"])
+
     def test_likely_branch_forms_match_the_python_oracle(self) -> None:
         for mnemonic, opcode, rt_field, condition, link in LIKELY_FORMS:
             for taken in (False, True):
@@ -531,7 +611,7 @@ class RuntimeExecutionCliTests(unittest.TestCase):
         self.assertEqual(first.stdout, second.stdout)
 
     def test_unsupported_instruction_fails_closed(self) -> None:
-        result, _ = self.run_cli(build_program([0x0000003F]), "--json")
+        result, _ = self.run_cli(build_program([0x00000015]), "--json")
         self.assertEqual(2, result.returncode)
         self.assertEqual("", result.stderr.strip())
         document = json.loads(result.stdout)

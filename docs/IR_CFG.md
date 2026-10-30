@@ -1,11 +1,11 @@
 # RPTP minimal IR, CFG and lowering contract
 
-- **Status date:** 2026-10-30
+- **Status date:** 2026-10-31
 - **Scope:** synthetic ELF32/EM_MIPS input and the currently supported instruction subset only.
 - **Status:** Gate 3 remains in progress. This is not a product recompiler, a complete R5900 model, a function-boundary recovery pass, a runtime, or a compatibility claim.
 - **Implementation:** `tools/rptp_ir.py`; generated-code lowering: `tools/rptp_lower.py`
-- **Branch-likely implementation:** `tools/rptp/isa.py`, `tools/rptp/cfg.py`, `tools/rptp/ir.py`, `tools/rptp/oracle.py` and `tools/rptp/codegen.py`
-- **Tests:** `tests/test_ir_cfg.py`; `tests/test_cfg_reachability.py`; `tests/test_ir_lowering.py`; `tests/test_instruction_logical.py`; `tests/test_instruction_logical_width.py`; `tests/test_instruction_lui.py`; `tests/test_instruction_register_logic.py`; `tests/test_instruction_nor.py`; `tests/test_instruction_slt.py`; `tests/test_instruction_sltu.py`; `tests/test_instruction_slti.py`; `tests/test_instruction_sltiu.py`; `tests/test_instruction_daddiu.py`; `tests/test_instruction_daddu.py`; `tests/test_instruction_sll.py`; `tests/test_instruction_subu.py`; `tests/test_instruction_ld_sd.py`; `tests/test_instruction_branch_likely.py`; `tests/test_isa_encodings.py`
+- **Branch-likely and doubleword-shift implementation:** `tools/rptp/isa.py`, `tools/rptp/cfg.py`, `tools/rptp/ir.py`, `tools/rptp/oracle.py` and `tools/rptp/codegen.py`
+- **Tests:** `tests/test_ir_cfg.py`; `tests/test_cfg_reachability.py`; `tests/test_ir_lowering.py`; `tests/test_instruction_logical.py`; `tests/test_instruction_logical_width.py`; `tests/test_instruction_lui.py`; `tests/test_instruction_register_logic.py`; `tests/test_instruction_nor.py`; `tests/test_instruction_slt.py`; `tests/test_instruction_sltu.py`; `tests/test_instruction_slti.py`; `tests/test_instruction_sltiu.py`; `tests/test_instruction_daddiu.py`; `tests/test_instruction_daddu.py`; `tests/test_instruction_sll.py`; `tests/test_instruction_subu.py`; `tests/test_instruction_ld_sd.py`; `tests/test_instruction_branch_likely.py`; `tests/test_instruction_dshift.py`; `tests/test_runtime_execution.py`; `tests/test_cross_path_equivalence.py`; `tests/test_pipeline_path_contract.py`; `tests/test_isa_encodings.py`
 
 ## Purpose
 
@@ -17,7 +17,7 @@ This increment separates five concerns that were previously implicit in the Gate
 4. traversing only the CFG's already-recorded successor edges from an explicit block root; and
 5. lowering a validated result to deterministic C++ for the same synthetic execution model.
 
-The Gate 0 differential spike and the separate ORI, ANDI/XORI, LUI, SLL, register-logical AND/OR/XOR/NOR, SLT, SLTU, DADDIU, DADDU, SUBU and LD/SD differentials remain independent execution and native-generation paths. The IR module does not execute code or emit C++; `tools/rptp_lower.py` consumes the IR and emits C++. Known-edge graph traversal is static analysis, not a runtime result.
+The Gate 0 differential spike and the separate ORI, ANDI/XORI, LUI, SLL, register-logical AND/OR/XOR/NOR, SLT, SLTU, DADDIU, DADDU, SUBU, LD/SD and doubleword-shift differentials remain independent execution and native-generation paths. The IR module does not execute code or emit C++; `tools/rptp_lower.py` consumes the IR and emits C++. Known-edge graph traversal is static analysis, not a runtime result.
 
 ## IR contract
 
@@ -143,6 +143,29 @@ IR and native lowering:
 
 Evidence: `tests/test_instruction_branch_likely.py` covers taken and not-taken outcomes for all eight forms, register and memory delay-slot effects, `$zero`, unconditional link writes, `rs = 31` rejection, CFG successors, deterministic generated source and a native differential against the oracle. `tests/test_isa_encodings.py` checks decoding and lowering for every supported mnemonic. The encodings, PC-relative target, condition tests, take-only delay-slot execution with `NullifyCurrentInstruction()`, unconditional `GPR[31] = PC + 8` link and `rs = 31` UNPREDICTABLE restriction are cited to `RPTP-REF-015` (MIPS64 Revision 5.04 pages 75, 78, 80, 82, 84, 87, 89 and 91); the 32-bit PC masking, the low-64-bit register comparison width, trace/step accounting, `$zero` suppression, memory representation, the fail-closed `rs = 31` rejection and generated-source shape are RPTP test definitions.
 
+## Doubleword-shift contract (`tools/rptp` package)
+
+The `tools/rptp` package also implements the nine R5900 doubleword shift forms. The legacy pipeline is unchanged and rejects all nine. The forms are:
+
+- Immediate forms `DSLL` (`SPECIAL` funct `0x38`), `DSLL32` (`0x3C`), `DSRL` (`0x3A`), `DSRL32` (`0x3E`), `DSRA` (`0x3B`) and `DSRA32` (`0x3F`) require `rs = 0` and shift the low 64 bits of `rt` by the 5-bit `sa` field, or by `sa + 32` for the three `32` variants.
+- Variable forms `DSLLV` (`0x14`), `DSRLV` (`0x16`) and `DSRAV` (`0x17`) require `shamt = 0` and shift by `GPR[rs] & 63`.
+
+Execution semantics:
+
+1. Left and logical-right shifts fill with zeros; arithmetic-right shifts replicate the sign bit.
+2. The result replaces the low 64 bits of `rd` and is sign-extended from bit 63 into the modeled 128-bit register pair. A write to `$zero` is discarded.
+3. A nonzero reserved `rs` on an immediate form is rejected fail-closed by the canonical decoder.
+4. `tools/rptp/isa.py` accepts a variable-form word whose reserved `shamt` is nonzero as supported and valid, while `runtime/src/execution.cpp` rejects it with `EXEC_UNSUPPORTED_INSTRUCTION`. This is an open E4 divergence recorded in [RISKS.md](RISKS.md); neither path silently reinterprets the word.
+5. `SPECIAL` funct `0x15` is not a defined form and remains unsupported.
+
+CFG and lowering:
+
+- The nine forms are ordinary fallthrough instructions; they create no successors, and the existing delay-slot and block-partition rules are unchanged.
+- `tools/rptp/ir.py` lowers an immediate form to a 64-bit `shift` op with `imm = sa` or `sa + 32`, and a variable form to a 64-bit `shift_var` op whose `b` field names the amount register. `tools/rptp/codegen.py` emits the 64-bit shift and `rptp::sext64`.
+- The legacy `tools/rptp_ir.py`/`tools/rptp_lower.py` pipeline rejects all nine forms as unsupported; `tests/test_pipeline_path_contract.py` pins that rejection.
+
+Evidence: `tests/test_instruction_dshift.py` covers decoding, CFG support, IR lowering, literal oracle values, deterministic generated source and a native differential against the oracle for all nine forms. `tests/test_runtime_execution.py` and `runtime/tests/runtime_tests.cpp` add the CLI-versus-oracle differential, direct C++ cases and reserved-field rejection; `tests/test_cross_path_equivalence.py` drives all nine forms through the Python oracle, generated C++ and `rptp-run`. The encodings, immediate and variable shift amounts and arithmetic sign replication are cited to `RPTP-REF-015` (MIPS64 Revision 5.04 pages 168–176); the 64-bit shift width, 128-bit register-pair sign extension, `$zero` suppression and fail-closed reserved-field rejection are RPTP test definitions.
+
 ## Fail-closed validation
 
 The analysis raises `AnalysisError` with a stable `code` and an optional address. Examples of rejected conditions include:
@@ -202,7 +225,7 @@ The DADDIU fixture in `tests/test_instruction_daddiu.py` checks positive and neg
 ## Limitations
 
 - The separate read-only direct-evidence report in `tools/rptp_discover.py` scans every aligned word of file-backed executable `PT_LOAD` bytes and reports candidate-only entry evidence with explicit unsupported diagnostics; see [FUNCTION_DISCOVERY.md](FUNCTION_DISCOVERY.md). It does not replace this CFG contract, and it adds no reachability, code/data separation or function-extent claim here.
-- The subset is the existing synthetic ten-opcode Gate 0 subset plus `ORI`, `ANDI`, `XORI`, `LUI`, `SLL`, `AND`, `OR`, `XOR`, `NOR`, `SLT`, `SLTU`, `SLTI`, `SLTIU`, `DADDIU`, `DADDU`, `SUBU`, `LD` and `SD`. The `tools/rptp` package separately adds the eight branch-likely forms described above. No other opcode is added by these increments, and the legacy `tools/rptp_ir.py` pipeline does not implement branch-likely forms.
+- The subset is the existing synthetic ten-opcode Gate 0 subset plus `ORI`, `ANDI`, `XORI`, `LUI`, `SLL`, `AND`, `OR`, `XOR`, `NOR`, `SLT`, `SLTU`, `SLTI`, `SLTIU`, `DADDIU`, `DADDU`, `SUBU`, `LD` and `SD`. The `tools/rptp` package separately adds the six ordinary branch forms, the eight branch-likely forms and the nine doubleword shift forms described above. No other opcode is added by these increments, and the legacy `tools/rptp_ir.py` pipeline does not implement these forms.
 - The CFG is a syntactic partition of the validated code range. Known-edge graph reachability is not runtime reachability, dead-code proof or function discovery.
 - Function entries are candidates only. There are no function extents, symbols, call graphs with return edges, or confident `JR $ra` return-path claims. The direct-call continuation caveat is explicit in the reachability report.
 - The IR is lowered only for the synthetic model. The generated C++ is not optimized, not a product recompiler or runtime, and not a substitute for the separate instruction differential tests.
@@ -218,12 +241,13 @@ The DADDIU fixture in `tests/test_instruction_daddiu.py` checks positive and neg
 - `LUI` shifted-immediate semantics: `RPTP-REF-013`, MIPS64 Revision 5.04 page 225. The Rev 6.03 LUI page was not directly accessible; the limitation is recorded in [REFERENCES.md](REFERENCES.md).
 - `SLL` 32-bit shift encoding and semantics: `RPTP-REF-002`; the sign-extension bridge into the modeled 64-bit register array is test-defined and recorded in [REFERENCES.md](REFERENCES.md).
 - `SUBU` 32-bit subtract encoding and semantics: `RPTP-REF-015`, MIPS64 Revision 5.04 page 355. That entry marks a non-word-value source UNPREDICTABLE; this model resolves that case deterministically by truncating both sources to their low 32 bits, matching the accepted `ADDU` model. The resolution is test-defined and recorded in [REFERENCES.md](REFERENCES.md).
+- `DSLL`, `DSLL32`, `DSLLV`, `DSRA`, `DSRA32`, `DSRAV`, `DSRL`, `DSRL32` and `DSRLV` encodings, shift amounts and arithmetic sign replication: `RPTP-REF-015`, MIPS64 Revision 5.04 pages 168–176. The 64-bit shift width, 128-bit register-pair sign extension, `$zero` suppression and fail-closed reserved-field rejection are RPTP test definitions recorded in [REFERENCES.md](REFERENCES.md). The canonical decoder versus harness divergence on a nonzero variable-form `shamt` is recorded in [RISKS.md](RISKS.md).
 - `LD`/`SD` doubleword transfer encoding and semantics: `RPTP-REF-015`, MIPS64 Revision 5.04 pages 207 and 327. The signed 16-bit offset and aligned doubleword transfer are referenced; the 32-bit effective-address truncation, the two-word little-endian memory model and the fail-closed alignment rejection are RPTP test definitions recorded in [REFERENCES.md](REFERENCES.md).
 - `LW`/`SW` word transfer encodings: `RPTP-REF-001` and `RPTP-REF-002`. The 4-byte effective-address alignment requirement and its fail-closed `EXEC_MEMORY_FAULT` / `LOWER_RUNTIME_ERROR` rejection are RPTP model policies and test definitions, not a hardware alignment-exception model; the cross-path matrix is recorded in [RUNTIME.md](RUNTIME.md).
 - The block, immediate, `$zero`, candidate, known-edge reachability and lowering rules are defined by this repository's tests and are not a hardware specification.
 - The generated C++ state machine, JSON shape, failure text and exit code are test-defined behavior, not R5900 or PS2 hardware behavior.
 
-Local and hosted verification evidence is recorded in [VERIFICATION_LOG.md](VERIFICATION_LOG.md). The SLTI increment (`69d7c11`) passed CI run #44; SLTIU (`25267b6`) passed run #45, DADDIU run #50, DADDU run `40836707828`, SUBU run `40849490715`, PR #49 merge `be8269e` run `40959803393`, PR #51 merge `983da0f` run `40969465394`, the PR #52 merge `ed934de` run `40971796930`, the PR #53 merge `5878814` run `41003680466`, the PR #54 merge `90e4f62` run `41005859751`, the PR #56 merge `f8f7548` run `41006977122` and the latest merge `5326059` (PR #57) run `41008593520` on Windows x64/MSVC and Linux/GCC. Both are synthetic signed/unsigned comparisons against sign-extended immediates only; Gate 3 remains in progress and not passed.
+Local and hosted verification evidence is recorded in [VERIFICATION_LOG.md](VERIFICATION_LOG.md). The SLTI increment (`69d7c11`) passed CI run #44; SLTIU (`25267b6`) passed run #45, DADDIU run #50, DADDU run `40836707828`, SUBU run `40849490715`, PR #49 merge `be8269e` run `40959803393`, PR #51 merge `983da0f` run `40969465394`, the PR #52 merge `ed934de` run `40971796930`, the PR #53 merge `5878814` run `41003680466`, the PR #54 merge `90e4f62` run `41005859751`, the PR #56 merge `f8f7548` run `41006977122`, the PR #57 merge `5326059` run `41008593520`, the PR #59 merges `7a2b98f` runs `41011409128`/`41009361036` and the latest merge `c1f1ade` (PR #60) run `41012644771` on Windows x64/MSVC and Linux/GCC. These are synthetic-model runs against the recorded references only; Gate 3 remains in progress and not passed.
 
 ## Verification commands
 
@@ -237,6 +261,7 @@ python -m unittest tests.test_instruction_sltu -v
 python -m unittest tests.test_instruction_subu -v
 python -m unittest tests.test_instruction_ld_sd -v
 python -m unittest tests.test_instruction_branch_likely -v
+python -m unittest tests.test_instruction_dshift -v
 python -m unittest tests.test_ir_cfg -v
 python -m unittest tests.test_cfg_reachability -v
 python -m unittest tests.test_ir_lowering -v
