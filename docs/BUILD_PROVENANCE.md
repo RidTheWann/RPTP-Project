@@ -39,7 +39,7 @@ No build behavior in this layer was derived from a sealed project's build files 
 
 ## Evidence and limits
 
-- The contract tests are local evidence and do not constitute a provenance review. The latest merge `8def5a6` (PR #61) passed build, doctor and CTest in run `41135564739`; the previous merges `248aad8` (PR #63), `cc85c1a` (PR #62) and `c1f1ade` (PR #60) passed runs `41125085510`, `41123907950` and `41012644771`, and the earlier tip `25267b6` passed run #45 on Windows x64/MSVC and Linux/GCC. This does not resolve the build/CI/doctor layer's `Review required` status.
+- The contract tests are local evidence and do not constitute a provenance review. The latest merge `a6195da` (PR #65) passed build, doctor and CTest in run `41137749626`; the previous merges `af450e8` (PR #64), `8def5a6` (PR #61) and `248aad8` (PR #63) passed runs `41136442974`, `41135564739` and `41125085510`, and the earlier tip `25267b6` passed run #45 on Windows x64/MSVC and Linux/GCC. This does not resolve the build/CI/doctor layer's `Review required` status.
 - The wrapper change was checked through the current Visual Studio developer environment and invoked from a temporary working directory outside the repository. A local pass is not a clean-machine guarantee.
 - The doctor and workflow are not proven correct for every Visual Studio edition, runner image, shell, locale or filesystem.
 - No dependency was added, and no third-party action or CMake module was vendored.
