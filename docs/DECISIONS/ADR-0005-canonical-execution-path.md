@@ -4,6 +4,7 @@
 - **Status:** Proposed — owner acceptance required
 - **Decision owner:** Human project owner
 - **Recorded by:** Agent, under the 2026-10-30 engineering-advancement instruction
+- **Published:** merged by PR #57 at `5326059`; this is publication, not acceptance.
 - **Related:** `R-031`, ADR-0001, ADR-0003, [IR_CFG.md](../IR_CFG.md), [RUNTIME.md](../RUNTIME.md), [research/instruction-semantics-matrix.md](../research/instruction-semantics-matrix.md), [PROVENANCE_PLAN.md](../PROVENANCE_PLAN.md)
 
 ## Context
@@ -35,8 +36,8 @@ The duplication is deliberate historical evidence, but it creates `R-031`: an in
 
 | ID | Gate | Required evidence | Status on 2026-10-30 |
 |---|---|---|---|
-| E1 | Inventory and containment | A test proves the frozen legacy lowering set, its containment in the canonical decoder and the canonical-only branch forms | Verified locally by [tests/test_path_contract.py](../../tests/test_path_contract.py) (`PathInventoryTests`); hosted CI pending at this pre-merge record |
-| E2 | Shared-subset semantic equivalence | One synthetic program containing every legacy operation produces identical low-64 register state, halt PC and executed-PC trace in the legacy oracle and the canonical oracle; both analyzers and the legacy lowerer accept the program | Verified locally by the same test (`SharedSubsetEquivalenceTests`); this covers the two Python oracles, not native code |
+| E1 | Inventory and containment | A test proves the frozen legacy lowering set, its containment in the canonical decoder and the canonical-only branch forms | Verified by [tests/test_path_contract.py](../../tests/test_path_contract.py) (`PathInventoryTests`) locally and on hosted CI at `88143ad` (runs `41008377188`, `41008382350`) |
+| E2 | Shared-subset semantic equivalence | One synthetic program containing every legacy operation produces identical low-64 register state, halt PC and executed-PC trace in the legacy oracle and the canonical oracle; both analyzers and the legacy lowerer accept the program | Verified by the same test (`SharedSubsetEquivalenceTests`) locally and on hosted CI at `88143ad`; this covers the two Python oracles, not native code |
 | E3 | Native equivalence | The shared legacy subset is compared through the legacy generated C++, the canonical generated C++ and the `rptp-run` harness on the same synthetic input, with documented memory-model normalization | Open: the cross-path suite covers the canonical oracle, canonical generated C++ and `rptp-run`, but not legacy generated C++ |
 | E4 | Fail-closed parity | Rejection classes for unsupported encodings, missing or control delay slots, unaligned `LW`/`SW`/`LD`/`SD`, unmapped or cross-region access and link `rs = 31` are mapped and tested across the surviving paths | Open: the legacy paths have no alignment check and use different error surfaces; identical messages are not required, equivalent rejection is |
 | E5 | Per-increment provenance | Each behavior change names its reference IDs, independent test path, fail-closed policy and evidence in the commit body and [VERIFICATION_LOG.md](../VERIFICATION_LOG.md) | Ongoing under [PROVENANCE_PLAN.md](../PROVENANCE_PLAN.md) |
