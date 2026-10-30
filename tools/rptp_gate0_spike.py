@@ -405,6 +405,8 @@ def execute_oracle(entry: int, words: dict[int, int]) -> dict[str, Any]:
                 r[ins["rt"]] = result & 0xFFFFFFFFFFFFFFFF
         elif op == "lw":
             address = ((r[ins["rs"]] & 0xFFFFFFFF) + ins["imm"]) & 0xFFFFFFFF
+            if address & 3:
+                raise ValueError(f"Oracle unaligned word load at 0x{address:08X}")
             if address not in s["memory"]:
                 raise ValueError(f"Oracle read from uninitialized memory 0x{address:08X}")
             result = sign_extend_32(s["memory"][address])
@@ -412,6 +414,8 @@ def execute_oracle(entry: int, words: dict[int, int]) -> dict[str, Any]:
                 r[ins["rt"]] = result & 0xFFFFFFFFFFFFFFFF
         elif op == "sw":
             address = ((r[ins["rs"]] & 0xFFFFFFFF) + ins["imm"]) & 0xFFFFFFFF
+            if address & 3:
+                raise ValueError(f"Oracle unaligned word store at 0x{address:08X}")
             s["memory"][address] = r[ins["rt"]] & 0xFFFFFFFF
         elif op == "ld":
             address = ((r[ins["rs"]] & 0xFFFFFFFF) + ins["imm"]) & 0xFFFFFFFF
