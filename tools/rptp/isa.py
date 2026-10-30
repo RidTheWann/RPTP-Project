@@ -592,6 +592,8 @@ def decode_instruction(word: int, pc: int = 0, *, strict: bool = False) -> Instr
             valid = rs == 0 and rt == 0 and shamt == 0
         elif spec.mnemonic in {"mthi", "mtlo", "mtsa"}:
             valid = rt == 0 and rd == 0 and shamt == 0
+        elif funct in {0x04, 0x06, 0x07, 0x14, 0x16, 0x17}:
+            valid = shamt == 0
         elif funct in {0x00, 0x02, 0x03, 0x38, 0x3A, 0x3B, 0x3C, 0x3E, 0x3F}:
             valid = rs == 0
         if not valid:

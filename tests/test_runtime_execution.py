@@ -18,6 +18,7 @@ import unittest
 from pathlib import Path
 
 from tests.test_runtime_loader import build_elf
+from tools.rptp import isa
 from tools.rptp import oracle
 from tools.rptp.cfg import discover_program
 from tools.rptp.elf import parse_elf_bytes
@@ -435,6 +436,9 @@ class RuntimeExecutionCliTests(unittest.TestCase):
         )
         for label, word in cases:
             with self.subTest(label=label):
+                decoded = isa.decode_instruction(word, BASE)
+                self.assertFalse(decoded.valid, decoded.note)
+                self.assertFalse(decoded.supported, decoded.note)
                 result, _ = self.run_cli(build_program([word]), "--json")
                 self.assertEqual(2, result.returncode)
                 self.assertEqual("", result.stderr.strip())
