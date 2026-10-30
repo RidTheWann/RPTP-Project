@@ -139,6 +139,7 @@ IR and native lowering:
 - `Control.likely` distinguishes a likely branch from an ordinary branch, while `delay_ops` remains the single attached delay slot.
 - The oracle skips the delay slot on a not-taken likely branch. The generated C++ emits the delay operations, including their trace calls, inside `if (taken) { ... }`. Both select the target or `pc + 8` only after the delay phase.
 - Unknown encodings remain `unknown_*`. A likely branch is never silently decoded, lowered or emitted as an ordinary branch.
+- A decoded branch target of address 0 is a valid direct target. `tools/rptp/ir.py` treats a missing target as `None` and never substitutes the fallthrough for a decoded zero address; `tests/test_instruction_branch_plain.py` covers the lowering directly. This is a host-IR contract, not a hardware-address claim.
 
 Evidence: `tests/test_instruction_branch_likely.py` covers taken and not-taken outcomes for all eight forms, register and memory delay-slot effects, `$zero`, unconditional link writes, `rs = 31` rejection, CFG successors, deterministic generated source and a native differential against the oracle. `tests/test_isa_encodings.py` checks decoding and lowering for every supported mnemonic. The encodings, PC-relative target, condition tests, take-only delay-slot execution with `NullifyCurrentInstruction()`, unconditional `GPR[31] = PC + 8` link and `rs = 31` UNPREDICTABLE restriction are cited to `RPTP-REF-015` (MIPS64 Revision 5.04 pages 75, 78, 80, 82, 84, 87, 89 and 91); the 32-bit PC masking, the low-64-bit register comparison width, trace/step accounting, `$zero` suppression, memory representation, the fail-closed `rs = 31` rejection and generated-source shape are RPTP test definitions.
 
@@ -222,7 +223,7 @@ The DADDIU fixture in `tests/test_instruction_daddiu.py` checks positive and neg
 - The block, immediate, `$zero`, candidate, known-edge reachability and lowering rules are defined by this repository's tests and are not a hardware specification.
 - The generated C++ state machine, JSON shape, failure text and exit code are test-defined behavior, not R5900 or PS2 hardware behavior.
 
-Local and hosted verification evidence is recorded in [VERIFICATION_LOG.md](VERIFICATION_LOG.md). The SLTI increment (`69d7c11`) passed CI run #44; SLTIU (`25267b6`) passed run #45, DADDIU run #50, DADDU run `40836707828`, SUBU run `40849490715`, PR #49 merge `be8269e` run `40959803393`, PR #51 merge `983da0f` run `40969465394` and the latest merge `ed934de` (PR #52) run `40971796930` on Windows x64/MSVC and Linux/GCC. Both are synthetic signed/unsigned comparisons against sign-extended immediates only; Gate 3 remains in progress and not passed.
+Local and hosted verification evidence is recorded in [VERIFICATION_LOG.md](VERIFICATION_LOG.md). The SLTI increment (`69d7c11`) passed CI run #44; SLTIU (`25267b6`) passed run #45, DADDIU run #50, DADDU run `40836707828`, SUBU run `40849490715`, PR #49 merge `be8269e` run `40959803393`, PR #51 merge `983da0f` run `40969465394`, the PR #52 merge `ed934de` run `40971796930`, the PR #53 merge `5878814` run `41003680466` and the latest merge `90e4f62` (PR #54) run `41005859751` on Windows x64/MSVC and Linux/GCC. Both are synthetic signed/unsigned comparisons against sign-extended immediates only; Gate 3 remains in progress and not passed.
 
 ## Verification commands
 

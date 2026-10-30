@@ -347,7 +347,7 @@ class Oracle:
                         "beql", "bnel", "blezl", "bgtzl", "bltzl", "bgezl",
                         "bltzall", "bgezall"}:
             take = self._branch_taken(control)
-            if mnemonic in {"bltzal", "bgezal", "bltzall", "bgezall"} and state.registers:
+            if mnemonic in {"bltzal", "bgezal", "bltzall", "bgezall"}:
                 _write_u32(state, 31, (control.pc + 8) & MASK32)
             next_pc = (control.target or 0) if take else ((control.pc + 8) & MASK32)
             nullify_delay = control.is_likely and not take

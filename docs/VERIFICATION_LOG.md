@@ -1161,17 +1161,50 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-msvc.ps1
 - This entry makes PR #52 the latest merge recorded here; STATE and HANDOFF now cite `ed934de` and the PR range through #52. The follow-up promised by the previous entry is complete.
 - Limitation: the merge run verifies the tree at `ed934de`, not later commits. `R-031` and `R-032` stay open; the next increment addresses `R-032` only after this documentation synchronization merges.
 
+## 2026-10-30 — merge record for PR #53
+
+- Scope: documentation-only merge evidence. No code, runtime, build, fixture or dependency change; no Gate, provenance or compatibility status changed.
+- PR #53 `docs: record PR #52 merge and synchronize status` merged 2026-10-30T11:34:46+07:00 (2026-10-30T04:34:46Z) with `--match-head-commit 96cfd88d37c7d09ac0958ebe8c70175e07902d00` as `58788147876cb0408a11dcebfc652ee74c179731`. Exact-head `RPTP CI` runs `41003477712` (pull request) and `41003465898` (push) succeeded on `96cfd88`; merge run `41003680466` (`RPTP CI`) and pages run `41003679107` succeeded on `5878814`.
+- Contents: 11 Markdown documents only. The PR recorded the PR #52 merge evidence in this log, advanced the STATE/HANDOFF/ROADMAP/EXECUTION_CONTEXT/COMPATIBILITY/BUILD_PROVENANCE/CLEAN_ROOM_AUDIT/IR_CFG/README pointers to PR #52 and added the PR #52 ledger row.
+- This entry makes PR #53 the latest merge recorded here; STATE and HANDOFF now cite `5878814` and the PR range through #53.
+- Limitation: the merge run verifies the tree at `5878814`, not later commits. `R-031` and `R-032` stay open; the next increment addresses `R-032`.
+
+## 2026-10-30 — R-032 branch-hardening increment (pre-merge)
+
+- Scope: closes the four `R-032` review gaps for the six ordinary branch forms in the `tools/rptp` host IR and oracle. No runtime, decoder, emitter, build or product behavior changed; no Gate, provenance or compatibility status changed.
+- Changes: `tools/rptp/ir.py` now emits a decoded branch target of address 0 instead of substituting the fallthrough (`target is not None`); `tools/rptp/oracle.py` drops the always-true `and state.registers` guard; `tests/test_instruction_branch_plain.py` stores a nonzero value (`0x5A`) in the taken BLEZ delay slot, adds a BLTZAL/BGEZAL delay slot that reads `GPR[31]` after the link write on both outcomes, and asserts target-0 lowering directly; `tests/test_cross_path_equivalence.py` makes the taken BGEZAL delay slot read `$ra`, so the oracle, generated C++ and `rptp-run` must all write the link before the delay slot runs.
+- Local commands and results in the x64 MSVC environment (MSVC 14.51.36231, 2026-10-30):
+  - `python tools/rptp_doctor.py` → Overall status: PASS.
+  - `cmake --preset windows-msvc` and `cmake --build --preset windows-msvc` → succeeded; standalone `ctest --test-dir build/cmake-msvc --output-on-failure` → 7/7 tests passed, including `runtime_execution_cli` and `cross_path_equivalence`.
+  - `python -m unittest discover -s tests` with `RPTP_LOAD_BINARY` and `RPTP_RUN_BINARY` set to the built tools → 521 tests, OK, 0 skipped, 1 expected failure.
+  - `python -m unittest tests.test_doc_budget tests.test_doc_freshness tests.test_progress_consistency tests.test_license_headers tests.test_build_contract` → 19 tests, OK; `python tools/check_forbidden_artifacts.py --root .` passed; `git diff --check` reported no whitespace errors.
+- Limitations: local results are not hosted CI. No real ISO was needed or accessed; no ISO, BIOS, game code or extracted asset was uploaded, committed or executed. `R-031` (canonical product path) remains open; this increment does not declare one.
+
+## 2026-10-30 — R-032 exact-head CI and independent review (pre-merge)
+
+- Exact-head `RPTP CI` runs `41005061054` (push) and `41005075117` (pull request) succeeded on `5374828` for both Windows x64/MSVC and Linux/GCC. That head contains the `R-032` fixes and tests, the PR #53 merge record and the pointer synchronization.
+- An independent read-only review at `5374828` returned APPROVE with no blocking issues. Its non-blocking notes were that [RISKS.md](RISKS.md) still cited pre-fix line numbers and that the pre-CI log wording was slightly strong; the resolution entry and this record address both.
+- `R-032` is marked resolved in [RISKS.md](RISKS.md) only after these results; the exact-head tree already holds the behavior and tests, and the follow-up commit is documentation-only. `R-031` remains open.
+
+## 2026-10-30 — merge record for PR #54
+
+- Scope: synthetic host-IR, oracle and regression-test hardening for the six ordinary branch forms. Closes `R-032`; no runtime, decoder, emitter or build behavior changed, and no Gate, provenance or compatibility status changed.
+- PR #54 `fix(rptp): harden zero-address branch lowering and delay-slot link order` merged 2026-10-30T11:58:58+07:00 (2026-10-30T04:58:58Z) with `--match-head-commit 3c4c6fee62e6aece2ea059f5498c52e36ee7885b` as `90e4f6226fefb2e2938dd11115b3107e2346f3dc`. Exact-head runs `41005061054` (push) and `41005075117` (pull request) succeeded on `5374828`; runs `41005626121` (push) and `41005630440` (pull request) succeeded on `3c4c6fe`; merge run `41005859751` (`RPTP CI`) and pages run `41005858879` succeeded on `90e4f62`.
+- Contents: `7fe39d9` fixes the zero-address target fallback and the dead oracle guard, and adds the nonzero delay-slot store, link-visibility, target-0 and cross-path delay-slot `$ra` tests; `5374828` records the PR #53 merge, rolls the status pointers, adds the PR #53 ledger row, documents the target-0 rule and records the local evidence; `3c4c6fe` marks `R-032` resolved after the green exact-head CI and the independent read-only review.
+- An independent read-only agent review at `5374828` returned APPROVE with no blocking issues; its non-blocking wording notes are addressed in `3c4c6fe`. It is a session-recorded delegated agent review, not a GitHub formal review. This entry makes PR #54 the latest merge recorded here; STATE and HANDOFF now cite `90e4f62` and the PR range through #54.
+- Limitation: the merge run verifies the tree at `90e4f62`, not later commits. `R-031` (canonical product path) remains open; the increment does not declare one.
+
 ## 2026-10-30 — canonical-path proposal and legacy path contract (local evidence)
 
 - Scope: process/contract increment for `R-031`. Adds [ADR-0005](DECISIONS/ADR-0005-canonical-pipeline.md) as **Proposed** (canonical `tools/rptp` + `runtime/`, frozen legacy paths, equivalence criteria, migration stages) and [tests/test_pipeline_path_contract.py](../tests/test_pipeline_path_contract.py), which pins the legacy 28-operation lowering set and its explicit `IR_UNSUPPORTED_INSTRUCTION` rejection of the fourteen ordinary/likely branch forms at the branch PC while the `tools/rptp` decoder accepts the same words. No decoder, IR, oracle, emitter, runtime, build, fixture or dependency change; no Gate, provenance or compatibility status changed.
-- Branch `automation/d9e7947a7c704bd886c84e10f25847bb`. The PR number, hosted exact-head runs and merge identifiers are recorded by the follow-up evidence PR because this entry is written before the PR exists.
-- Local commands and results in the x64 MSVC environment (`VsDevCmd.bat -arch=x64 -host_arch=x64`, MSVC 14.51.36231, 2026-10-30):
+- Branch `automation/d9e7947a7c704bd886c84e10f25847bb`, feature commit `fd1d6ae`. Because `origin/main` advanced to `f8f7548` (PR #54 R-032 hardening and PR #56 documentation qualification) before the first push, the branch merges `origin/main` and resolves documentation conflicts preserving both sides. The PR number, hosted exact-head runs and merge identifiers are recorded by the follow-up evidence PR because this entry is written before the PR exists.
+- Local commands and results on the merged tree in the x64 MSVC environment (`VsDevCmd.bat -arch=x64 -host_arch=x64`, MSVC 14.51.36231, 2026-10-30):
   - `python tools/rptp_doctor.py` → Overall status: PASS.
   - `python tools/check_forbidden_artifacts.py --root .` → passed.
   - `python -m compileall -q tools tests` → OK.
   - `cmake --preset windows-msvc`, `cmake --build --preset windows-msvc` → succeeded; `ctest --test-dir build/cmake-msvc --output-on-failure` → 7/7 tests passed under the MSVC environment.
-  - `python -m unittest discover -s tests -v` with `RPTP_LOAD_BINARY` and `RPTP_RUN_BINARY` set to the built tools → 522 tests, OK, 0 skipped, 1 expected failure.
+  - `python -m unittest discover -s tests -v` with `RPTP_LOAD_BINARY` and `RPTP_RUN_BINARY` set to the built tools → 524 tests, OK, 0 skipped, 1 expected failure (522 on the pre-merge tree).
   - `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-msvc.ps1` → artifact guard, Gate 0 spike and the full suite passed.
   - Focused modules: `tests.test_pipeline_path_contract` 3 tests, `tests.test_doc_budget`, `tests.test_doc_freshness` and `tests.test_license_headers` → 11 tests, OK. `git diff --check` → no whitespace errors.
-- An independent read-only correctness review of the ADR, test and documentation edits returned REQUEST CHANGES on three documentation facts (legacy option wording, the legacy differential evidence sentence and two out-of-date ADR-0005 placeholder notes); all were fixed before the final chain rerun. The review is not an independent provenance or clean-room review.
+- An independent read-only correctness review of the ADR, test and documentation edits returned REQUEST CHANGES on three documentation facts (legacy option wording, the legacy differential evidence sentence and two out-of-date ADR-0005 placeholder notes); all were fixed before the merge and the final chain rerun. The review is not an independent provenance or clean-room review.
 - Limitations: local results are not hosted CI. The ADR remains Proposed; only the owner may accept or reject it. No ISO, BIOS, game code or extracted asset was accessed, uploaded, committed or executed.
