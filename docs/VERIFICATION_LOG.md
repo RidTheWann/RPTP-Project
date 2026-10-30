@@ -1193,3 +1193,24 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-msvc.ps1
 - Contents: `7fe39d9` fixes the zero-address target fallback and the dead oracle guard, and adds the nonzero delay-slot store, link-visibility, target-0 and cross-path delay-slot `$ra` tests; `5374828` records the PR #53 merge, rolls the status pointers, adds the PR #53 ledger row, documents the target-0 rule and records the local evidence; `3c4c6fe` marks `R-032` resolved after the green exact-head CI and the independent read-only review.
 - An independent read-only agent review at `5374828` returned APPROVE with no blocking issues; its non-blocking wording notes are addressed in `3c4c6fe`. It is a session-recorded delegated agent review, not a GitHub formal review. This entry makes PR #54 the latest merge recorded here; STATE and HANDOFF now cite `90e4f62` and the PR range through #54.
 - Limitation: the merge run verifies the tree at `90e4f62`, not later commits. `R-031` (canonical product path) remains open; the increment does not declare one.
+
+## 2026-10-30 — merge record for PR #56
+
+- Scope: documentation-only post-merge synchronization for PR #54. No code, runtime, build, fixture or dependency change; no Gate, provenance or compatibility status changed.
+- PR #56 `docs: record PR #54 merge and synchronize status` merged 2026-10-30T12:10:53+07:00 (2026-10-30T05:10:53Z) with `--match-head-commit 1039020e55bfd799332818de1162c6730dc77039` as `f8f75480f2588b83d4d9f667514515d2140b790a`. Exact-head `RPTP CI` runs `41006747520` (push) and `41006752009` (pull request) succeeded on `1039020`; merge run `41006977122` (`RPTP CI`) and pages run `41006976205` succeeded on `f8f7548`.
+- Contents: 12 Markdown documents. The PR recorded the PR #54 merge evidence and exact-head runs in this log, added the PR #54 ledger row, advanced the STATE, HANDOFF, README, ROADMAP, COMPATIBILITY, EXECUTION_CONTEXT, BUILD_PROVENANCE, CLEAN_ROOM_AUDIT and IR_CFG pointers to PR #54, and qualified the `R-032` review provenance and final-head runs.
+- The merging agent verified the cited run IDs and the documentation diff before the pinned merge; no independent reviewer was involved in this documentation-only merge. This entry makes PR #56 the latest merge recorded here; STATE and HANDOFF now cite `f8f7548` and the PR range through #56.
+- Limitation: the merge run verifies the tree at `f8f7548`, not later commits. `R-031` remains open; `R-032` stays resolved.
+
+## 2026-10-30 — canonical-path proposal and E1/E2 contract (pre-merge)
+
+- Scope: proposes ADR-0005 (status Proposed; owner acceptance required) to declare `tools/rptp` plus the native runtime harness the canonical execution path, freeze the Gate 0 spike and `rptp_ir`/`rptp_lower`, and require E1–E4 before any legacy retirement. Adds `tests/test_path_contract.py` as executable E1/E2 evidence. No decoder, oracle, IR, emitter, runtime or build behavior changed; no path is declared canonical, and no Gate, provenance or compatibility status changed.
+- References: `RPTP-REF-001`, `RPTP-REF-015`; policy ADR-0001 and ADR-0003; existing synthetic catalog and Gate 0 scope. The ADR records `R-031` and the four-path inventory.
+- Tests: `tests/test_path_contract.py` pins the 28-operation legacy lowering set, its containment in `tools/rptp/isa.py`, the canonical-only 14 branch forms, and runs one synthetic program containing every legacy operation through both Python oracles with identical low-64 registers, halt PC and executed-PC trace. E3 (native legacy/canonical comparison) and E4 (fail-closed parity) stay open.
+- Local commands and results in the x64 MSVC environment (Visual Studio 2026 18.11.1, MSVC 14.51.36231, 2026-10-30):
+  - `python tools/rptp_doctor.py` → Overall status: PASS.
+  - `cmake --preset windows-msvc` and `cmake --build --preset windows-msvc` → succeeded; the build preset ran CTest and 7/7 tests passed in 150.23 s, including `python_unit_tests`, `runtime_execution_cli` and `cross_path_equivalence`.
+  - `python -m unittest discover -s tests` with `RPTP_LOAD_BINARY` and `RPTP_RUN_BINARY` set to the built tools → 527 tests, OK, 0 skipped, 1 expected failure (120.889 s).
+  - `python -m unittest tests.test_path_contract` → 6 tests, OK; the documentation control suite (budget, freshness, path contract, license headers, build contract, progress consistency) → 25 tests, OK.
+  - `python tools/check_forbidden_artifacts.py --root .` passed; `git diff --check` reported no whitespace errors.
+- Limitations: local results are not hosted CI. No real ISO was needed or accessed; no ISO, BIOS, game code or extracted asset was uploaded, committed or executed. The ADR is Proposed; only the owner can accept it and close `R-031`. E3/E4 remain open.
