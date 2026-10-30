@@ -2,7 +2,7 @@
 
 - **Snapshot date:** 2026-10-30
 - **Remote repository:** RidTheWann/RPTP-Project, public.
-- **Publication and CI status:** PRs #10–#52 merged every increment through the native harness, alignment consolidation, census, research notes and status synchronization. Latest merges: PR #52 `ed934de` (run `40971796930`, pages `40971795286`), PR #51 `983da0f` (run `40969465394`) and PR #50 `a4b18bf` (run `40960801533`); all green. Local results are in [VERIFICATION_LOG.md](VERIFICATION_LOG.md); local checks are not hosted CI.
+- **Publication and CI status:** PRs #10–#53 merged every increment: native harness, alignment, census, research notes and status synchronization. Latest merges: PR #53 `5878814` (run `41003680466`), PR #52 `ed934de` (run `40971796930`) and PR #51 `983da0f` (run `40969465394`); all green. Local results are in [VERIFICATION_LOG.md](VERIFICATION_LOG.md); local checks are not hosted CI.
 - **Git workflow:** `main` integrates; use isolated worktrees, explicit staging, local verification/review, both exact-head compiler jobs, pinned-head merges and merge-commit CI, as authorized in [AGENTS.md](../AGENTS.md). No direct main push, force-push, history rewrite or administrative override.
 - **Manual automation:** user-profile `/rptp-develop` and read-only guards stay outside the repository; GitHub CLI write access is verified. Accepted clean-room/Gate boundaries are unchanged.
 - **Architecture:** from-scratch static ahead-of-time recompilation of supported Emotion Engine code to C++, plus a native Windows x64 runtime planned.
@@ -33,7 +33,7 @@ The accepted Gate 0 scope is the synthetic ELF32/EM_MIPS fixture and only ADDIU,
 4. **License (resolved):** GPL-3.0-or-later confirmed 2026-10-21; SPDX headers cover project source, build and workflow files.
 5. **Renderer (open):** none selected or tested; ADR-0002 remains a plan.
 6. **Dependencies:** no runtime dependency is vendored or linked; record license, version and notices before adding one.
-7. **Path divergence (open, `R-031`):** the Gate 0 spike, `tools/rptp`, the older `rptp_ir`/`rptp_lower` pipeline and the C++ harness model instructions separately. Branch-likely, the six ordinary forms and the `LW`/`SW` alignment policy agree across `tools/rptp`, the harness and the cross-path suite (PRs #41/#43/#51), but the older `rptp_ir`/`rptp_lower` path rejects the ordinary forms and no canonical product path is declared.
+7. **Path divergence (open, `R-031`):** the Gate 0 spike, `tools/rptp`, the older `rptp_ir`/`rptp_lower` pipeline and the C++ harness model instructions separately. Branch-likely, the six ordinary forms and the `LW`/`SW` alignment policy agree across `tools/rptp`, the harness and the cross-path suite (PRs #41/#43/#51), but the older `rptp_ir`/`rptp_lower` path rejects the ordinary forms and no canonical product path is declared. `R-032` is resolved in `tools/rptp`; legacy paths unchanged.
 
 ## Next steps
 

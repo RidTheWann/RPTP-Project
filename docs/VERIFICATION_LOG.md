@@ -1160,3 +1160,24 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-msvc.ps1
 - Independent read-only audit at head `9bd6268` returned APPROVE after the earlier REQUEST CHANGES was addressed (`docs/CLEAN_ROOM_AUDIT.md` and `docs/IR_CFG.md` still cited `a4b18bf` as the latest merge). Documentation freshness, budget, progress-consistency and game-record tests passed at that head.
 - This entry makes PR #52 the latest merge recorded here; STATE and HANDOFF now cite `ed934de` and the PR range through #52. The follow-up promised by the previous entry is complete.
 - Limitation: the merge run verifies the tree at `ed934de`, not later commits. `R-031` and `R-032` stay open; the next increment addresses `R-032` only after this documentation synchronization merges.
+
+## 2026-10-30 — merge record for PR #53
+
+- Scope: documentation-only merge evidence. No code, runtime, build, fixture or dependency change; no Gate, provenance or compatibility status changed.
+- PR #53 `docs: record PR #52 merge and synchronize status` merged 2026-10-30T11:34:46+07:00 (2026-10-30T04:34:46Z) as `58788147876cb0408a11dcebfc652ee74c179731`. Exact-head `RPTP CI` runs `41003465898` (push) and `41003477712` (pull request) succeeded on `96cfd88`; merge run `41003680466` (`RPTP CI`) and pages run `41003679107` succeeded on `5878814`.
+- Contents: 11 Markdown documents (`README.md` plus ten files under `docs/`), recording the PR #52 merge evidence in this log and advancing the status pointers to PR #52. Independent verification re-checked the changed-file list, the PR metadata and both run conclusions against GitHub.
+- This entry makes PR #53 the latest merge recorded here; STATE and HANDOFF cite `5878814` and the PR range through #53.
+- Limitation: the merge run verifies the tree at `5878814`, not later commits. `R-031` stays open at this snapshot; `R-032` is addressed by the next entry.
+
+## 2026-10-30 — R-032 branch lowering and delay-slot ordering
+
+- Scope: resolves the review gaps recorded as `R-032`. `tools/rptp/ir.py` now keeps a decoded branch target of `0x00000000` and substitutes the fall-through only when the decoder records no target; `tools/rptp/oracle.py` drops a dead `and state.registers` guard before the link write. Link-before-delay ordering was already correct in the oracle, the emitter and the native harness and is now directly tested. No other behavior changed; no Gate, provenance or compatibility status changed.
+- Test-first evidence: `tests/test_instruction_branch_plain.py::PlainBranchCombinedTests::test_branch_target_zero_is_not_replaced_by_the_fallthrough` failed before the change (`AssertionError: 4104 != 0`; `Control.target` was the fall-through `0x1008`) and passes after it. New coverage: `PlainBranchDelaySlotOrderingTests` stores a nonzero word from a taken branch's delay slot and reads `$31` inside the delay slot for taken `BGEZAL` and not-taken `BLTZAL` over a stale `$ra`; the shared cross-path program adds both behaviors (data offset 20 and a `$31` read); `runtime/tests/runtime_tests.cpp` checks them directly in the native harness.
+- Local commands and results in the x64 MSVC environment (MSVC 14.51.36231, 2026-10-30):
+  - `cmake --preset windows-msvc`, `cmake --build --preset windows-msvc` → succeeded; `ctest --test-dir build/cmake-msvc --output-on-failure` → 7/7 tests passed.
+  - `python -m unittest discover -s tests` with `VsDevCmd`/`vcvars64`, `RPTP_LOAD_BINARY` and `RPTP_RUN_BINARY` set to the built tools → 522 tests, OK, 0 skipped, 1 expected failure. The same suite in a plain shell that lacks `cl.exe` on `PATH` reports 29 compiler-availability skips and remains OK.
+  - Focused `tests.test_instruction_branch_plain` plus `tests.test_cross_path_equivalence` → 19 tests, OK; with `RPTP_RUN_BINARY` set, the cross-path module runs its four legs with no skips.
+  - `build/cmake-msvc/rptp-runtime-tests.exe` → `runtime loader and execution checks passed`.
+  - `python -m unittest tests.test_doc_budget tests.test_doc_freshness tests.test_progress_consistency tests.test_license_headers tests.test_build_contract` → 19 tests, OK; `python tools/check_forbidden_artifacts.py --root .` → passed; `git diff --check` → no whitespace errors.
+- References: `RPTP-REF-015` for branch/link semantics; literal target preservation, delay-slot ordering, trace/step accounting and the synthetic fixtures are RPTP test definitions. Tests: `tests/test_instruction_branch_plain.py`, `tests/test_cross_path_equivalence.py`, `runtime/tests/runtime_tests.cpp`; CTest `runtime_loader_tests`, `cross_path_equivalence`.
+- Limitations: local results are not hosted CI; exact-head and merge-run evidence is recorded in a later entry after the PR merges. Synthetic fixtures only; no ISO, BIOS, game code or extracted asset was accessed, uploaded, committed or executed. This is an internal-consistency and fail-closed-lowering fix, not hardware-exception, kernel, boot or compatibility evidence.

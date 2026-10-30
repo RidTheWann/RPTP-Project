@@ -137,6 +137,7 @@ CFG and reachability contract:
 IR and native lowering:
 
 - `Control.likely` distinguishes a likely branch from an ordinary branch, while `delay_ops` remains the single attached delay slot.
+- The host IR keeps the decoded direct target literally, including `0x00000000`; it substitutes `Control.fallthrough` only when the decoder records no target at all. The oracle, generated C++ and native harness write the link register before executing the delay slot and before selecting the target, so a delay slot that reads `$31` observes `pc + 8` on taken and not-taken outcomes.
 - The oracle skips the delay slot on a not-taken likely branch. The generated C++ emits the delay operations, including their trace calls, inside `if (taken) { ... }`. Both select the target or `pc + 8` only after the delay phase.
 - Unknown encodings remain `unknown_*`. A likely branch is never silently decoded, lowered or emitted as an ordinary branch.
 
@@ -222,7 +223,7 @@ The DADDIU fixture in `tests/test_instruction_daddiu.py` checks positive and neg
 - The block, immediate, `$zero`, candidate, known-edge reachability and lowering rules are defined by this repository's tests and are not a hardware specification.
 - The generated C++ state machine, JSON shape, failure text and exit code are test-defined behavior, not R5900 or PS2 hardware behavior.
 
-Local and hosted verification evidence is recorded in [VERIFICATION_LOG.md](VERIFICATION_LOG.md). The SLTI increment (`69d7c11`) passed CI run #44; SLTIU (`25267b6`) passed run #45, DADDIU run #50, DADDU run `40836707828`, SUBU run `40849490715`, PR #49 merge `be8269e` run `40959803393`, PR #51 merge `983da0f` run `40969465394` and the latest merge `ed934de` (PR #52) run `40971796930` on Windows x64/MSVC and Linux/GCC. Both are synthetic signed/unsigned comparisons against sign-extended immediates only; Gate 3 remains in progress and not passed.
+Local and hosted verification evidence is recorded in [VERIFICATION_LOG.md](VERIFICATION_LOG.md). The SLTI increment (`69d7c11`) passed CI run #44; SLTIU (`25267b6`) passed run #45, DADDIU run #50, DADDU run `40836707828`, SUBU run `40849490715`, PR #49 merge `be8269e` run `40959803393`, PR #51 merge `983da0f` run `40969465394` and the latest merge `5878814` (PR #53) run `41003680466` on Windows x64/MSVC and Linux/GCC. Both are synthetic signed/unsigned comparisons against sign-extended immediates only; Gate 3 remains in progress and not passed.
 
 ## Verification commands
 
