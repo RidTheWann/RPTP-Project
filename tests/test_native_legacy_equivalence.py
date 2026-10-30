@@ -24,9 +24,10 @@ The memory models differ, so every result is normalized before comparison:
 Each legacy/runtime word is expanded to four little-endian bytes and compared
 against the canonical byte-write map.  No write is dropped, no region is
 excluded and no tolerance is applied.  ``$ra`` starts at the ``0x7FFF0000``
-return sentinel in the Python models and at zero in the native harness; the
-shared program's first instruction writes ``$ra = $zero`` on every path before
-any control transfer, so the compared final state is defined by the program.
+return sentinel in the canonical generator and the legacy lowerer and at zero
+in the native harness; the shared program's first instruction writes
+``$ra = $zero`` on every path before any control transfer, so the compared
+final state is defined by the program.
 
 The halt reason is path vocabulary, not a behavioral difference: the legacy
 state machine and the canonical models stop at an unmapped PC with
@@ -393,14 +394,7 @@ class NativeLegacyEquivalenceTests(unittest.TestCase):
         self.assertEqual(data_snapshot(legacy["memory"]),
                          data_snapshot(generated["memory"]))
 
-    def test_comparison_rejects_each_divergence_class(self) -> None:
-        baselines: list[tuple[str, dict]] = [("oracle", copy.deepcopy(self.oracle_result))]
-        try:
-            legacy = self._legacy_or_skip()
-            baselines.append(("legacy", copy.deepcopy(legacy)))
-        except unittest.SkipTest:
-            pass
-
+    def _assert_divergences_rejected(self, base_name: str, base_state: dict) -> None:
         def flip_register(state: dict) -> None:
             state["registers"][fixtures.T7] ^= 1
 
@@ -416,14 +410,21 @@ class NativeLegacyEquivalenceTests(unittest.TestCase):
             "halted flag": lambda state: state.__setitem__("halted", False),
             "halt reason": lambda state: state.__setitem__("reason", "divergent-reason"),
         }
-        for base_name, base_state in baselines:
-            for label, mutate in mutations.items():
-                with self.subTest(baseline=base_name, field=label):
-                    mutated = copy.deepcopy(base_state)
-                    mutate(mutated)
-                    with self.assertRaises(AssertionError):
-                        self.assert_equivalent("oracle", self.oracle_result,
-                                               base_name, mutated)
+        for label, mutate in mutations.items():
+            with self.subTest(baseline=base_name, field=label):
+                mutated = copy.deepcopy(base_state)
+                mutate(mutated)
+                with self.assertRaises(AssertionError):
+                    self.assert_equivalent("oracle", self.oracle_result,
+                                           base_name, mutated)
+
+    def test_comparison_rejects_oracle_baseline_divergences(self) -> None:
+        self._assert_divergences_rejected("oracle", copy.deepcopy(self.oracle_result))
+
+    def test_comparison_rejects_legacy_baseline_divergences(self) -> None:
+        # Skips without MSVC instead of silently testing only the oracle baseline.
+        legacy = copy.deepcopy(self._legacy_or_skip())
+        self._assert_divergences_rejected("legacy", legacy)
 
 
 if __name__ == "__main__":
