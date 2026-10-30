@@ -119,6 +119,15 @@ if(BUILD_TESTING)
         cross_path_equivalence
         PROPERTIES WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
     )
+    add_test(
+        NAME native_legacy_equivalence
+        COMMAND "${CMAKE_COMMAND}" -E env "RPTP_RUN_BINARY=$<TARGET_FILE:rptp-run>"
+                "${Python3_EXECUTABLE}" -m unittest tests.test_native_legacy_equivalence -v
+    )
+    set_tests_properties(
+        native_legacy_equivalence
+        PROPERTIES WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+    )
     set(_rptp_runtime_test_target rptp-runtime-tests)
 else()
     set(_rptp_runtime_test_target "")
