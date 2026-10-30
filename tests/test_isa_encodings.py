@@ -420,6 +420,33 @@ class IsaEncodingTests(unittest.TestCase):
             self.assertEqual(ins.rd, 0x1F)
             self.assertTrue(ins.valid)
 
+    def test_variable_shift_reserved_shamt_is_rejected(self):
+        for mnemonic, funct in (
+            ("sllv", 0x04),
+            ("srlv", 0x06),
+            ("srav", 0x07),
+            ("dsllv", 0x14),
+            ("dsrlv", 0x16),
+            ("dsrav", 0x17),
+        ):
+            with self.subTest(mnemonic=mnemonic):
+                base = (
+                    (SAMPLE["rs"] << 21)
+                    | (SAMPLE["rt"] << 16)
+                    | (SAMPLE["rd"] << 11)
+                    | funct
+                )
+                accepted = isa.decode_instruction(base, PC)
+                self.assertEqual(mnemonic, accepted.mnemonic)
+                self.assertTrue(accepted.valid, accepted.note)
+                self.assertTrue(accepted.supported)
+                reserved = isa.decode_instruction(base | (1 << 6), PC)
+                self.assertEqual(mnemonic, reserved.mnemonic)
+                self.assertFalse(reserved.valid)
+                self.assertFalse(reserved.supported)
+                self.assertIn("Reserved encoding fields are non-zero.",
+                              reserved.note)
+
     def test_signed_immediate_and_target_bits(self):
         # ADDIU rt, rs, -1
         addiu = (

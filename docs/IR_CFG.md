@@ -155,7 +155,7 @@ Execution semantics:
 1. Left and logical-right shifts fill with zeros; arithmetic-right shifts replicate the sign bit.
 2. The result replaces the low 64 bits of `rd` and is sign-extended from bit 63 into the modeled 128-bit register pair. A write to `$zero` is discarded.
 3. A nonzero reserved `rs` on an immediate form is rejected fail-closed by the canonical decoder.
-4. `tools/rptp/isa.py` accepts a variable-form word whose reserved `shamt` is nonzero as supported and valid, while `runtime/src/execution.cpp` rejects it with `EXEC_UNSUPPORTED_INSTRUCTION`. This is an open E4 divergence recorded in [RISKS.md](RISKS.md); neither path silently reinterprets the word.
+4. A nonzero reserved `shamt` on a variable form is rejected fail-closed by both the canonical decoder (`valid=False`, `supported=False`, `Reserved encoding fields are non-zero.`) and `runtime/src/execution.cpp` (`EXEC_UNSUPPORTED_INSTRUCTION`). The parity is pinned by `tests/test_isa_encodings.py`, `tests/test_instruction_dshift.py` and `tests/test_runtime_execution.py`; neither path silently reinterprets the word.
 5. `SPECIAL` funct `0x15` is not a defined form and remains unsupported.
 
 CFG and lowering:

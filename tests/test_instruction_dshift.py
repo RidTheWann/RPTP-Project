@@ -152,15 +152,35 @@ class DoublewordShiftDecodeTests(unittest.TestCase):
                                  (instruction.rs, instruction.rt,
                                   instruction.rd, instruction.shamt))
 
-    def test_canonical_decoder_accepts_a_nonzero_reserved_shamt(self) -> None:
+    def test_canonical_decoder_rejects_a_nonzero_reserved_shamt(self) -> None:
         for mnemonic, funct, destination, source, amount_reg, _expected in VARIABLE_FORMS:
             with self.subTest(mnemonic=mnemonic):
                 word = encode_r(funct, destination, amount_reg, source, 1)
                 instruction = isa.decode_instruction(word, CODE_BASE)
                 self.assertEqual(mnemonic, instruction.mnemonic)
-                self.assertTrue(instruction.supported)
-                self.assertTrue(instruction.valid)
-                self.assertEqual(1, instruction.shamt)
+                self.assertFalse(instruction.valid)
+                self.assertFalse(instruction.supported)
+                self.assertEqual(isa.GENERIC, instruction.verification)
+                self.assertIn("Reserved encoding fields are non-zero.",
+                              instruction.note)
+
+    def test_reserved_shamt_program_fails_closed_before_lowering(self) -> None:
+        for mnemonic, funct, destination, source, amount_reg, _expected in VARIABLE_FORMS:
+            with self.subTest(mnemonic=mnemonic):
+                asm = Assembler()
+                asm.emit(encode_r(funct, destination, amount_reg, source, 1))
+                asm.jr(RA)
+                asm.nop()
+                program = discover_program(
+                    parse_elf_bytes(build_elf(asm.resolve(), DATA))
+                )
+                blocks = program.unsupported_blocks()
+                self.assertEqual(1, len(blocks))
+                self.assertIn("Reserved encoding fields are non-zero.",
+                              blocks[0].problem)
+                result = ir.lower_program(program)
+                self.assertEqual(1, len(result.errors))
+                self.assertIn("unsupported", result.errors[0].lower())
 
     def test_cfg_marks_the_family_supported(self) -> None:
         program = build_program()
