@@ -1179,3 +1179,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-msvc.ps1
   - `python -m unittest discover -s tests` with `RPTP_LOAD_BINARY` and `RPTP_RUN_BINARY` set to the built tools → 521 tests, OK, 0 skipped, 1 expected failure.
   - `python -m unittest tests.test_doc_budget tests.test_doc_freshness tests.test_progress_consistency tests.test_license_headers tests.test_build_contract` → 19 tests, OK; `python tools/check_forbidden_artifacts.py --root .` passed; `git diff --check` reported no whitespace errors.
 - Limitations: local results are not hosted CI. No real ISO was needed or accessed; no ISO, BIOS, game code or extracted asset was uploaded, committed or executed. `R-031` (canonical product path) remains open; this increment does not declare one.
+
+## 2026-10-30 — R-032 exact-head CI and independent review (pre-merge)
+
+- Exact-head `RPTP CI` runs `41005061054` (push) and `41005075117` (pull request) succeeded on `5374828` for both Windows x64/MSVC and Linux/GCC. That head contains the `R-032` fixes and tests, the PR #53 merge record and the pointer synchronization.
+- An independent read-only review at `5374828` returned APPROVE with no blocking issues. Its non-blocking notes were that [RISKS.md](RISKS.md) still cited pre-fix line numbers and that the pre-CI log wording was slightly strong; the resolution entry and this record address both.
+- `R-032` is marked resolved in [RISKS.md](RISKS.md) only after these results; the exact-head tree already holds the behavior and tests, and the follow-up commit is documentation-only. `R-031` remains open.
