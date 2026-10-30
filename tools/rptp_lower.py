@@ -749,12 +749,14 @@ void write_register(State& state, std::uint32_t index, std::uint64_t value) {{
 }}
 
 std::uint64_t load_word(const State& state, std::uint32_t address) {{
+    if ((address & 3u) != 0u) throw std::runtime_error("unaligned word load");
     const auto it = state.memory.find(address);
     if (it == state.memory.end()) throw std::runtime_error("read from uninitialized guest memory");
     return sign_extend_32(it->second);
 }}
 
 void store_word(State& state, std::uint32_t address, std::uint32_t value) {{
+    if ((address & 3u) != 0u) throw std::runtime_error("unaligned word store");
     state.memory[address] = value;
 }}
 
