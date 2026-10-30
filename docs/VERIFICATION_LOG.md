@@ -1259,3 +1259,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-msvc.ps1
   - `ctest --test-dir build/cmake-msvc --output-on-failure` → 7/7 tests passed in 60.00 s.
   - Documentation controls (budget, freshness, progress consistency, catalog provenance, license headers) → 18 tests, `OK`; `python -m compileall -q tools tests` → exit 0; `git diff --check` → exit 0 with only an LF→CRLF notice.
 - Limitations: local results are not hosted CI; the review fixes require a new exact-head run. No ISO was accessed and no game content was used. E4 and `R-031` remain open.
+
+## 2026-10-31 — merge record for PR #62
+
+- Scope: records the merge of PR #62 "feat(runtime): execute the nine R5900 doubleword shift forms" and the post-merge hosted runs. No source, test, build or dependency behavior changed with this entry; no Gate, provenance or compatibility status changed.
+- Exact-head evidence: the newest push and pull-request `RPTP CI` runs for head `f3c84ea6bf922a597d3069b6f52e33e553c29c8d` (`41123553676` and `41123562073`) completed successfully for both `Windows x64 / MSVC` and `Linux / GCC`.
+- Merge: the merge command pinned `--match-head-commit f3c84ea6bf922a597d3069b6f52e33e553c29c8d`; the PR API state reached `MERGED` with merge commit `cc85c1a7673f110584f6ad029002fb6e85c36df6`, recorded at 2026-10-30T20:31:32Z (2026-10-31T03:31:32+07:00).
+- Post-merge: merge-commit `RPTP CI` run `41123907950` and Pages run `41123907198` completed successfully on `cc85c1a`; the workflow guard reported `MERGE_CI_GREEN`.
+- Review: a delegated read-only correctness review of `c1f1ade..9b21d8b` returned fix-before-merge for two documentation coverage claims; `9b21d8b` and `f3c84ea` addressed them, and the delta review approved. The review is a session record, not a GitHub formal review.
+- Pointers: STATE, HANDOFF, README, ROADMAP, BUILD_PROVENANCE, EXECUTION_CONTEXT and COMPATIBILITY now cite `cc85c1a` (PR #62, run `41123907950`) as the latest merge, with `c1f1ade` (PR #60, run `41012644771`) and `7a2b98f` (PR #59, run `41011409128`) immediately before it. The research baselines move to `cc85c1a`.
+- Limitations: the hosted evidence covers only the commits named above; it is not a compatibility, boot, Gate or clean-room result. E3/E4 remain open, `R-031` remains open pending owner acceptance of ADR-0005, and the canonical decoder still accepts a nonzero reserved `shamt` on the variable doubleword shifts while the native harness rejects it. No ISO, BIOS or game content was accessed.
