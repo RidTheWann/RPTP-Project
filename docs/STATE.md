@@ -2,7 +2,7 @@
 
 - **Snapshot date:** 2026-10-31
 - **Remote repository:** RidTheWann/RPTP-Project, public.
-- **Publication and CI status:** PRs #10–#73 merged every increment; latest PR #73 `cf23942` (run `41154980660`), after PR #72 `9973037` (run `41148671627`), all green. See [VERIFICATION_LOG.md](VERIFICATION_LOG.md); local checks are not CI.
+- **Publication and CI status:** PRs #10–#74 merged every increment; latest PR #74 `e187020` (run `41160074822`), after PR #73 `cf23942` (run `41154980660`), all green. See [VERIFICATION_LOG.md](VERIFICATION_LOG.md); local checks are not CI.
 - **Git workflow:** `main` integrates; use isolated worktrees, explicit staging, local verification/review, both exact-head compiler jobs, pinned-head merges and merge-commit CI, as authorized in [AGENTS.md](../AGENTS.md). No direct main push, force-push, history rewrite or administrative override.
 - **Manual automation:** user-profile `/rptp-develop` and read-only guards stay outside the repository; GitHub CLI write access is verified. Accepted Gate boundaries are unchanged.
 - **Architecture:** from-scratch static ahead-of-time recompilation of supported Emotion Engine code to C++, plus a native Windows x64 runtime planned.
