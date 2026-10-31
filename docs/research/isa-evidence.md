@@ -1,7 +1,7 @@
 # R5900 ISA catalog evidence levels
 
 - **Status date:** 2026-10-31
-- **Baseline:** `origin/main` at merge `3db5bb0` (PR #75, 2026-10-31) after the post-merge evidence, legacy fail-closed, doubleword-shift, E3-equivalence and COP1-transfer increments; §3 and §4 were revised by the doubleword-shift evidence increment on 2026-10-31 and again by the COP1 transfer increment on 2026-10-31 (§3.4).
+- **Baseline:** `origin/main` at merge `6b77fd5` (PR #76, the COP1-transfer merge, 2026-10-31) after the post-merge evidence, legacy fail-closed, doubleword-shift, E3-equivalence and COP1-transfer increments; §3 and §4 were revised by the doubleword-shift evidence increment on 2026-10-31 and again by the COP1 transfer increment on 2026-10-31 (§3.4).
 - **Subject:** [`docs/research/r5900-isa.json`](r5900-isa.json) — schema version 1, 224 instruction entries, four cited sources, `"verified": true` on every entry.
 - **Purpose:** Define honest, auditable evidence levels for the catalog so that its `"verified"` boolean, its `semantics` text and its page citations are not read as semantic proof or as an approved reference.
 - **Scope:** Documentation and evidence classification only. This document adds no instruction semantics, corrects no catalog entry, quotes no text from the cited manuals, changes no JSON data and records no Gate, provenance or legal disposition. Only the owner can approve a reference.
