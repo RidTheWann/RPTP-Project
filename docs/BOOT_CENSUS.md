@@ -2,7 +2,8 @@
 
 - **Date:** 2026-10-29
 - **Tool:** `tools/rptp_census.py`
-- **Decoder:** `tools/rptp/isa.py`, unchanged from repository revision `0944c84e8ed11c2d7db5d54ad23671b9a8de869d`; 142 supported mnemonics; supported-mnemonic set SHA-256 `ddc255931fb49ecb0c8bc778037344e2e05ac32d8898fd77586db3162c904e13`. This is the decoder/catalog supported set, not the smaller synthetic tested subset in [INSTRUCTION_CATALOG.md](INSTRUCTION_CATALOG.md).
+- **Decoder:** `tools/rptp/isa.py`, unchanged from repository revision `0944c84e8ed11c2d7db5d54ad23671b9a8de869d` at measurement time; 142 supported mnemonics; supported-mnemonic set SHA-256 `ddc255931fb49ecb0c8bc778037344e2e05ac32d8898fd77586db3162c904e13`. This is the decoder/catalog supported set, not the smaller synthetic tested subset in [INSTRUCTION_CATALOG.md](INSTRUCTION_CATALOG.md).
+- **Decoder note (2026-10-31):** the current decoder declares 146 supported mnemonics after the four COP1 transfer forms `LWC1`/`SWC1`/`MFC1`/`MTC1` were added under `RPTP-REF-015`. The 2026-10-29 table below was measured with the 142-mnemonic set and was not re-measured, so its accepted counts and ratios are a lower bound relative to today's decoder; the `opcode_0x11`, `opcode_0x31` and `opcode_0x39` label counts are unchanged because those labels were unsupported at measurement time.
 - **Status:** Inspection evidence only. The census is static metadata; it is not a loader, recompiler, runtime, compatibility result or Gate disposition.
 - **References:** ELF32 `PT_LOAD` structure and file-backed/zero-fill fields follow [RPTP-REF-003](REFERENCES.md); instruction encodings accepted by the current decoder are catalogued in [INSTRUCTION_CATALOG.md](INSTRUCTION_CATALOG.md) and [IR_CFG.md](IR_CFG.md). Unsupported labels are raw encoding identifiers, not semantic claims.
 
