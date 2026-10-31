@@ -97,6 +97,8 @@ std::string render_success(const ExecResult& result, std::size_t image_bytes) {
       << ",\"steps\":" << result.steps
       << ",\"halt_reason\":\"" << to_string(result.halt_reason) << "\""
       << ",\"final_pc\":\"" << hex32(result.final_pc) << "\""
+      << ",\"hi\":\"" << hex64(result.hi) << "\""
+      << ",\"lo\":\"" << hex64(result.lo) << "\""
       << ",\"registers\":[";
   for (std::size_t index = 0; index < result.registers.size(); ++index) {
     if (index != 0) {

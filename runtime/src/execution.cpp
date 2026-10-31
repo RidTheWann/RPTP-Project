@@ -56,6 +56,14 @@ constexpr std::uint32_t kFunctAnd = 0x24U;
 constexpr std::uint32_t kFunctOr = 0x25U;
 constexpr std::uint32_t kFunctXor = 0x26U;
 constexpr std::uint32_t kFunctNor = 0x27U;
+constexpr std::uint32_t kFunctMfhi = 0x10U;
+constexpr std::uint32_t kFunctMthi = 0x11U;
+constexpr std::uint32_t kFunctMflo = 0x12U;
+constexpr std::uint32_t kFunctMtlo = 0x13U;
+constexpr std::uint32_t kFunctMult = 0x18U;
+constexpr std::uint32_t kFunctMultu = 0x19U;
+constexpr std::uint32_t kFunctDiv = 0x1AU;
+constexpr std::uint32_t kFunctDivu = 0x1BU;
 constexpr std::uint32_t kFunctSlt = 0x2AU;
 constexpr std::uint32_t kFunctSltu = 0x2BU;
 constexpr std::uint32_t kFunctDsllv = 0x14U;
@@ -85,6 +93,14 @@ enum class Op {
   Or,
   Xor,
   Nor,
+  Mfhi,
+  Mflo,
+  Mthi,
+  Mtlo,
+  Mult,
+  Multu,
+  Div,
+  Divu,
   Slt,
   Sltu,
   Sll,
@@ -423,6 +439,22 @@ bool decode(std::uint32_t word, std::uint32_t pc, Instruction& instruction) {
         instruction = {op, rs, rt, rd, 0, 0, 0};
         return true;
       }
+      if ((funct == kFunctMfhi || funct == kFunctMflo) && rs == 0 && rt == 0 && shamt == 0) {
+        instruction = {funct == kFunctMfhi ? Op::Mfhi : Op::Mflo, 0, 0, rd, 0, 0, 0};
+        return true;
+      }
+      if ((funct == kFunctMthi || funct == kFunctMtlo) && rt == 0 && rd == 0 && shamt == 0) {
+        instruction = {funct == kFunctMthi ? Op::Mthi : Op::Mtlo, rs, 0, 0, 0, 0, 0};
+        return true;
+      }
+      if ((funct == kFunctMult || funct == kFunctMultu) && shamt == 0) {
+        instruction = {funct == kFunctMult ? Op::Mult : Op::Multu, rs, rt, rd, 0, 0, 0};
+        return true;
+      }
+      if ((funct == kFunctDiv || funct == kFunctDivu) && rd == 0 && shamt == 0) {
+        instruction = {funct == kFunctDiv ? Op::Div : Op::Divu, rs, rt, 0, 0, 0, 0};
+        return true;
+      }
       return false;
     default:
       return false;
@@ -493,6 +525,8 @@ ExecOutcome execute_loaded(const LoadReport& report, GuestMemory& memory, const 
   std::uint32_t pc = report.entry_point;
   std::optional<std::uint32_t> pending_target;
   bool pending_nullify = false;
+  std::uint64_t hi = 0;
+  std::uint64_t lo = 0;
 
   while (true) {
     const LoadedSegment* segment = find_segment(report, pc);
@@ -503,6 +537,8 @@ ExecOutcome execute_loaded(const LoadReport& report, GuestMemory& memory, const 
       }
       result.final_pc = pc;
       result.halt_reason = HaltReason::UnmappedPc;
+      result.hi = hi;
+      result.lo = lo;
       result.memory_writes = std::move(writes);
       return ExecOutcome{std::nullopt, std::move(result)};
     }
@@ -621,6 +657,63 @@ ExecOutcome execute_loaded(const LoadReport& report, GuestMemory& memory, const 
       case Op::Nor:
         write_register(instruction.rd, ~(registers[instruction.rs] | registers[instruction.rt]));
         break;
+      case Op::Mfhi:
+        write_register(instruction.rd, hi);
+        break;
+      case Op::Mflo:
+        write_register(instruction.rd, lo);
+        break;
+      case Op::Mthi:
+        hi = registers[instruction.rs];
+        break;
+      case Op::Mtlo:
+        lo = registers[instruction.rs];
+        break;
+      case Op::Mult:
+      case Op::Multu: {
+        const auto left = static_cast<std::uint32_t>(registers[instruction.rs]);
+        const auto right = static_cast<std::uint32_t>(registers[instruction.rt]);
+        std::uint64_t product = 0;
+        if (instruction.op == Op::Mult) {
+          const auto signed_product =
+              static_cast<std::int64_t>(static_cast<std::int32_t>(left)) *
+              static_cast<std::int64_t>(static_cast<std::int32_t>(right));
+          product = static_cast<std::uint64_t>(signed_product);
+        } else {
+          product = static_cast<std::uint64_t>(left) * static_cast<std::uint64_t>(right);
+        }
+        const auto low = static_cast<std::uint32_t>(product & 0xFFFFFFFFULL);
+        const auto high = static_cast<std::uint32_t>((product >> 32U) & 0xFFFFFFFFULL);
+        hi = sign_extend_32(high);
+        lo = sign_extend_32(low);
+        if (instruction.rd != 0) {
+          write_register(instruction.rd, sign_extend_32(low));
+        }
+        break;
+      }
+      case Op::Div:
+      case Op::Divu: {
+        const auto left = static_cast<std::uint32_t>(registers[instruction.rs]);
+        const auto right = static_cast<std::uint32_t>(registers[instruction.rt]);
+        std::uint32_t quotient = 0;
+        std::uint32_t remainder = left;
+        if (right != 0) {
+          if (instruction.op == Op::Div) {
+            const auto signed_left = static_cast<std::int64_t>(static_cast<std::int32_t>(left));
+            const auto signed_right = static_cast<std::int64_t>(static_cast<std::int32_t>(right));
+            const std::int64_t truncated = signed_left / signed_right;
+            quotient = static_cast<std::uint32_t>(static_cast<std::uint64_t>(truncated));
+            remainder = static_cast<std::uint32_t>(
+                static_cast<std::uint64_t>(signed_left - truncated * signed_right));
+          } else {
+            quotient = left / right;
+            remainder = left % right;
+          }
+        }
+        lo = sign_extend_32(quotient);
+        hi = sign_extend_32(remainder);
+        break;
+      }
       case Op::Slt: {
         const bool less = static_cast<std::int64_t>(registers[instruction.rs]) <
                           static_cast<std::int64_t>(registers[instruction.rt]);

@@ -329,6 +329,8 @@ class RuntimeExecutionCliTests(unittest.TestCase):
         self.assertEqual(expected["steps"], document["steps"])
         self.assertEqual(expected["trace"], [int(value, 16) for value in document["trace"]])
         self.assertEqual(expected["pc"], int(document["final_pc"], 16))
+        self.assertEqual(expected["hi"], int(document["hi"], 16))
+        self.assertEqual(expected["lo"], int(document["lo"], 16))
         self.assertEqual(32, len(document["registers"]))
         for index, (low, _high) in enumerate(expected["registers"]):
             self.assertEqual(
@@ -503,6 +505,124 @@ class RuntimeExecutionCliTests(unittest.TestCase):
                 self.assertEqual("error", document["status"])
                 self.assertEqual("EXEC_UNSUPPORTED_INSTRUCTION", document["error"]["code"])
                 self.assertIn(f"at 0x{BASE:08x}", document["error"]["message"])
+
+    def test_hi_lo_family_matches_the_python_oracle(self) -> None:
+        words = [
+            encode_i(0x09, 0, 8, 7),  # 0x00 addiu t0, zero, 7
+            encode_i(0x09, 0, 9, -3),  # 0x04 addiu t1, zero, -3
+            encode_i(0x09, 0, 3, 0x1234),  # 0x08 addiu v1, zero, 0x1234
+            encode_r(3, 0, 0, 0, 0x11),  # 0x0c mthi v1
+            encode_r(3, 0, 0, 0, 0x13),  # 0x10 mtlo v1
+            encode_r(0, 0, 4, 0, 0x10),  # 0x14 mfhi a0
+            encode_r(0, 0, 5, 0, 0x12),  # 0x18 mflo a1
+            encode_r(0, 0, 0, 0, 0x12),  # 0x1c mflo zero (discarded)
+            encode_r(8, 9, 10, 0, 0x18),  # 0x20 mult t2, t0, t1 (rd := low 32 bits)
+            encode_r(0, 0, 11, 0, 0x10),  # 0x24 mfhi t3
+            encode_r(0, 0, 12, 0, 0x12),  # 0x28 mflo t4
+            encode_i(0x09, 0, 13, -3),  # 0x2c addiu t5, zero, -3
+            encode_r(8, 13, 14, 0, 0x19),  # 0x30 multu t6, t0, t5
+            encode_r(0, 0, 15, 0, 0x10),  # 0x34 mfhi t7
+            encode_r(0, 0, 16, 0, 0x12),  # 0x38 mflo s0
+            encode_r(9, 8, 0, 0, 0x1A),  # 0x3c div t1, t0 (-3 / 7)
+            encode_r(0, 0, 17, 0, 0x10),  # 0x40 mfhi s1
+            encode_r(0, 0, 18, 0, 0x12),  # 0x44 mflo s2
+            encode_r(8, 9, 0, 0, 0x1A),  # 0x48 div t0, t1 (7 / -3)
+            encode_r(0, 0, 19, 0, 0x10),  # 0x4c mfhi s3
+            encode_r(0, 0, 20, 0, 0x12),  # 0x50 mflo s4
+            encode_r(9, 8, 0, 0, 0x1B),  # 0x54 divu t1, t0
+            encode_r(0, 0, 21, 0, 0x10),  # 0x58 mfhi s5
+            encode_r(0, 0, 22, 0, 0x12),  # 0x5c mflo s6
+            encode_r(8, 0, 0, 0, 0x1A),  # 0x60 div t0, zero (division by zero)
+            encode_r(0, 0, 23, 0, 0x10),  # 0x64 mfhi s7
+            encode_r(0, 0, 24, 0, 0x12),  # 0x68 mflo t8
+            encode_i(0x09, 0, 25, -32768),  # 0x6c addiu t9, zero, 0xffff8000
+            encode_r(0, 25, 25, 16, 0x00),  # 0x70 sll t9, t9, 16
+            encode_i(0x09, 0, 26, -1),  # 0x74 addiu k0, zero, -1
+            encode_r(25, 26, 0, 0, 0x1A),  # 0x78 div t9, k0 (INT32_MIN / -1)
+            encode_r(0, 0, 27, 0, 0x10),  # 0x7c mfhi k1
+            encode_r(0, 0, 28, 0, 0x12),  # 0x80 mflo gp
+            encode_r(25, 25, 29, 0, 0x18),  # 0x84 mult sp, t9, t9
+            encode_r(0, 0, 30, 0, 0x10),  # 0x88 mfhi fp
+            encode_r(0, 0, 31, 0, 0x12),  # 0x8c mflo ra
+            encode_r(31, 0, 0, 0, 0x08),  # 0x90 jr ra (ra is zero)
+            encode_r(0, 0, 0, 0, 0x00),  # 0x94 nop (delay slot)
+        ]
+        document = self.assert_likely_matches_oracle(words)
+        self.assertEqual(38, document["steps"])
+        self.assertEqual(0x0000000040000000, int(document["hi"], 16))
+        self.assertEqual(0, int(document["lo"], 16))
+        expected = {
+            0: 0,
+            3: 0x0000000000001234,
+            4: 0x0000000000001234,
+            5: 0x0000000000001234,
+            8: 0x0000000000000007,
+            9: 0xFFFFFFFFFFFFFFFD,
+            10: 0xFFFFFFFFFFFFFFEB,
+            11: 0xFFFFFFFFFFFFFFFF,
+            12: 0xFFFFFFFFFFFFFFEB,
+            13: 0xFFFFFFFFFFFFFFFD,
+            14: 0xFFFFFFFFFFFFFFEB,
+            15: 0x0000000000000006,
+            16: 0xFFFFFFFFFFFFFFEB,
+            17: 0xFFFFFFFFFFFFFFFD,
+            18: 0x0000000000000000,
+            19: 0x0000000000000001,
+            20: 0xFFFFFFFFFFFFFFFE,
+            21: 0x0000000000000001,
+            22: 0x0000000024924924,
+            23: 0x0000000000000007,
+            24: 0x0000000000000000,
+            25: 0xFFFFFFFF80000000,
+            26: 0xFFFFFFFFFFFFFFFF,
+            27: 0x0000000000000000,
+            28: 0xFFFFFFFF80000000,
+            29: 0x0000000000000000,
+            30: 0x0000000040000000,
+            31: 0x0000000000000000,
+        }
+        for index, value in expected.items():
+            self.assertEqual(value, int(document["registers"][index], 16),
+                             f"register {index}")
+
+    def test_hi_lo_reserved_fields_fail_closed(self) -> None:
+        canonical_cases = (
+            ("mfhi with rs=1", encode_r(1, 0, 8, 0, 0x10)),
+            ("mflo with rt=1", encode_r(0, 1, 8, 0, 0x12)),
+            ("mfhi with shamt=1", encode_r(0, 0, 8, 1, 0x10)),
+            ("mthi with rt=1", encode_r(0, 1, 0, 0, 0x11)),
+            ("mtlo with rd=1", encode_r(1, 0, 8, 0, 0x13)),
+            ("mthi with shamt=1", encode_r(0, 0, 0, 1, 0x11)),
+        )
+        for label, word in canonical_cases:
+            with self.subTest(label=label):
+                decoded = isa.decode_instruction(word, BASE)
+                self.assertFalse(decoded.valid, decoded.note)
+                self._assert_unsupported(word)
+
+        # The canonical decoder accepts these operand combinations because its
+        # coverage table does not validate mult/div reserved fields; the runtime
+        # harness stays stricter and rejects them fail-closed.
+        stricter_cases = (
+            ("mult with shamt=1", encode_r(8, 9, 10, 1, 0x18)),
+            ("multu with shamt=1", encode_r(8, 9, 10, 1, 0x19)),
+            ("div with rd=1", encode_r(8, 9, 10, 0, 0x1A)),
+            ("divu with shamt=1", encode_r(8, 9, 0, 1, 0x1B)),
+        )
+        for label, word in stricter_cases:
+            with self.subTest(label=label):
+                decoded = isa.decode_instruction(word, BASE)
+                self.assertTrue(decoded.valid, decoded.note)
+                self._assert_unsupported(word)
+
+    def _assert_unsupported(self, word: int) -> None:
+        result, _ = self.run_cli(build_program([word]), "--json")
+        self.assertEqual(2, result.returncode)
+        self.assertEqual("", result.stderr.strip())
+        document = json.loads(result.stdout)
+        self.assertEqual("error", document["status"])
+        self.assertEqual("EXEC_UNSUPPORTED_INSTRUCTION", document["error"]["code"])
+        self.assertIn(f"at 0x{BASE:08x}", document["error"]["message"])
 
     def test_likely_branch_forms_match_the_python_oracle(self) -> None:
         for mnemonic, opcode, rt_field, condition, link in LIKELY_FORMS:
