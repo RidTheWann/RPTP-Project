@@ -284,6 +284,17 @@ def build_program(
     )
 
 
+def expand_memory_writes(entries) -> dict[int, int]:
+    """Expand chronological width-tagged stores into a little-endian byte map."""
+    memory: dict[int, int] = {}
+    for entry in entries:
+        address = int(entry["address"], 16)
+        value = int(entry["value"], 16)
+        for offset in range(int(entry["width"])):
+            memory[address + offset] = (value >> (8 * offset)) & 0xFF
+    return memory
+
+
 @unittest.skipUnless(BINARY and Path(BINARY).is_file(), "RPTP_RUN_BINARY is not a built executable")
 class RuntimeExecutionCliTests(unittest.TestCase):
     def run_cli(self, image: bytes, *arguments: str) -> tuple[subprocess.CompletedProcess[str], Path]:
@@ -326,14 +337,18 @@ class RuntimeExecutionCliTests(unittest.TestCase):
                 f"register {index}",
             )
         expected_memory = {int(address): value for address, value in expected["memory"]}
-        actual_memory: dict[int, int] = {}
-        for entry in document["memory_writes"]:
-            address = int(entry["address"], 16)
-            value = int(entry["value"], 16)
-            for offset in range(4):
-                actual_memory[address + offset] = (value >> (8 * offset)) & 0xFF
+        actual_memory = expand_memory_writes(document["memory_writes"])
         self.assertEqual(expected_memory, actual_memory)
         return document
+
+    def assert_word_writes(self, document: dict) -> dict[int, int]:
+        """Collect a word map for programs whose stores are all 32-bit."""
+        for entry in document["memory_writes"]:
+            self.assertEqual(4, int(entry["width"]), entry)
+        return {
+            int(entry["address"], 16): int(entry["value"], 16)
+            for entry in document["memory_writes"]
+        }
 
     def test_result_matches_the_python_oracle(self) -> None:
         words = main_words()
@@ -355,9 +370,7 @@ class RuntimeExecutionCliTests(unittest.TestCase):
             self.assertEqual(expected, int(document["registers"][index], 16), f"register {index}")
 
         expected_memory = {int(address): value for address, value in oracle["memory"].items()}
-        actual_memory = {
-            int(entry["address"], 16): int(entry["value"], 16) for entry in document["memory_writes"]
-        }
+        actual_memory = self.assert_word_writes(document)
         self.assertEqual(expected_memory, actual_memory)
 
     def test_extended_subset_matches_the_python_oracle(self) -> None:
@@ -380,9 +393,7 @@ class RuntimeExecutionCliTests(unittest.TestCase):
             self.assertEqual(expected, int(document["registers"][index], 16), f"register {index}")
 
         expected_memory = {int(address): value for address, value in oracle["memory"].items()}
-        actual_memory = {
-            int(entry["address"], 16): int(entry["value"], 16) for entry in document["memory_writes"]
-        }
+        actual_memory = self.assert_word_writes(document)
         self.assertEqual(expected_memory, actual_memory)
         self.assertEqual(0xFFFFFFFFC0000000, int(document["registers"][27], 16))
         self.assertEqual(0xFFFFFFFF00000000, int(document["registers"][28], 16))
@@ -397,6 +408,52 @@ class RuntimeExecutionCliTests(unittest.TestCase):
         self.assertEqual(0x00000000, actual_memory[0x00002004])
         self.assertEqual(0x00000000, actual_memory[0x00002008])
         self.assertEqual(0xFFFFFFFF, actual_memory[0x0000200C])
+
+    def test_byte_and_half_memory_matches_the_python_oracle(self) -> None:
+        data = bytes([0x80, 0x7F, 0x34, 0x12, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00])
+        words = [
+            encode_i(0x09, 0, 11, DATA),  # 0x00 addiu t3, zero, 0x2000
+            encode_i(0x20, 11, 8, 0),  # 0x04 lb t0, 0(t3)
+            encode_i(0x24, 11, 9, 0),  # 0x08 lbu t1, 0(t3)
+            encode_i(0x20, 11, 10, 1),  # 0x0c lb t2, 1(t3)
+            encode_i(0x21, 11, 12, 2),  # 0x10 lh t4, 2(t3)
+            encode_i(0x25, 11, 13, 2),  # 0x14 lhu t5, 2(t3)
+            encode_i(0x21, 11, 14, 8),  # 0x18 lh t6, 8(t3)
+            encode_i(0x25, 11, 15, 8),  # 0x1c lhu t7, 8(t3)
+            encode_i(0x28, 11, 8, 4),  # 0x20 sb t0, 4(t3)
+            encode_i(0x29, 11, 12, 6),  # 0x24 sh t4, 6(t3)
+            encode_i(0x09, 0, 24, 0x55AA),  # 0x28 addiu t8, zero, 0x55aa
+            encode_i(0x2B, 11, 24, 8),  # 0x2c sw t8, 8(t3)
+            encode_i(0x09, 0, 25, 0x3000),  # 0x30 addiu t9, zero, 0x3000
+            encode_r(25, 0, 0, 0, 0x08),  # 0x34 jr t9 (halts outside every segment)
+            encode_r(0, 0, 0, 0, 0),  # 0x38 nop (delay slot)
+        ]
+        document = self.assert_likely_matches_oracle(words, data=data)
+        self.assertEqual(15, document["steps"])
+        registers = {index: int(value, 16) for index, value in enumerate(document["registers"])}
+        self.assertEqual(0xFFFFFFFFFFFFFF80, registers[8])
+        self.assertEqual(0x0000000000000080, registers[9])
+        self.assertEqual(0x000000000000007F, registers[10])
+        self.assertEqual(0x0000000000001234, registers[12])
+        self.assertEqual(0x0000000000001234, registers[13])
+        self.assertEqual(0xFFFFFFFFFFFF8000, registers[14])
+        self.assertEqual(0x0000000000008000, registers[15])
+        # One chronological store log with explicit byte widths, in program order.
+        self.assertEqual(
+            [1, 2, 4], [int(entry["width"]) for entry in document["memory_writes"]]
+        )
+        expected_data = bytearray(
+            bytes([0x80, 0x7F, 0x34, 0x12, 0x80, 0x00, 0x34, 0x12, 0xAA, 0x55,
+                   0x00, 0x00]) + bytes(4)
+        )
+        for address, byte in expand_memory_writes(document["memory_writes"]).items():
+            if DATA <= address < DATA + len(expected_data):
+                expected_data[address - DATA] = byte
+        self.assertEqual(
+            bytes([0x80, 0x7F, 0x34, 0x12, 0x80, 0x00, 0x34, 0x12, 0xAA, 0x55,
+                   0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
+            bytes(expected_data),
+        )
 
     def test_doubleword_shift_family_matches_the_python_oracle(self) -> None:
         document = self.assert_likely_matches_oracle(dshift_words(), data=DSHIFT_DATA)
@@ -556,13 +613,7 @@ class RuntimeExecutionCliTests(unittest.TestCase):
         for index, value in expected.items():
             self.assertEqual(value, int(document["registers"][index], 16), f"register {index}")
         # The taken BEQL delay slot stores one word; the nullified BNEL store is absent.
-        self.assertEqual(
-            {DATA: 1},
-            {
-                int(entry["address"], 16): int(entry["value"], 16)
-                for entry in document["memory_writes"]
-            },
-        )
+        self.assertEqual({DATA: 1}, self.assert_word_writes(document))
 
     def test_likely_fail_closed_encodings(self) -> None:
         cases = (

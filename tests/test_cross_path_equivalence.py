@@ -227,7 +227,7 @@ def normalize_runtime(payload: dict, trace: bool) -> dict:
     for entry in payload["memory_writes"]:
         address = int(entry["address"], 16)
         value = int(entry["value"], 16)
-        for offset in range(4):
+        for offset in range(int(entry["width"])):
             memory[address + offset] = (value >> (8 * offset)) & 0xFF
     return {
         "halted": payload["status"] == "ok",
