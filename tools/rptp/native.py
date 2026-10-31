@@ -36,7 +36,7 @@ EXECUTABLE_NAME = "rptp_native.exe"
 
 EXPECTED_KEYS = frozenset({
     "halted", "pc", "reason", "steps", "registers",
-    "hi", "lo", "hi1", "lo1", "memory", "trace",
+    "hi", "lo", "hi1", "lo1", "fpr", "memory", "trace",
 })
 
 # The environment variable used by the generated batch files so that paths

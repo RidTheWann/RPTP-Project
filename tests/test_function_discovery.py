@@ -258,7 +258,7 @@ class FunctionDiscoveryTests(unittest.TestCase):
         asm.addiu(T0, ZERO, 1)
         asm.emit(0x0000000C)       # syscall
         asm.emit(0x0000000D)       # break
-        asm.emit(0x44000000)       # cop1
+        asm.emit(0x46000000)       # cop1 (BC1)
         asm.emit(0x35 << 26)       # unrecognised primary opcode
         asm.emit(0x00000028)       # mfsa, catalogued but unsupported
         asm.emit(0x10 << 26)       # opaque cop0

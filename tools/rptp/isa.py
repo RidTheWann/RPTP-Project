@@ -210,14 +210,22 @@ PRIMARY: dict[int, OpSpec] = {
     0x2E: _op("swr", "rt,offset(base)", "store", supported=False, verification=MANUAL),
     0x2F: _op("cache", "op,offset(base)", "cache", verification=MANUAL,
               note="Functional model treats cache maintenance as a no-op."),
-    0x31: _op("lwc1", "rt,offset(base)", "load", supported=False, verification=MANUAL),
+    0x31: _op("lwc1", "ft,offset(base)", "load", verification=GENERIC),
     0x33: _op("pref", "op,offset(base)", "cache", verification=MANUAL,
               note="Functional model treats prefetch as a no-op."),
     0x36: _op("lqc2", "rt,offset(base)", "load", supported=False, verification=MANUAL),
     0x37: _op("ld", "rt,offset(base)", "load", verification=GENERIC),
-    0x39: _op("swc1", "rt,offset(base)", "store", supported=False, verification=MANUAL),
+    0x39: _op("swc1", "ft,offset(base)", "store", verification=GENERIC),
     0x3E: _op("sqc2", "rt,offset(base)", "store", supported=False, verification=MANUAL),
     0x3F: _op("sd", "rt,offset(base)", "store", verification=GENERIC),
+}
+
+# COP1 transfer instructions (primary opcode 0x11) selected by the rs field.
+# Only the GPR/FPR word transfers are modelled; COP1 arithmetic, CFC1/CTC1
+# and the BC1 branches remain unsupported.
+COP1_TRANSFER: dict[int, OpSpec] = {
+    0x00: _op("mfc1", "rt,fs", "fpr_read", verification=GENERIC),
+    0x04: _op("mtc1", "rt,fs", "fpr_write", verification=GENERIC),
 }
 
 # MMI encoding (primary opcode 0x1C).  Function values 0x08, 0x09, 0x28 and
@@ -358,6 +366,7 @@ SUPPORTED_MNEMONICS = {
     "lui", "andi", "ori", "xori",
     "lb", "lbu", "lh", "lhu", "lw", "lwu", "ld", "lq",
     "sb", "sh", "sw", "sd", "sq",
+    "lwc1", "swc1", "mfc1", "mtc1",
     "beq", "bne", "blez", "bgtz", "bltz", "bgez", "bltzal", "bgezal",
     "beql", "bnel", "blezl", "bgtzl", "bltzl", "bgezl", "bltzall", "bgezall",
     "j", "jal",
@@ -467,6 +476,9 @@ class Instruction:
             ]
             return names[index] if index is not None and 0 <= index < 32 else f"r{index}"
 
+        def fpr(index: int | None) -> str:
+            return f"f{index}" if index is not None else "f?"
+
         if self.mnemonic == "nop":
             return "nop"
         if self.mnemonic in {"syscall", "break"}:
@@ -506,6 +518,10 @@ class Instruction:
             return f"{op} ${reg(self.rt)}, 0x{(self.imm or 0):04X}"
         if fmt == "rt,offset(base)":
             return f"{op} ${reg(self.rt)}, {self.simm}(${reg(self.rs)})"
+        if fmt == "ft,offset(base)":
+            return f"{op} ${fpr(self.rt)}, {self.simm}(${reg(self.rs)})"
+        if fmt == "rt,fs":
+            return f"{op} ${reg(self.rt)}, ${fpr(self.rd)}"
         if fmt == "op,offset(base)":
             return f"{op} 0x{(self.imm or 0):02X}, {self.simm}(${reg(self.rs)})"
         if fmt == "code":
@@ -651,6 +667,16 @@ def decode_instruction(word: int, pc: int = 0, *, strict: bool = False) -> Instr
             return _unknown(pc, word, f"Unsupported MMI{group} sub-opcode 0x{subfunct:02X}.")
         return _make(pc, word, spec, rs=rs, rt=rt, rd=rd)
 
+    if op == 0x11:
+        spec = COP1_TRANSFER.get(rs)
+        if spec is not None:
+            valid = (word & 0x7FF) == 0
+            note = spec.note
+            if not valid:
+                note = (note + " ").strip() + " Reserved encoding fields are non-zero."
+            return _make(pc, word, spec, rs=rs, rt=rt, rd=rd,
+                         valid=valid, note_override=note)
+
     if op in PRIMARY:
         spec = PRIMARY[op]
         if spec.mnemonic in {"j", "jal"}:
@@ -698,6 +724,8 @@ def catalog_rows() -> list[dict[str, Any]]:
         add(spec, "primary", f"0x{op:02X}", op)
     for funct, spec in sorted(MMI_STANDALONE.items()):
         add(spec, "mmi-standalone", f"0x1C/0x{funct:03X}", funct)
+    for rs_value, spec in sorted(COP1_TRANSFER.items()):
+        add(spec, "cop1", f"0x11/rs=0x{rs_value:02X}", rs_value)
     for group, table in sorted(MMI_GROUPS.items()):
         primary_funct = {0: 0x08, 1: 0x28, 2: 0x09, 3: 0x29}[group]
         for subfunct, spec in sorted(table.items()):

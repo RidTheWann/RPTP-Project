@@ -22,7 +22,7 @@ from tools.rptp import cfg, codegen, elf, fixtures, ir, native, oracle
 MAX_STEPS = 100_000
 TOP_LEVEL_ORDER = (
     "halted", "pc", "reason", "steps", "registers",
-    "hi", "lo", "hi1", "lo1", "memory", "trace",
+    "hi", "lo", "hi1", "lo1", "fpr", "memory", "trace",
 )
 
 

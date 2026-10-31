@@ -62,6 +62,7 @@ struct ExecResult {
   std::array<std::uint64_t, 32> registers{};
   std::uint64_t hi = 0;
   std::uint64_t lo = 0;
+  std::array<std::uint32_t, 32> fpr{};
   std::vector<MemoryWrite> memory_writes;
   std::vector<std::uint32_t> trace;
 };

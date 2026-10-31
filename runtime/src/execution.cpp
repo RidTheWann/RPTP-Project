@@ -17,6 +17,7 @@ constexpr std::uint32_t kOpcodeAndi = 0x0CU;
 constexpr std::uint32_t kOpcodeOri = 0x0DU;
 constexpr std::uint32_t kOpcodeXori = 0x0EU;
 constexpr std::uint32_t kOpcodeLui = 0x0FU;
+constexpr std::uint32_t kOpcodeCop1 = 0x11U;
 constexpr std::uint32_t kOpcodeDaddiu = 0x19U;
 constexpr std::uint32_t kOpcodeLb = 0x20U;
 constexpr std::uint32_t kOpcodeLh = 0x21U;
@@ -26,7 +27,9 @@ constexpr std::uint32_t kOpcodeLhu = 0x25U;
 constexpr std::uint32_t kOpcodeSb = 0x28U;
 constexpr std::uint32_t kOpcodeSh = 0x29U;
 constexpr std::uint32_t kOpcodeSw = 0x2BU;
+constexpr std::uint32_t kOpcodeLwc1 = 0x31U;
 constexpr std::uint32_t kOpcodeLd = 0x37U;
+constexpr std::uint32_t kOpcodeSwc1 = 0x39U;
 constexpr std::uint32_t kOpcodeSd = 0x3FU;
 constexpr std::uint32_t kOpcodeRegimm = 0x01U;
 constexpr std::uint32_t kOpcodeBeq = 0x04U;
@@ -75,6 +78,8 @@ constexpr std::uint32_t kFunctDsra = 0x3BU;
 constexpr std::uint32_t kFunctDsll32 = 0x3CU;
 constexpr std::uint32_t kFunctDsrl32 = 0x3EU;
 constexpr std::uint32_t kFunctDsra32 = 0x3FU;
+constexpr std::uint32_t kCop1Mfc1 = 0x00U;
+constexpr std::uint32_t kCop1Mtc1 = 0x04U;
 
 enum class Op {
   Nop,
@@ -123,6 +128,10 @@ enum class Op {
   Sw,
   Ld,
   Sd,
+  Lwc1,
+  Swc1,
+  Mfc1,
+  Mtc1,
   Blez,
   Bgtz,
   Bltz,
@@ -301,6 +310,26 @@ bool decode(std::uint32_t word, std::uint32_t pc, Instruction& instruction) {
     case kOpcodeSd:
       instruction = {Op::Sd, rs, rt, 0, 0, sign_immediate, 0};
       return true;
+    case kOpcodeLwc1:
+      instruction = {Op::Lwc1, rs, rt, 0, 0, sign_immediate, 0};
+      return true;
+    case kOpcodeSwc1:
+      instruction = {Op::Swc1, rs, rt, 0, 0, sign_immediate, 0};
+      return true;
+    case kOpcodeCop1: {
+      if ((word & 0x7FFU) != 0U) {
+        return false;
+      }
+      if (rs == kCop1Mfc1) {
+        instruction = {Op::Mfc1, rs, rt, rd, 0, 0, 0};
+        return true;
+      }
+      if (rs == kCop1Mtc1) {
+        instruction = {Op::Mtc1, rs, rt, rd, 0, 0, 0};
+        return true;
+      }
+      return false;
+    }
     case kOpcodeBeq:
       instruction = {Op::Beq, rs, rt, 0, 0, sign_immediate, branch_target(pc, sign_immediate)};
       return true;
@@ -521,6 +550,7 @@ ExecOutcome execute_loaded(const LoadReport& report, GuestMemory& memory, const 
   ExecResult result;
   result.entry_point = report.entry_point;
   std::array<std::uint64_t, 32>& registers = result.registers;
+  std::array<std::uint32_t, 32>& fpr = result.fpr;
   std::vector<MemoryWrite> writes;
   std::uint32_t pc = report.entry_point;
   std::optional<std::uint32_t> pending_target;
@@ -832,6 +862,41 @@ ExecOutcome execute_loaded(const LoadReport& report, GuestMemory& memory, const 
         write_register(instruction.rt, sign_extend_32(read_le32(bytes.data())));
         break;
       }
+      case Op::Lwc1: {
+        const auto address = static_cast<std::uint32_t>(static_cast<std::uint32_t>(registers[instruction.rs]) +
+                                                        instruction.immediate);
+        if ((address & 3U) != 0U) {
+          return fail(ExecErrorCode::MemoryFault, address_message("unaligned LWC1", address));
+        }
+        std::array<std::uint8_t, 4> bytes{};
+        if (!memory.read(address, bytes)) {
+          return fail(ExecErrorCode::MemoryFault,
+                      address_message("LWC1 load outside mapped memory", address));
+        }
+        fpr[instruction.rt] = read_le32(bytes.data());
+        break;
+      }
+      case Op::Swc1: {
+        const auto address = static_cast<std::uint32_t>(static_cast<std::uint32_t>(registers[instruction.rs]) +
+                                                        instruction.immediate);
+        if ((address & 3U) != 0U) {
+          return fail(ExecErrorCode::MemoryFault, address_message("unaligned SWC1", address));
+        }
+        const std::uint32_t value = fpr[instruction.rt];
+        const std::array<std::uint8_t, 4> bytes = write_le32(value);
+        if (!memory.write(address, bytes)) {
+          return fail(ExecErrorCode::MemoryFault,
+                      address_message("SWC1 store outside mapped memory", address));
+        }
+        writes.push_back(MemoryWrite{address, value, 4});
+        break;
+      }
+      case Op::Mfc1:
+        write_register(instruction.rt, sign_extend_32(fpr[instruction.rd]));
+        break;
+      case Op::Mtc1:
+        fpr[instruction.rd] = static_cast<std::uint32_t>(registers[instruction.rt]);
+        break;
       case Op::Sb: {
         const auto address = static_cast<std::uint32_t>(static_cast<std::uint32_t>(registers[instruction.rs]) +
                                                         instruction.immediate);

@@ -405,6 +405,11 @@ std::uint32_t encode_j(std::uint32_t op, std::uint32_t target) {
   return ((op & 0x3FU) << 26U) | ((target >> 2U) & 0x03FFFFFFU);
 }
 
+std::uint32_t encode_cop1(std::uint32_t rs, std::uint32_t rt, std::uint32_t fs) {
+  return ((0x11U & 0x3FU) << 26U) | ((rs & 0x1FU) << 21U) | ((rt & 0x1FU) << 16U) |
+         ((fs & 0x1FU) << 11U);
+}
+
 std::vector<std::uint8_t> make_runnable_image(const std::vector<std::uint32_t>& code,
                                               std::uint32_t entry_offset = 0U,
                                               std::uint32_t data_memsz = 4U,
@@ -1439,6 +1444,84 @@ void test_execution_hi_lo_failures() {
                     "divu with nonzero shamt");
 }
 
+void test_execution_cop1_transfers() {
+  const std::vector<std::uint32_t> code{
+      encode_i(0x09, 0, 11, 0x2000),  // 0x00 addiu t3, zero, 0x2000
+      encode_i(0x31, 11, 2, 0),       // 0x04 lwc1 f2, 0(t3)
+      encode_cop1(0x00, 12, 2),       // 0x08 mfc1 t4, f2
+      encode_i(0x09, 0, 8, 0x7FFF),   // 0x0c addiu t0, zero, 0x7fff
+      encode_cop1(0x04, 8, 2),        // 0x10 mtc1 t0, f2
+      encode_i(0x39, 11, 2, 4),       // 0x14 swc1 f2, 4(t3)
+      encode_i(0x31, 11, 3, 4),       // 0x18 lwc1 f3, 4(t3)
+      encode_i(0x31, 11, 0, 0),       // 0x1c lwc1 f0, 0(t3)
+      encode_cop1(0x00, 0, 0),        // 0x20 mfc1 zero, f0
+      encode_cop1(0x00, 2, 0),        // 0x24 mfc1 v0, f0
+      encode_i(0x09, 0, 9, -1),       // 0x28 addiu t1, zero, -1
+      encode_cop1(0x04, 9, 4),        // 0x2c mtc1 t1, f4
+      encode_cop1(0x00, 10, 4),       // 0x30 mfc1 t2, f4
+      encode_i(0x23, 11, 5, 4),       // 0x34 lw a1, 4(t3)
+  };
+  const std::array<std::uint8_t, 8> data{0xEF, 0xCD, 0xAB, 0x89, 0x00, 0x00, 0x00, 0x00};
+  const ExecOutcome outcome = run_code(code, ExecOptions{}, 8U, data);
+  CHECK(outcome.ok());
+  if (!outcome.ok()) {
+    return;
+  }
+  CHECK(outcome.result.steps == code.size());
+  CHECK(outcome.result.registers[12] == 0xFFFFFFFF89ABCDEFULL);
+  CHECK(outcome.result.registers[8] == 0x7FFFU);
+  CHECK(outcome.result.registers[0] == 0U);
+  CHECK(outcome.result.registers[2] == 0xFFFFFFFF89ABCDEFULL);
+  CHECK(outcome.result.registers[10] == 0xFFFFFFFFFFFFFFFFULL);
+  CHECK(outcome.result.registers[5] == 0x7FFFU);
+  CHECK(outcome.result.fpr[2] == 0x7FFFU);
+  CHECK(outcome.result.fpr[3] == 0x7FFFU);
+  CHECK(outcome.result.fpr[0] == 0x89ABCDEFU);
+  CHECK(outcome.result.fpr[4] == 0xFFFFFFFFU);
+  CHECK(outcome.result.memory_writes.size() == 1U);
+  if (outcome.result.memory_writes.size() == 1U) {
+    CHECK(outcome.result.memory_writes[0].address == kDataBase + 4U);
+    CHECK(outcome.result.memory_writes[0].value == 0x7FFFU);
+    CHECK(outcome.result.memory_writes[0].width == 4U);
+  }
+}
+
+void test_execution_cop1_failures() {
+  expect_exec_error(run_code({encode_cop1(0x00, 8, 2) | 0x001U}),
+                    ExecErrorCode::UnsupportedInstruction, "mfc1 reserved bit 0");
+  expect_exec_error(run_code({encode_cop1(0x04, 8, 2) | 0x400U}),
+                    ExecErrorCode::UnsupportedInstruction, "mtc1 reserved bit 10");
+  expect_exec_error(run_code({encode_cop1(0x02, 8, 0)}), ExecErrorCode::UnsupportedInstruction, "cfc1");
+  expect_exec_error(run_code({encode_cop1(0x06, 8, 0)}), ExecErrorCode::UnsupportedInstruction, "ctc1");
+  expect_exec_error(run_code({encode_cop1(0x10, 0, 0)}), ExecErrorCode::UnsupportedInstruction, "bc1");
+  expect_exec_error(run_code({encode_i(0x36, 0, 8, 0)}), ExecErrorCode::UnsupportedInstruction, "lwc2");
+  expect_exec_error(run_code({encode_i(0x3E, 0, 8, 0)}), ExecErrorCode::UnsupportedInstruction, "swc2");
+
+  // The base register is set by a preceding ADDIU, so the faulting transfer is
+  // not the first step; only the error code and diagnostic are checked.
+  const ExecOutcome unaligned_load =
+      run_code({encode_i(0x09, 0, 11, 0x2000), encode_i(0x31, 11, 2, 2)});
+  CHECK(!unaligned_load.ok());
+  if (!unaligned_load.ok()) {
+    CHECK(unaligned_load.error->code == ExecErrorCode::MemoryFault);
+    CHECK(unaligned_load.error->message.find("unaligned LWC1") != std::string::npos);
+  }
+  const ExecOutcome unaligned_store =
+      run_code({encode_i(0x09, 0, 11, 0x2000), encode_i(0x39, 11, 2, 2)});
+  CHECK(!unaligned_store.ok());
+  if (!unaligned_store.ok()) {
+    CHECK(unaligned_store.error->code == ExecErrorCode::MemoryFault);
+    CHECK(unaligned_store.error->message.find("unaligned SWC1") != std::string::npos);
+  }
+  const ExecOutcome past_segment =
+      run_code({encode_i(0x09, 0, 11, 0x2000), encode_i(0x31, 11, 2, 4)}, ExecOptions{}, 4U);
+  CHECK(!past_segment.ok());
+  if (!past_segment.ok()) {
+    CHECK(past_segment.error->code == ExecErrorCode::MemoryFault);
+    CHECK(past_segment.error->message.find("LWC1 load outside mapped memory") != std::string::npos);
+  }
+}
+
 void test_execution_failures() {
   expect_exec_error(run_code({0x00000015U}), ExecErrorCode::UnsupportedInstruction, "unsupported");
   expect_exec_error(run_code({encode_i(0x0F, 1, 8, 0)}), ExecErrorCode::UnsupportedInstruction,
@@ -1529,6 +1612,8 @@ int main() {
   test_execution_doubleword_shift_failures();
   test_execution_hi_lo_state();
   test_execution_hi_lo_failures();
+  test_execution_cop1_transfers();
+  test_execution_cop1_failures();
   test_execution_word_memory_alignment();
   test_execution_byte_and_half_memory();
   test_execution_failures();

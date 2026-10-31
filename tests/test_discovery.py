@@ -536,7 +536,7 @@ class TraversalRobustnessTests(unittest.TestCase):
         """
         asm = Assembler()
         asm.addiu(T0, ZERO, 1)              # 0x00100000
-        asm.emit(encode_i(0x11, 0, 0, 0))   # 0x00100004 - COP1, unsupported
+        asm.emit(encode_i(0x11, 0, 0x10, 0))  # 0x00100004 - BC1, unsupported
         asm.jr(RA)                          # 0x00100008 - must stay undecoded
         asm.nop()                           # 0x0010000C
         program = discover_program(_parse(asm.resolve(), path="<unsupported-cop1>"))

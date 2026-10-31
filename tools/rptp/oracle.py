@@ -6,9 +6,10 @@ decoded instruction stream directly in Python, while the emitter lowers the
 same stream through the IR to C++ helpers.  The two implementations are then
 compared on registers, HI/LO, memory writes and the executed-PC trace.
 
-Scope: the instruction subset listed in ``isa.SUPPORTED_MNEMONICS``.  PS2
-kernel calls, COP0/COP1/COP2, VU, GS, IOP, interrupts and hardware timing are
-not modelled.
+Scope: the instruction subset listed in ``isa.SUPPORTED_MNEMONICS``.  The
+COP1 subset is limited to the MFC1/MTC1/LWC1/SWC1 word transfers on a plain
+32-bit FPR bank.  PS2 kernel calls, COP1 arithmetic, COP0/COP2, VU, GS, IOP,
+interrupts and hardware timing are not modelled.
 """
 from __future__ import annotations
 
@@ -87,6 +88,7 @@ class GuestMemory:
 @dataclass
 class State:
     registers: list[int] = field(default_factory=lambda: [0] * 32)
+    fpr: list[int] = field(default_factory=lambda: [0] * 32)
     hi: int = 0
     lo: int = 0
     hi1: int = 0
@@ -540,6 +542,15 @@ class Oracle:
                     state.hi1 = regs[instruction.rs or 0] & MASK64
                 else:
                     state.lo1 = regs[instruction.rs or 0] & MASK64
+            elif m == "mfc1":
+                _write_s64(state, instruction.rt or 0,
+                           _signed32(state.fpr[instruction.rd or 0]))
+            elif m == "mtc1":
+                state.fpr[instruction.rd or 0] = regs[instruction.rt or 0] & MASK32
+            elif m == "lwc1":
+                self._execute_cop1_load(instruction)
+            elif m == "swc1":
+                self._execute_cop1_store(instruction)
             elif instruction.cls == "load":
                 self._execute_load(instruction)
             elif instruction.cls == "store":
@@ -673,6 +684,18 @@ class Oracle:
         else:
             raise ExecutionError(f"Oracle has no store lowering for {instruction.text()}")
 
+    def _execute_cop1_load(self, instruction: Instruction) -> None:
+        address = self._effective_address(instruction)
+        if address & 3:
+            raise ExecutionError(f"Unaligned LWC1 at 0x{address:08X}")
+        self.state.fpr[instruction.rt or 0] = self.state.memory.read(address, 4)
+
+    def _execute_cop1_store(self, instruction: Instruction) -> None:
+        address = self._effective_address(instruction)
+        if address & 3:
+            raise ExecutionError(f"Unaligned SWC1 at 0x{address:08X}")
+        self.state.memory.write(address, 4, self.state.fpr[instruction.rt or 0])
+
     def _execute_mmi(self, instruction: Instruction) -> int | None:
         state = self.state
         regs = state.registers
@@ -699,6 +722,7 @@ def normalize_state(state: State) -> dict[str, Any]:
         "lo": int(state.lo) & MASK64,
         "hi1": int(state.hi1) & MASK64,
         "lo1": int(state.lo1) & MASK64,
+        "fpr": [int(value) & MASK32 for value in state.fpr],
         "memory": [[int(address), int(value)] for address, value in sorted(state.memory.writes.items())],
         "trace": [int(pc) for pc in state.trace],
     }

@@ -106,6 +106,13 @@ std::string render_success(const ExecResult& result, std::size_t image_bytes) {
     }
     out << '"' << hex64(result.registers[index]) << '"';
   }
+  out << "],\"fpr\":[";
+  for (std::size_t index = 0; index < result.fpr.size(); ++index) {
+    if (index != 0) {
+      out << ',';
+    }
+    out << '"' << hex32(result.fpr[index]) << '"';
+  }
   out << "],\"memory_writes\":[";
   for (std::size_t index = 0; index < result.memory_writes.size(); ++index) {
     if (index != 0) {

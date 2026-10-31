@@ -257,6 +257,24 @@ class Assembler:
     def sq(self, rt: int, offset: int, base: int) -> None:
         self.emit(encode_i(0x1F, rt, base, offset))
 
+    def lwc1(self, ft: int, offset: int, base: int) -> None:
+        self.emit(encode_i(0x31, ft, base, offset))
+
+    def swc1(self, ft: int, offset: int, base: int) -> None:
+        self.emit(encode_i(0x39, ft, base, offset))
+
+    def mfc1(self, rt: int, fs: int) -> None:
+        self.emit((0x11 << 26) | (rt << 16) | (fs << 11))
+
+    def mtc1(self, rt: int, fs: int) -> None:
+        self.emit((0x11 << 26) | (0x04 << 21) | (rt << 16) | (fs << 11))
+
+    def cfc1(self, rt: int, fs: int = 0) -> None:
+        self.emit((0x11 << 26) | (0x02 << 21) | (rt << 16) | (fs << 11))
+
+    def ctc1(self, rt: int, fs: int = 0) -> None:
+        self.emit((0x11 << 26) | (0x06 << 21) | (rt << 16) | (fs << 11))
+
     def beq(self, rs: int, rt: int, label: str) -> None:
         self._branch(0x04, rs, rt, label)
 

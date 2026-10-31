@@ -163,6 +163,18 @@ def _lower_instruction(instruction: Instruction) -> IROp:
                     "mult1", "multu1", "div1", "divu1", "madd1", "maddu1"}:
         return IROp("muldiv", pc, mnemonic=mnemonic, dst=instruction.rd,
                     a=instruction.rs, b=instruction.rt)
+    if mnemonic == "mfc1":
+        return IROp("fpr_read", pc, mnemonic=mnemonic, dst=instruction.rt,
+                    a=instruction.rd)
+    if mnemonic == "mtc1":
+        return IROp("fpr_write", pc, mnemonic=mnemonic, dst=instruction.rd,
+                    a=instruction.rt)
+    if mnemonic == "lwc1":
+        return IROp("cop1_load", pc, mnemonic=mnemonic, dst=instruction.rt,
+                    a=instruction.rs, imm=instruction.simm, size=4)
+    if mnemonic == "swc1":
+        return IROp("cop1_store", pc, mnemonic=mnemonic, a=instruction.rs,
+                    b=instruction.rt, imm=instruction.simm, size=4)
     if cls == "load":
         size = {"lb": 1, "lbu": 1, "lh": 2, "lhu": 2, "lw": 4, "lwu": 4,
                 "ld": 8, "lq": 16}.get(mnemonic)
