@@ -3,9 +3,9 @@
 
 #include <array>
 #include <cstdio>
-#include <map>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace rptp::runtime {
 namespace {
@@ -18,7 +18,13 @@ constexpr std::uint32_t kOpcodeOri = 0x0DU;
 constexpr std::uint32_t kOpcodeXori = 0x0EU;
 constexpr std::uint32_t kOpcodeLui = 0x0FU;
 constexpr std::uint32_t kOpcodeDaddiu = 0x19U;
+constexpr std::uint32_t kOpcodeLb = 0x20U;
+constexpr std::uint32_t kOpcodeLh = 0x21U;
 constexpr std::uint32_t kOpcodeLw = 0x23U;
+constexpr std::uint32_t kOpcodeLbu = 0x24U;
+constexpr std::uint32_t kOpcodeLhu = 0x25U;
+constexpr std::uint32_t kOpcodeSb = 0x28U;
+constexpr std::uint32_t kOpcodeSh = 0x29U;
 constexpr std::uint32_t kOpcodeSw = 0x2BU;
 constexpr std::uint32_t kOpcodeLd = 0x37U;
 constexpr std::uint32_t kOpcodeSd = 0x3FU;
@@ -91,7 +97,13 @@ enum class Op {
   Dsra,
   Dsra32,
   Dsrav,
+  Lb,
+  Lbu,
+  Lh,
+  Lhu,
   Lw,
+  Sb,
+  Sh,
   Sw,
   Ld,
   Sd,
@@ -143,6 +155,11 @@ std::string instruction_message(std::uint32_t word, std::uint32_t pc) {
   std::snprintf(buffer, sizeof(buffer), "unsupported instruction 0x%08x at 0x%08x",
                 static_cast<unsigned>(word), static_cast<unsigned>(pc));
   return buffer;
+}
+
+std::uint64_t sign_extend_8(std::uint32_t value) {
+  return (value & 0x80U) != 0 ? (static_cast<std::uint64_t>(value) | 0xFFFFFFFFFFFFFF00ULL)
+                              : static_cast<std::uint64_t>(value);
 }
 
 std::uint32_t sign_extend_16(std::uint32_t value) {
@@ -238,8 +255,26 @@ bool decode(std::uint32_t word, std::uint32_t pc, Instruction& instruction) {
     case kOpcodeDaddiu:
       instruction = {Op::Daddiu, rs, rt, 0, 0, sign_immediate, 0};
       return true;
+    case kOpcodeLb:
+      instruction = {Op::Lb, rs, rt, 0, 0, sign_immediate, 0};
+      return true;
+    case kOpcodeLh:
+      instruction = {Op::Lh, rs, rt, 0, 0, sign_immediate, 0};
+      return true;
     case kOpcodeLw:
       instruction = {Op::Lw, rs, rt, 0, 0, sign_immediate, 0};
+      return true;
+    case kOpcodeLbu:
+      instruction = {Op::Lbu, rs, rt, 0, 0, sign_immediate, 0};
+      return true;
+    case kOpcodeLhu:
+      instruction = {Op::Lhu, rs, rt, 0, 0, sign_immediate, 0};
+      return true;
+    case kOpcodeSb:
+      instruction = {Op::Sb, rs, rt, 0, 0, sign_immediate, 0};
+      return true;
+    case kOpcodeSh:
+      instruction = {Op::Sh, rs, rt, 0, 0, sign_immediate, 0};
       return true;
     case kOpcodeSw:
       instruction = {Op::Sw, rs, rt, 0, 0, sign_immediate, 0};
@@ -454,7 +489,7 @@ ExecOutcome execute_loaded(const LoadReport& report, GuestMemory& memory, const 
   ExecResult result;
   result.entry_point = report.entry_point;
   std::array<std::uint64_t, 32>& registers = result.registers;
-  std::map<std::uint32_t, std::uint32_t> writes;
+  std::vector<MemoryWrite> writes;
   std::uint32_t pc = report.entry_point;
   std::optional<std::uint32_t> pending_target;
   bool pending_nullify = false;
@@ -468,10 +503,7 @@ ExecOutcome execute_loaded(const LoadReport& report, GuestMemory& memory, const 
       }
       result.final_pc = pc;
       result.halt_reason = HaltReason::UnmappedPc;
-      result.memory_writes.reserve(writes.size());
-      for (const auto& [address, value] : writes) {
-        result.memory_writes.push_back(MemoryWrite{address, value});
-      }
+      result.memory_writes = std::move(writes);
       return ExecOutcome{std::nullopt, std::move(result)};
     }
     if (!segment->executable()) {
@@ -639,6 +671,61 @@ ExecOutcome execute_loaded(const LoadReport& report, GuestMemory& memory, const 
                                            registers[instruction.rt],
                                            static_cast<std::uint32_t>(registers[instruction.rs]) & 63U));
         break;
+      case Op::Lb: {
+        const auto address = static_cast<std::uint32_t>(static_cast<std::uint32_t>(registers[instruction.rs]) +
+                                                        instruction.immediate);
+        std::array<std::uint8_t, 1> bytes{};
+        if (!memory.read(address, bytes)) {
+          return fail(ExecErrorCode::MemoryFault, address_message("byte load outside mapped memory", address));
+        }
+        write_register(instruction.rt, sign_extend_8(bytes[0]));
+        break;
+      }
+      case Op::Lbu: {
+        const auto address = static_cast<std::uint32_t>(static_cast<std::uint32_t>(registers[instruction.rs]) +
+                                                        instruction.immediate);
+        std::array<std::uint8_t, 1> bytes{};
+        if (!memory.read(address, bytes)) {
+          return fail(ExecErrorCode::MemoryFault, address_message("byte load outside mapped memory", address));
+        }
+        write_register(instruction.rt, static_cast<std::uint64_t>(bytes[0]));
+        break;
+      }
+      case Op::Lh: {
+        const auto address = static_cast<std::uint32_t>(static_cast<std::uint32_t>(registers[instruction.rs]) +
+                                                        instruction.immediate);
+        if ((address & 1U) != 0U) {
+          return fail(ExecErrorCode::MemoryFault, address_message("unaligned halfword load", address));
+        }
+        std::array<std::uint8_t, 2> bytes{};
+        if (!memory.read(address, bytes)) {
+          return fail(ExecErrorCode::MemoryFault,
+                      address_message("halfword load outside mapped memory", address));
+        }
+        const std::uint32_t value =
+            static_cast<std::uint32_t>(bytes[0]) | (static_cast<std::uint32_t>(bytes[1]) << 8U);
+        write_register(instruction.rt,
+                       (value & 0x8000U) != 0
+                           ? (static_cast<std::uint64_t>(value) | 0xFFFFFFFFFFFF0000ULL)
+                           : static_cast<std::uint64_t>(value));
+        break;
+      }
+      case Op::Lhu: {
+        const auto address = static_cast<std::uint32_t>(static_cast<std::uint32_t>(registers[instruction.rs]) +
+                                                        instruction.immediate);
+        if ((address & 1U) != 0U) {
+          return fail(ExecErrorCode::MemoryFault, address_message("unaligned halfword load", address));
+        }
+        std::array<std::uint8_t, 2> bytes{};
+        if (!memory.read(address, bytes)) {
+          return fail(ExecErrorCode::MemoryFault,
+                      address_message("halfword load outside mapped memory", address));
+        }
+        const std::uint32_t value =
+            static_cast<std::uint32_t>(bytes[0]) | (static_cast<std::uint32_t>(bytes[1]) << 8U);
+        write_register(instruction.rt, static_cast<std::uint64_t>(value));
+        break;
+      }
       case Op::Lw: {
         const auto address = static_cast<std::uint32_t>(static_cast<std::uint32_t>(registers[instruction.rs]) +
                                                         instruction.immediate);
@@ -652,6 +739,33 @@ ExecOutcome execute_loaded(const LoadReport& report, GuestMemory& memory, const 
         write_register(instruction.rt, sign_extend_32(read_le32(bytes.data())));
         break;
       }
+      case Op::Sb: {
+        const auto address = static_cast<std::uint32_t>(static_cast<std::uint32_t>(registers[instruction.rs]) +
+                                                        instruction.immediate);
+        const auto value = static_cast<std::uint8_t>(registers[instruction.rt] & 0xFFU);
+        const std::array<std::uint8_t, 1> bytes{value};
+        if (!memory.write(address, bytes)) {
+          return fail(ExecErrorCode::MemoryFault, address_message("byte store outside mapped memory", address));
+        }
+        writes.push_back(MemoryWrite{address, static_cast<std::uint32_t>(value), 1});
+        break;
+      }
+      case Op::Sh: {
+        const auto address = static_cast<std::uint32_t>(static_cast<std::uint32_t>(registers[instruction.rs]) +
+                                                        instruction.immediate);
+        if ((address & 1U) != 0U) {
+          return fail(ExecErrorCode::MemoryFault, address_message("unaligned halfword store", address));
+        }
+        const auto value = static_cast<std::uint16_t>(registers[instruction.rt] & 0xFFFFU);
+        const std::array<std::uint8_t, 2> bytes{static_cast<std::uint8_t>(value & 0xFFU),
+                                                static_cast<std::uint8_t>((value >> 8U) & 0xFFU)};
+        if (!memory.write(address, bytes)) {
+          return fail(ExecErrorCode::MemoryFault,
+                      address_message("halfword store outside mapped memory", address));
+        }
+        writes.push_back(MemoryWrite{address, static_cast<std::uint32_t>(value), 2});
+        break;
+      }
       case Op::Sw: {
         const auto address = static_cast<std::uint32_t>(static_cast<std::uint32_t>(registers[instruction.rs]) +
                                                         instruction.immediate);
@@ -663,7 +777,7 @@ ExecOutcome execute_loaded(const LoadReport& report, GuestMemory& memory, const 
         if (!memory.write(address, bytes)) {
           return fail(ExecErrorCode::MemoryFault, address_message("store outside mapped memory", address));
         }
-        writes[address] = value;
+        writes.push_back(MemoryWrite{address, value, 4});
         break;
       }
       case Op::Ld: {
@@ -701,8 +815,8 @@ ExecOutcome execute_loaded(const LoadReport& report, GuestMemory& memory, const 
           return fail(ExecErrorCode::MemoryFault,
                       address_message("doubleword store outside mapped memory", address));
         }
-        writes[address] = static_cast<std::uint32_t>(value);
-        writes[address + 4U] = static_cast<std::uint32_t>(value >> 32U);
+        writes.push_back(MemoryWrite{address, static_cast<std::uint32_t>(value), 4});
+        writes.push_back(MemoryWrite{address + 4U, static_cast<std::uint32_t>(value >> 32U), 4});
         break;
       }
       case Op::Blez: {

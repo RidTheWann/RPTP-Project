@@ -110,7 +110,8 @@ std::string render_success(const ExecResult& result, std::size_t image_bytes) {
       out << ',';
     }
     out << "{\"address\":\"" << hex32(result.memory_writes[index].address) << "\""
-        << ",\"value\":\"" << hex32(result.memory_writes[index].value) << "\"}";
+        << ",\"value\":\"" << hex32(result.memory_writes[index].value) << "\""
+        << ",\"width\":" << static_cast<unsigned>(result.memory_writes[index].width) << "}";
   }
   out << "],\"trace\":[";
   for (std::size_t index = 0; index < result.trace.size(); ++index) {

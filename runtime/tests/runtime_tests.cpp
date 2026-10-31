@@ -1161,6 +1161,111 @@ void test_execution_word_memory_alignment() {
   }
 }
 
+void test_execution_byte_and_half_memory() {
+  const std::array<std::uint8_t, 16> data{
+      0x80, 0x7F, 0x34, 0x12, 0x00, 0x80, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  };
+  const std::vector<std::uint32_t> code{
+      encode_i(0x09, 0, 11, 0x2000),  // addiu t3, zero, 0x2000
+      encode_i(0x20, 11, 12, 0),      // lb t4, 0(t3)
+      encode_i(0x24, 11, 13, 0),      // lbu t5, 0(t3)
+      encode_i(0x20, 11, 14, 1),      // lb t6, 1(t3)
+      encode_i(0x21, 11, 16, 4),      // lh s0, 4(t3)
+      encode_i(0x25, 11, 17, 4),      // lhu s1, 4(t3)
+      encode_i(0x21, 11, 18, 2),      // lh s2, 2(t3)
+      encode_i(0x09, 0, 8, 0x55AA),   // addiu t0, zero, 0x55AA
+      encode_i(0x28, 11, 8, 8),       // sb t0, 8(t3)
+      encode_i(0x29, 11, 8, 10),      // sh t0, 10(t3)
+      encode_i(0x2B, 11, 8, 12),      // sw t0, 12(t3)
+      encode_i(0x24, 11, 9, 8),       // lbu t1, 8(t3)
+      encode_i(0x25, 11, 10, 10),     // lhu t2, 10(t3)
+      encode_i(0x23, 11, 4, 12),      // lw a0, 12(t3)
+  };
+  std::vector<std::uint8_t> image = make_runnable_image(code, 0U, 16U, data);
+  LoadOutcome loaded = load_elf(image);
+  CHECK(loaded.ok());
+  if (!loaded.ok()) {
+    return;
+  }
+  const ExecOutcome outcome = execute_loaded(loaded.report, loaded.memory);
+  CHECK(outcome.ok());
+  if (!outcome.ok()) {
+    std::cerr << "FAIL byte and half execution: " << outcome.error->message << '\n';
+    return;
+  }
+  CHECK(outcome.result.registers[11] == 0x2000U);
+  CHECK(outcome.result.registers[12] == 0xFFFFFFFFFFFFFF80ULL);
+  CHECK(outcome.result.registers[13] == 0x80U);
+  CHECK(outcome.result.registers[14] == 0x7FU);
+  CHECK(outcome.result.registers[16] == 0xFFFFFFFFFFFF8000ULL);
+  CHECK(outcome.result.registers[17] == 0x8000U);
+  CHECK(outcome.result.registers[18] == 0x1234U);
+  CHECK(outcome.result.registers[8] == 0x55AAU);
+  CHECK(outcome.result.registers[9] == 0xAAU);
+  CHECK(outcome.result.registers[10] == 0x55AAU);
+  CHECK(outcome.result.registers[4] == 0x55AAU);
+  CHECK(outcome.result.registers[0] == 0U);
+  CHECK(outcome.result.memory_writes.size() == 3U);
+  if (outcome.result.memory_writes.size() == 3U) {
+    CHECK(outcome.result.memory_writes[0].address == kDataBase + 8U);
+    CHECK(outcome.result.memory_writes[0].value == 0xAAU);
+    CHECK(outcome.result.memory_writes[0].width == 1U);
+    CHECK(outcome.result.memory_writes[1].address == kDataBase + 10U);
+    CHECK(outcome.result.memory_writes[1].value == 0x55AAU);
+    CHECK(outcome.result.memory_writes[1].width == 2U);
+    CHECK(outcome.result.memory_writes[2].address == kDataBase + 12U);
+    CHECK(outcome.result.memory_writes[2].value == 0x55AAU);
+    CHECK(outcome.result.memory_writes[2].width == 4U);
+  }
+  constexpr std::array<std::uint8_t, 16> kExpectedBytes{
+      0x80, 0x7F, 0x34, 0x12, 0x00, 0x80, 0x00, 0x00,
+      0xAA, 0x00, 0xAA, 0x55, 0xAA, 0x55, 0x00, 0x00,
+  };
+  std::array<std::uint8_t, 16> bytes{};
+  CHECK(loaded.memory.read(kDataBase, bytes));
+  CHECK(bytes == kExpectedBytes);
+
+  const ExecOutcome unaligned_load =
+      run_code({encode_i(0x09, 0, 11, 0x2000), encode_i(0x21, 11, 12, 1)}, ExecOptions{}, 8U);
+  expect_exec_error(unaligned_load, ExecErrorCode::MemoryFault, "unaligned halfword load");
+  if (!unaligned_load.ok()) {
+    CHECK(unaligned_load.error->message.find("unaligned halfword load") != std::string::npos);
+  }
+  const ExecOutcome unaligned_lhu =
+      run_code({encode_i(0x09, 0, 11, 0x2000), encode_i(0x25, 11, 12, 3)}, ExecOptions{}, 8U);
+  expect_exec_error(unaligned_lhu, ExecErrorCode::MemoryFault, "unaligned unsigned halfword load");
+  if (!unaligned_lhu.ok()) {
+    CHECK(unaligned_lhu.error->message.find("unaligned halfword load") != std::string::npos);
+  }
+  const ExecOutcome unaligned_store =
+      run_code({encode_i(0x09, 0, 11, 0x2000), encode_i(0x29, 11, 8, 1)}, ExecOptions{}, 8U);
+  expect_exec_error(unaligned_store, ExecErrorCode::MemoryFault, "unaligned halfword store");
+  if (!unaligned_store.ok()) {
+    CHECK(unaligned_store.error->message.find("unaligned halfword store") != std::string::npos);
+  }
+  expect_exec_error(
+      run_code({encode_i(0x09, 0, 11, 0x2000), encode_i(0x21, 11, 12, 6)}, ExecOptions{}, 7U),
+      ExecErrorCode::MemoryFault, "halfword load crossing the segment end");
+  expect_exec_error(
+      run_code({encode_i(0x09, 0, 11, 0x2000), encode_i(0x29, 11, 8, 6)}, ExecOptions{}, 7U),
+      ExecErrorCode::MemoryFault, "halfword store crossing the segment end");
+  expect_exec_error(
+      run_code({encode_i(0x09, 0, 11, 0x2000), encode_i(0x20, 11, 12, 7)}, ExecOptions{}, 7U),
+      ExecErrorCode::MemoryFault, "byte load past the segment end");
+  expect_exec_error(
+      run_code({encode_i(0x09, 0, 11, 0x2000), encode_i(0x28, 11, 8, 7)}, ExecOptions{}, 7U),
+      ExecErrorCode::MemoryFault, "byte store past the segment end");
+  expect_exec_error(run_code({encode_i(0x22, 0, 8, 0)}), ExecErrorCode::UnsupportedInstruction,
+                    "lwl");
+  expect_exec_error(run_code({encode_i(0x26, 0, 8, 0)}), ExecErrorCode::UnsupportedInstruction,
+                    "lwr");
+  expect_exec_error(run_code({encode_i(0x2A, 0, 8, 0)}), ExecErrorCode::UnsupportedInstruction,
+                    "swl");
+  expect_exec_error(run_code({encode_i(0x2E, 0, 8, 0)}), ExecErrorCode::UnsupportedInstruction,
+                    "swr");
+}
+
 void test_execution_doubleword_shifts() {
   const std::array<std::uint8_t, 24> data{
       0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80,  // 0x8000000000000001
@@ -1321,6 +1426,7 @@ int main() {
   test_execution_doubleword_shifts();
   test_execution_doubleword_shift_failures();
   test_execution_word_memory_alignment();
+  test_execution_byte_and_half_memory();
   test_execution_failures();
   test_execution_is_deterministic();
   if (failures != 0) {

@@ -18,12 +18,12 @@ The memory models differ, so every result is normalized before comparison:
   starts empty and never contains the statically loaded data bytes;
 * the canonical oracle and generated program track byte writes only
   (``GuestMemory.writes``);
-* the native harness reports each 32-bit store as an ``address``/``value``
-  word pair.
+* the native harness reports each store as a chronological
+  ``address``/``value``/``width`` entry.
 
-Each legacy/runtime word is expanded to four little-endian bytes and compared
-against the canonical byte-write map.  No write is dropped, no region is
-excluded and no tolerance is applied.  ``$ra`` starts at the ``0x7FFF0000``
+Each legacy word is expanded to four little-endian bytes, each runtime entry to
+its declared width, and both are compared against the canonical byte-write map.
+No write is dropped, no region is excluded and no tolerance is applied.  ``$ra`` starts at the ``0x7FFF0000``
 return sentinel in the canonical generator and the legacy lowerer and at zero
 in the native harness; the shared program's first instruction writes
 ``$ra = $zero`` on every path before any control transfer, so the compared
@@ -169,6 +169,17 @@ def expand_word_writes(pairs) -> dict[int, int]:
     return memory
 
 
+def expand_width_writes(entries) -> dict[int, int]:
+    """Expand width-tagged little-endian stores into a byte-write map."""
+    memory: dict[int, int] = {}
+    for entry in entries:
+        address = int(entry["address"], 16)
+        value = int(entry["value"], 16)
+        for offset in range(int(entry["width"])):
+            memory[address + offset] = (value >> (8 * offset)) & 0xFF
+    return memory
+
+
 def normalize_legacy(payload: dict) -> dict:
     trace = [int(pc) for pc in payload["trace"]]
     return {
@@ -203,9 +214,7 @@ def normalize_runtime(payload: dict) -> dict:
         "steps": payload["steps"],
         "registers": [int(value, 16) & MASK64 for value in payload["registers"]],
         "trace": [int(value, 16) for value in payload["trace"]],
-        "memory": expand_word_writes(
-            (int(entry["address"], 16), int(entry["value"], 16))
-            for entry in payload["memory_writes"]),
+        "memory": expand_width_writes(payload["memory_writes"]),
     }
 
 

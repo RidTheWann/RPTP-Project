@@ -51,6 +51,7 @@ struct ExecOptions {
 struct MemoryWrite {
   std::uint32_t address = 0;
   std::uint32_t value = 0;
+  std::uint8_t width = 4;
 };
 
 struct ExecResult {
