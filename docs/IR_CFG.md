@@ -4,8 +4,8 @@
 - **Scope:** synthetic ELF32/EM_MIPS input and the currently supported instruction subset only.
 - **Status:** Gate 3 remains in progress. This is not a product recompiler, a complete R5900 model, a function-boundary recovery pass, a runtime, or a compatibility claim.
 - **Implementation:** `tools/rptp_ir.py`; generated-code lowering: `tools/rptp_lower.py`
-- **Branch-likely and doubleword-shift implementation:** `tools/rptp/isa.py`, `tools/rptp/cfg.py`, `tools/rptp/ir.py`, `tools/rptp/oracle.py` and `tools/rptp/codegen.py`
-- **Tests:** `tests/test_ir_cfg.py`; `tests/test_cfg_reachability.py`; `tests/test_ir_lowering.py`; `tests/test_instruction_logical.py`; `tests/test_instruction_logical_width.py`; `tests/test_instruction_lui.py`; `tests/test_instruction_register_logic.py`; `tests/test_instruction_nor.py`; `tests/test_instruction_slt.py`; `tests/test_instruction_sltu.py`; `tests/test_instruction_slti.py`; `tests/test_instruction_sltiu.py`; `tests/test_instruction_daddiu.py`; `tests/test_instruction_daddu.py`; `tests/test_instruction_sll.py`; `tests/test_instruction_subu.py`; `tests/test_instruction_ld_sd.py`; `tests/test_instruction_branch_likely.py`; `tests/test_instruction_dshift.py`; `tests/test_runtime_execution.py`; `tests/test_cross_path_equivalence.py`; `tests/test_pipeline_path_contract.py`; `tests/test_isa_encodings.py`
+- **Branch-likely, doubleword-shift and COP1-transfer implementation:** `tools/rptp/isa.py`, `tools/rptp/cfg.py`, `tools/rptp/ir.py`, `tools/rptp/oracle.py` and `tools/rptp/codegen.py`
+- **Tests:** `tests/test_ir_cfg.py`; `tests/test_cfg_reachability.py`; `tests/test_ir_lowering.py`; `tests/test_instruction_logical.py`; `tests/test_instruction_logical_width.py`; `tests/test_instruction_lui.py`; `tests/test_instruction_register_logic.py`; `tests/test_instruction_nor.py`; `tests/test_instruction_slt.py`; `tests/test_instruction_sltu.py`; `tests/test_instruction_slti.py`; `tests/test_instruction_sltiu.py`; `tests/test_instruction_daddiu.py`; `tests/test_instruction_daddu.py`; `tests/test_instruction_sll.py`; `tests/test_instruction_subu.py`; `tests/test_instruction_ld_sd.py`; `tests/test_instruction_branch_likely.py`; `tests/test_instruction_dshift.py`; `tests/test_instruction_cop1_transfers.py`; `tests/test_runtime_execution.py`; `tests/test_cross_path_equivalence.py`; `tests/test_pipeline_path_contract.py`; `tests/test_isa_encodings.py`
 
 ## Purpose
 
@@ -166,6 +166,30 @@ CFG and lowering:
 
 Evidence: `tests/test_instruction_dshift.py` covers decoding, CFG support, IR lowering, literal oracle values, deterministic generated source and a native differential against the oracle for all nine forms. `tests/test_runtime_execution.py` and `runtime/tests/runtime_tests.cpp` add the CLI-versus-oracle differential, direct C++ cases and reserved-field rejection; `tests/test_cross_path_equivalence.py` drives all nine forms through the Python oracle, generated C++ and `rptp-run`. The encodings, immediate and variable shift amounts and arithmetic sign replication are cited to `RPTP-REF-015` (MIPS64 Revision 5.04 pages 168–176); the 64-bit shift width, 128-bit register-pair sign extension, `$zero` suppression and fail-closed reserved-field rejection are RPTP test definitions.
 
+## COP1-transfer contract (`tools/rptp` package)
+
+The `tools/rptp` package also implements the four COP1 transfer forms. The legacy pipeline is unchanged and rejects all four. The forms are:
+
+- `LWC1` (opcode `0x31`) loads one little-endian 32-bit word from the 4-byte-aligned address `GPR[base] + sign_extend(imm16)` into the low word of `FPR[ft]`.
+- `SWC1` (opcode `0x39`) stores the low 32-bit word of `FPR[ft]` to the same address form.
+- `MFC1` (COP1 opcode `0x11`, `rs = MF = 0x00`, bits `10:0` zero) copies the low 32-bit word of `FPR[fs]` into `GPR[rt]`, sign-extending it into the modeled 64-bit register. A write to `$zero` is discarded.
+- `MTC1` (`rs = MT = 0x04`, bits `10:0` zero) copies the low 32-bit word of `GPR[rt]` into the low word of `FPR[fs]`; the upper FPR word is unchanged.
+
+Execution semantics:
+
+1. The model keeps an RPTP test-defined 32-entry 32-bit FPR bank initialized to zero. `FPR0` is writable; it is not suppressed like `$zero`.
+2. `MFC1`'s 64-bit result is marked UNPREDICTABLE in the reference. The model resolves it deterministically by sign-extending the low 32-bit FPR word.
+3. A nonzero reserved bit in `10:0`, or an `rs` other than `0x00`/`0x04` on the COP1 opcode, is rejected fail-closed by the canonical decoder (`valid=False`, `supported=False`) and by `runtime/src/execution.cpp` (`EXEC_UNSUPPORTED_INSTRUCTION`). `CFC1`, `CTC1`, `BC1` and every other COP1 encoding remain unsupported on both paths; neither path silently reinterprets the word.
+4. An unaligned `LWC1`/`SWC1` effective address is rejected fail-closed by the oracle (`Unaligned LWC1`/`Unaligned SWC1`) and by the harness (`EXEC_MEMORY_FAULT`). No partial register or memory mutation occurs on rejection.
+
+CFG and lowering:
+
+- All four forms are ordinary fallthrough instructions; they create no successors, and the existing delay-slot and block-partition rules are unchanged.
+- `tools/rptp/ir.py` lowers `LWC1` to a 4-byte `cop1_load` op and `SWC1` to a 4-byte `cop1_store` op, both carrying the base register, target FPR and signed 16-bit immediate. `MFC1` lowers to `fpr_read` (write `sext32(FPR[fs])` into `rt`) and `MTC1` to `fpr_write` (write the low 32-bit GPR word into `FPR[fs]`). `tools/rptp/codegen.py` emits the corresponding `s.fpr[...]` accesses and the `rptp::sext32` bridge.
+- The legacy `tools/rptp_ir.py`/`tools/rptp_lower.py` pipeline rejects all four forms as unsupported; `tests/test_pipeline_path_contract.py` pins that rejection.
+
+Evidence: `tests/test_instruction_cop1_transfers.py` covers decoding, CFG fallthrough support, IR lowering, literal oracle values, deterministic generated source and a native differential against the oracle for all four forms. `tests/test_runtime_execution.py` and `runtime/tests/runtime_tests.cpp` add the CLI-versus-oracle differential, direct C++ cases, unaligned-address rejection and reserved-field/neighbour rejection; `tests/test_cross_path_equivalence.py` drives `LWC1`, `MFC1`, `MTC1` and `SWC1` through the Python oracle, generated C++ and `rptp-run` on one shared program. The encodings, the low-word FPR transfer and the MFC1 UNPREDICTABLE note are cited to `RPTP-REF-015` (MIPS64 Revision 5.04 pages 228, 250, 273 and 358); the 32-entry 32-bit FPR bank, FPR0 writability, MFC1 sign-extension, `$zero` suppression, 32-bit memory width, fail-closed alignment and reserved-field rejection are RPTP test definitions.
+
 ## Fail-closed validation
 
 The analysis raises `AnalysisError` with a stable `code` and an optional address. Examples of rejected conditions include:
@@ -246,6 +270,7 @@ The DADDIU fixture in `tests/test_instruction_daddiu.py` checks positive and neg
 - `DSLL`, `DSLL32`, `DSLLV`, `DSRA`, `DSRA32`, `DSRAV`, `DSRL`, `DSRL32` and `DSRLV` encodings, shift amounts and arithmetic sign replication: `RPTP-REF-015`, MIPS64 Revision 5.04 pages 168–176. The 64-bit shift width, 128-bit register-pair sign extension, `$zero` suppression and fail-closed reserved-field rejection are RPTP test definitions recorded in [REFERENCES.md](REFERENCES.md). The canonical decoder versus harness divergence on a nonzero variable-form `shamt` is recorded in [RISKS.md](RISKS.md).
 - `LD`/`SD` doubleword transfer encoding and semantics: `RPTP-REF-015`, MIPS64 Revision 5.04 pages 207 and 327. The signed 16-bit offset and aligned doubleword transfer are referenced; the 32-bit effective-address truncation, the two-word little-endian memory model and the fail-closed alignment rejection are RPTP test definitions recorded in [REFERENCES.md](REFERENCES.md).
 - `LW`/`SW` word transfer encodings: `RPTP-REF-001` and `RPTP-REF-002`. The 4-byte effective-address alignment requirement and its fail-closed `EXEC_MEMORY_FAULT` / `LOWER_RUNTIME_ERROR` rejection are RPTP model policies and test definitions, not a hardware alignment-exception model; the cross-path matrix is recorded in [RUNTIME.md](RUNTIME.md).
+- `LWC1`, `SWC1`, `MFC1` and `MTC1` COP1 transfer encodings and low-word semantics: `RPTP-REF-015`, MIPS64 Revision 5.04 pages 228, 250, 273 and 358. The 32-entry 32-bit FPR bank, `FPR0` writability, `MFC1` sign-extension, `MTC1` upper-word preservation, `$zero` suppression, 4-byte alignment rejection and reserved-field fail-closed behavior are RPTP test definitions recorded in [REFERENCES.md](REFERENCES.md). No FPU pipeline, rounding, denormal or IEEE exception-flag behavior is modeled.
 - The block, immediate, `$zero`, candidate, known-edge reachability and lowering rules are defined by this repository's tests and are not a hardware specification.
 - The generated C++ state machine, JSON shape, failure text and exit code are test-defined behavior, not R5900 or PS2 hardware behavior.
 
@@ -264,6 +289,7 @@ python -m unittest tests.test_instruction_subu -v
 python -m unittest tests.test_instruction_ld_sd -v
 python -m unittest tests.test_instruction_branch_likely -v
 python -m unittest tests.test_instruction_dshift -v
+python -m unittest tests.test_instruction_cop1_transfers -v
 python -m unittest tests.test_ir_cfg -v
 python -m unittest tests.test_cfg_reachability -v
 python -m unittest tests.test_ir_lowering -v

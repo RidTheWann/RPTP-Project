@@ -263,6 +263,14 @@ def canonical_word(mnemonic: str) -> int | None:
                 funct11 |= SAMPLE["sa"] << 6
             fields = _format_fields(spec.fmt)
             return mmi_word(funct11, **fields)
+    for rs_value, spec in sorted(isa.COP1_TRANSFER.items()):
+        if spec.mnemonic == mnemonic:
+            return (
+                (0x11 << 26)
+                | (rs_value << 21)
+                | (SAMPLE["rt"] << 16)
+                | (SAMPLE["rd"] << 11)
+            )
     return None
 
 

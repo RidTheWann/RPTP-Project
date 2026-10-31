@@ -68,6 +68,10 @@ def encode_j(op: int, target: int) -> int:
     return ((op & 0x3F) << 26) | ((target >> 2) & 0x03FFFFFF)
 
 
+def encode_cop1(rs: int, rt: int, fs: int) -> int:
+    return ((0x11 & 0x3F) << 26) | ((rs & 0x1F) << 21) | ((rt & 0x1F) << 16) | ((fs & 0x1F) << 11)
+
+
 def main_words() -> list[int]:
     return [
         encode_i(0x09, 0, 8, 7),  # 0x00 addiu t0, zero, 7
@@ -338,6 +342,9 @@ class RuntimeExecutionCliTests(unittest.TestCase):
                 int(document["registers"][index], 16),
                 f"register {index}",
             )
+        self.assertEqual(32, len(document["fpr"]))
+        for index, expected_fpr in enumerate(expected["fpr"]):
+            self.assertEqual(expected_fpr, int(document["fpr"][index], 16), f"fpr {index}")
         expected_memory = {int(address): value for address, value in expected["memory"]}
         actual_memory = expand_memory_writes(document["memory_writes"])
         self.assertEqual(expected_memory, actual_memory)
@@ -920,6 +927,94 @@ class RuntimeExecutionCliTests(unittest.TestCase):
                 self.assertEqual(2, result.returncode)
                 document = json.loads(result.stdout)
                 self.assertEqual("EXEC_UNSUPPORTED_INSTRUCTION", document["error"]["code"])
+
+    def test_cop1_transfer_family_matches_the_python_oracle(self) -> None:
+        data = struct.pack("<II", 0x89ABCDEF, 0x00000000)
+        words = [
+            encode_i(0x09, 0, 11, DATA),  # 0x00 addiu t3, zero, 0x2000
+            encode_i(0x31, 11, 2, 0),  # 0x04 lwc1 f2, 0(t3)
+            encode_cop1(0x00, 12, 2),  # 0x08 mfc1 t4, f2
+            encode_i(0x09, 0, 8, 0x7FFF),  # 0x0c addiu t0, zero, 0x7fff
+            encode_cop1(0x04, 8, 2),  # 0x10 mtc1 t0, f2
+            encode_i(0x39, 11, 2, 4),  # 0x14 swc1 f2, 4(t3)
+            encode_i(0x31, 11, 3, 4),  # 0x18 lwc1 f3, 4(t3)
+            encode_i(0x31, 11, 0, 0),  # 0x1c lwc1 f0, 0(t3)
+            encode_cop1(0x00, 0, 0),  # 0x20 mfc1 zero, f0
+            encode_cop1(0x00, 2, 0),  # 0x24 mfc1 v0, f0
+            encode_i(0x09, 0, 9, -1),  # 0x28 addiu t1, zero, -1
+            encode_cop1(0x04, 9, 4),  # 0x2c mtc1 t1, f4
+            encode_cop1(0x00, 10, 4),  # 0x30 mfc1 t2, f4
+            encode_r(31, 0, 0, 0, 0x08),  # 0x34 jr ra
+            encode_r(0, 0, 0, 0, 0),  # 0x38 nop (delay slot)
+        ]
+        document = self.assert_likely_matches_oracle(words, data=data)
+        self.assertEqual("unmapped-pc", document["halt_reason"])
+        self.assertEqual(0xFFFFFFFF89ABCDEF, int(document["registers"][12], 16))
+        self.assertEqual(0x7FFF, int(document["registers"][8], 16))
+        self.assertEqual(0, int(document["registers"][0], 16))
+        self.assertEqual(0xFFFFFFFF89ABCDEF, int(document["registers"][2], 16))
+        self.assertEqual(0xFFFFFFFFFFFFFFFF, int(document["registers"][10], 16))
+        self.assertEqual(0x7FFF, int(document["fpr"][2], 16))
+        self.assertEqual(0x7FFF, int(document["fpr"][3], 16))
+        self.assertEqual(0x89ABCDEF, int(document["fpr"][0], 16))
+        self.assertEqual(0xFFFFFFFF, int(document["fpr"][4], 16))
+        self.assertEqual([{"address": "0x00002004", "value": "0x00007fff", "width": 4}],
+                         document["memory_writes"])
+
+    def test_unaligned_cop1_word_access_fails_closed_in_runtime_and_oracle(self) -> None:
+        load_words = [
+            encode_i(0x09, 0, 23, DATA),
+            encode_i(0x31, 23, 2, 2),
+            encode_r(31, 0, 0, 0, 0x08),  # jr ra
+            encode_r(0, 0, 0, 0, 0),  # nop (delay slot)
+        ]
+        image = build_program(load_words)
+        result, _ = self.run_cli(image, "--json")
+        self.assertEqual(2, result.returncode)
+        document = json.loads(result.stdout)
+        self.assertEqual("EXEC_MEMORY_FAULT", document["error"]["code"])
+        self.assertIn("unaligned LWC1", document["error"]["message"])
+
+        program = discover_program(parse_elf_bytes(image, path="unaligned_lwc1.elf"))
+        with self.assertRaisesRegex(ExecutionError, r"Unaligned LWC1"):
+            Oracle(program).run()
+
+        store_words = [
+            encode_i(0x09, 0, 23, DATA),
+            encode_i(0x39, 23, 2, 2),
+            encode_r(31, 0, 0, 0, 0x08),  # jr ra
+            encode_r(0, 0, 0, 0, 0),  # nop (delay slot)
+        ]
+        image = build_program(store_words)
+        result, _ = self.run_cli(image, "--json")
+        self.assertEqual(2, result.returncode)
+        document = json.loads(result.stdout)
+        self.assertEqual("EXEC_MEMORY_FAULT", document["error"]["code"])
+        self.assertIn("unaligned SWC1", document["error"]["message"])
+
+        program = discover_program(parse_elf_bytes(image, path="unaligned_swc1.elf"))
+        with self.assertRaisesRegex(ExecutionError, r"Unaligned SWC1"):
+            Oracle(program).run()
+
+    def test_cop1_reserved_fields_and_neighbours_fail_closed(self) -> None:
+        rejected = (
+            ("mfc1 reserved bit 0", encode_cop1(0x00, 8, 2) | 0x001),
+            ("mtc1 reserved bit 10", encode_cop1(0x04, 8, 2) | 0x400),
+            ("cfc1", encode_cop1(0x02, 8, 0)),
+            ("ctc1", encode_cop1(0x06, 8, 0)),
+            ("bc1", encode_cop1(0x10, 0, 0)),
+        )
+        for label, word in rejected:
+            with self.subTest(label=label):
+                result, _ = self.run_cli(build_program([word]), "--json")
+                self.assertEqual(2, result.returncode)
+                document = json.loads(result.stdout)
+                self.assertEqual("EXEC_UNSUPPORTED_INSTRUCTION", document["error"]["code"])
+
+        image = build_program([encode_cop1(0x00, 8, 2) | 0x001])
+        program = discover_program(parse_elf_bytes(image, path="reserved_mfc1.elf"))
+        with self.assertRaisesRegex(ExecutionError, r"Reserved encoding fields are non-zero\."):
+            Oracle(program).run()
 
     def test_control_transfer_in_delay_slot_fails_closed(self) -> None:
         words = [

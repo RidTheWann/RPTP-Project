@@ -41,6 +41,7 @@ DATA_BASE = 0x00002000
 EXIT_PC = 0x00001000
 MAX_STEPS = 100_000
 MASK64 = 0xFFFFFFFFFFFFFFFF
+MASK32 = 0xFFFFFFFF
 DATA_OFFSET = 0x100
 CODE_OFFSET = 0x200
 
@@ -150,6 +151,16 @@ def shared_program() -> tuple[list[int], dict[str, int]]:
     asm.dsrav(fixtures.K0, fixtures.T1, fixtures.T9)
     asm.sd(fixtures.S0, 24, fixtures.T0)
 
+    # COP1 transfers: LWC1 observes the overwritten first word, MFC1 must
+    # sign-extend it, MTC1 writes a fresh word into an FPR and SWC1 stores the
+    # FPR word back to memory.  $t0 is the data base until this block and is
+    # clobbered last, so later instructions do not depend on it.
+    asm.lwc1(2, 0, fixtures.T0)                               # f2 = 0xBBDE0021
+    asm.lwc1(3, 0, fixtures.T0)                               # f3 = same word
+    asm.mtc1(fixtures.T0, 4)                                  # f4 = 0x00002000
+    asm.swc1(4, 20, fixtures.T0)                              # data[20:24] = 0x00002000
+    asm.mfc1(fixtures.T0, 2)                                  # $t0 = 0xFFFFFFFFBBDE0021
+
     asm.addiu(fixtures.S0, fixtures.ZERO, 0)
     asm.blez(fixtures.S0, "plain_blez")                       # taken
     asm.addiu(fixtures.S1, fixtures.ZERO, 111)                # delay slot
@@ -205,6 +216,7 @@ def normalize_oracle(state: dict) -> dict:
         "reason": state["reason"],
         "steps": state["steps"],
         "registers": [pair[0] & MASK64 for pair in state["registers"]],
+        "fpr": [value & MASK32 for value in state["fpr"]],
         "trace": list(state["trace"]),
         "memory": {address: value for address, value in state["memory"]},
     }
@@ -217,6 +229,7 @@ def normalize_generated(payload: dict) -> dict:
         "reason": payload["reason"],
         "steps": payload["steps"],
         "registers": [pair[0] & MASK64 for pair in payload["registers"]],
+        "fpr": [value & MASK32 for value in payload["fpr"]],
         "trace": list(payload["trace"]),
         "memory": {address: value for address, value in payload["memory"]},
     }
@@ -235,6 +248,7 @@ def normalize_runtime(payload: dict, trace: bool) -> dict:
         "reason": payload["halt_reason"],
         "steps": payload["steps"],
         "registers": [int(value, 16) & MASK64 for value in payload["registers"]],
+        "fpr": [int(value, 16) & MASK32 for value in payload["fpr"]],
         "trace": [int(value, 16) for value in payload["trace"]] if trace else [],
         "memory": memory,
     }
@@ -310,6 +324,13 @@ class CrossPathEquivalenceTests(unittest.TestCase):
         self.assertEqual(0x11223344, int.from_bytes(data[4:8], "little"))
         self.assertEqual(0x8000000000000000, int.from_bytes(data[8:16], "little"))
         self.assertEqual(0xFFFFFFFF557799BA, int.from_bytes(data[24:32], "little"))
+        # COP1 transfers: LWC1/MTC1 wrote the FPR bank, MFC1 sign-extended the
+        # low FPR word into a GPR, and SWC1 stored the low FPR word.
+        self.assertEqual(0xFFFFFFFFBBDE0021, registers[fixtures.T0])
+        self.assertEqual(0xBBDE0021, state["fpr"][2])
+        self.assertEqual(0xBBDE0021, state["fpr"][3])
+        self.assertEqual(0x00002000, state["fpr"][4])
+        self.assertEqual(0x00002000, int.from_bytes(data[20:24], "little"))
 
     def _native_or_skip(self) -> dict:
         try:
@@ -356,6 +377,7 @@ class CrossPathEquivalenceTests(unittest.TestCase):
         self.assertEqual(left["steps"], right["steps"])
         self.assertEqual(left["trace"], right["trace"])
         self.assertEqual(left["registers"], right["registers"])
+        self.assertEqual(left["fpr"], right["fpr"])
         self.assertEqual(final_data(left), final_data(right))
 
     def test_generated_native_matches_oracle(self) -> None:

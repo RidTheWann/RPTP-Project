@@ -226,6 +226,12 @@ class _Emitter:
             self.emit(f"s.{field} = s.r[{op.a}u].lo;")
         elif kind == "muldiv":
             self._muldiv(op)
+        elif kind == "fpr_read":
+            self.emit(f"rptp::write_reg(s, {op.dst}u, rptp::sext32(s.fpr[{op.a}u]));")
+        elif kind == "fpr_write":
+            self.emit(f"s.fpr[{op.dst}u] = static_cast<std::uint32_t>(s.r[{op.a}u].lo);")
+        elif kind in {"cop1_load", "cop1_store"}:
+            self._cop1_memory(op)
         elif kind in {"load", "store"}:
             if mnemonic in {"lq", "sq"}:
                 self._quad_memory(op)
@@ -240,6 +246,16 @@ class _Emitter:
             self.emit(f"rptp::write_reg(s, {op.dst}u, {_mmi_shift_expression(op, _reg(op.a))});")
         else:
             raise CodegenError(f"No native lowering for IR kind {kind} ({mnemonic})")
+
+    def _cop1_memory(self, op: IROp) -> None:
+        self.emit(f"{{ const std::uint32_t ea = rptp::effective_address(s, {op.a}u, {op.imm});")
+        if op.kind == "cop1_load":
+            self.emit('  if ((ea & 3u) != 0u) throw std::runtime_error("unaligned LWC1");')
+            self.emit(f"  s.fpr[{op.dst}u] = static_cast<std::uint32_t>(rptp::read_le(s, ea, {op.size}u));")
+        else:
+            self.emit('  if ((ea & 3u) != 0u) throw std::runtime_error("unaligned SWC1");')
+            self.emit(f"  rptp::write_le(s, ea, {op.size}u, s.fpr[{op.b}u]);")
+        self.emit("}")
 
     def _imm_op(self, op: IROp) -> None:
         m = op.mnemonic
@@ -611,6 +627,7 @@ inline U128 pext(U128 left, U128 right, unsigned width, bool upper) {{
 
 struct State {{
     std::array<U128, 32> r{{}};
+    std::array<std::uint32_t, 32> fpr{{}};
     std::uint64_t hi = 0;
     std::uint64_t lo = 0;
     std::uint64_t hi1 = 0;
@@ -782,7 +799,12 @@ inline void print_state(const State& state) {{
     }}
     std::cout << "],\"hi\":" << state.hi << ",\"lo\":" << state.lo
               << ",\"hi1\":" << state.hi1 << ",\"lo1\":" << state.lo1
-              << ",\"memory\":[";
+              << ",\"fpr\":[";
+    for (std::size_t index = 0; index < state.fpr.size(); ++index) {{
+        if (index != 0u) std::cout << ',';
+        std::cout << static_cast<std::uint64_t>(state.fpr[index]);
+    }}
+    std::cout << "],\"memory\":[";
     bool first = true;
     for (const auto& item : state.writes) {{
         if (!first) std::cout << ',';

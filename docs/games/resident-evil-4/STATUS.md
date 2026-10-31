@@ -54,9 +54,9 @@ Recorded owner-authorized local evidence from main; documentation checked agains
 - Most frequent unsupported raw encodings: `opcode_0x11` (31,396); `opcode_0x37` (13,623); `opcode_0x1e` (12,620).
 - Counts include data and padding and are not a function-level, runtime, boot or compatibility measurement. See [BOOT_CENSUS.md](../../BOOT_CENSUS.md).
 
-### 2026-10-29 — current-decoder census refresh
+### 2026-10-29 — then-current decoder census refresh
 
-- `python tools/rptp_census.py <iso> --iso --json` on the current `tools/rptp/isa.py` decoder (142 supported mnemonics, including branch-likely forms and `LD`/`SD`) completed in memory with exit 0 and status `CENSUSED`; no file was extracted, modified or executed.
+- `python tools/rptp_census.py <iso> --iso --json` on the then-current `tools/rptp/isa.py` decoder (142 supported mnemonics, including branch-likely forms and `LD`/`SD`) completed in memory with exit 0 and status `CENSUSED`; no file was extracted, modified or executed.
 - Result: 731,082 aligned words across 1 `PT_LOAD` segment; 588,952 (80.56%) accepted; 142,130 raw-unsupported; 104,648 zero words; no trailing bytes; no warnings. This supersedes the pre-`SUBU` count above.
 - Most frequent unsupported raw encodings: `opcode_0x11` (31,396); `opcode_0x31` (12,352); `opcode_0x39` (10,017).
 - Whole-image SHA-256, size and mtime were unchanged before and after. Counts include data and padding and are not a function-level, runtime, boot or compatibility measurement. See [BOOT_CENSUS.md](../../BOOT_CENSUS.md).
