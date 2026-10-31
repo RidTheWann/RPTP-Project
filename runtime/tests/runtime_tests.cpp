@@ -1337,6 +1337,108 @@ void test_execution_doubleword_shift_failures() {
                     "reserved SPECIAL funct 0x15");
 }
 
+void test_execution_hi_lo_state() {
+  const std::vector<std::uint32_t> code{
+      encode_i(0x09, 0, 8, 7),        // addiu t0, zero, 7
+      encode_i(0x09, 0, 9, -3),       // addiu t1, zero, -3
+      encode_i(0x09, 0, 3, 0x1234),   // addiu v1, zero, 0x1234
+      encode_r(3, 0, 0, 0, 0x11),     // mthi v1
+      encode_r(3, 0, 0, 0, 0x13),     // mtlo v1
+      encode_r(0, 0, 4, 0, 0x10),     // mfhi a0
+      encode_r(0, 0, 5, 0, 0x12),     // mflo a1
+      encode_r(0, 0, 0, 0, 0x12),     // mflo zero (discarded)
+      encode_r(8, 9, 10, 0, 0x18),    // mult t2, t0, t1 (rd := low 32 bits)
+      encode_r(0, 0, 11, 0, 0x10),    // mfhi t3
+      encode_r(0, 0, 12, 0, 0x12),    // mflo t4
+      encode_i(0x09, 0, 13, -3),      // addiu t5, zero, -3
+      encode_r(8, 13, 14, 0, 0x19),   // multu t6, t0, t5
+      encode_r(0, 0, 15, 0, 0x10),    // mfhi t7
+      encode_r(0, 0, 16, 0, 0x12),    // mflo s0
+      encode_r(9, 8, 0, 0, 0x1A),     // div t1, t0 (-3 / 7)
+      encode_r(0, 0, 17, 0, 0x10),    // mfhi s1
+      encode_r(0, 0, 18, 0, 0x12),    // mflo s2
+      encode_r(8, 9, 0, 0, 0x1A),     // div t0, t1 (7 / -3)
+      encode_r(0, 0, 19, 0, 0x10),    // mfhi s3
+      encode_r(0, 0, 20, 0, 0x12),    // mflo s4
+      encode_r(9, 8, 0, 0, 0x1B),     // divu t1, t0
+      encode_r(0, 0, 21, 0, 0x10),    // mfhi s5
+      encode_r(0, 0, 22, 0, 0x12),    // mflo s6
+      encode_r(8, 0, 0, 0, 0x1A),     // div t0, zero (division by zero)
+      encode_r(0, 0, 23, 0, 0x10),    // mfhi s7
+      encode_r(0, 0, 24, 0, 0x12),    // mflo t8
+      encode_i(0x09, 0, 25, -32768),  // addiu t9, zero, 0xFFFF8000
+      encode_r(0, 25, 25, 16, 0x00),  // sll t9, t9, 16
+      encode_i(0x09, 0, 26, -1),      // addiu k0, zero, -1
+      encode_r(25, 26, 0, 0, 0x1A),   // div t9, k0 (INT32_MIN / -1)
+      encode_r(0, 0, 27, 0, 0x10),    // mfhi k1
+      encode_r(0, 0, 28, 0, 0x12),    // mflo gp
+      encode_r(25, 25, 29, 0, 0x18),  // mult sp, t9, t9
+      encode_r(0, 0, 30, 0, 0x10),    // mfhi fp
+      encode_r(0, 0, 31, 0, 0x12),    // mflo ra
+      encode_r(31, 0, 0, 0, 0x08),    // jr ra (ra is zero: halt on unmapped PC)
+      encode_r(0, 0, 0, 0, 0x00),     // nop (delay slot)
+  };
+  const ExecOutcome outcome = run_code(code);
+  CHECK(outcome.ok());
+  if (!outcome.ok()) {
+    return;
+  }
+  CHECK(outcome.result.registers[0] == 0U);
+  CHECK(outcome.result.registers[3] == 0x0000000000001234ULL);
+  CHECK(outcome.result.registers[4] == 0x0000000000001234ULL);
+  CHECK(outcome.result.registers[5] == 0x0000000000001234ULL);
+  CHECK(outcome.result.registers[8] == 0x0000000000000007ULL);
+  CHECK(outcome.result.registers[9] == 0xFFFFFFFFFFFFFFFDULL);
+  CHECK(outcome.result.registers[10] == 0xFFFFFFFFFFFFFFEBULL);
+  CHECK(outcome.result.registers[11] == 0xFFFFFFFFFFFFFFFFULL);
+  CHECK(outcome.result.registers[12] == 0xFFFFFFFFFFFFFFEBULL);
+  CHECK(outcome.result.registers[13] == 0xFFFFFFFFFFFFFFFDULL);
+  CHECK(outcome.result.registers[14] == 0xFFFFFFFFFFFFFFEBULL);
+  CHECK(outcome.result.registers[15] == 0x0000000000000006ULL);
+  CHECK(outcome.result.registers[16] == 0xFFFFFFFFFFFFFFEBULL);
+  CHECK(outcome.result.registers[17] == 0xFFFFFFFFFFFFFFFDULL);
+  CHECK(outcome.result.registers[18] == 0x0000000000000000ULL);
+  CHECK(outcome.result.registers[19] == 0x0000000000000001ULL);
+  CHECK(outcome.result.registers[20] == 0xFFFFFFFFFFFFFFFEULL);
+  CHECK(outcome.result.registers[21] == 0x0000000000000001ULL);
+  CHECK(outcome.result.registers[22] == 0x0000000024924924ULL);
+  CHECK(outcome.result.registers[23] == 0x0000000000000007ULL);
+  CHECK(outcome.result.registers[24] == 0x0000000000000000ULL);
+  CHECK(outcome.result.registers[25] == 0xFFFFFFFF80000000ULL);
+  CHECK(outcome.result.registers[26] == 0xFFFFFFFFFFFFFFFFULL);
+  CHECK(outcome.result.registers[27] == 0x0000000000000000ULL);
+  CHECK(outcome.result.registers[28] == 0xFFFFFFFF80000000ULL);
+  CHECK(outcome.result.registers[29] == 0x0000000000000000ULL);
+  CHECK(outcome.result.registers[30] == 0x0000000040000000ULL);
+  CHECK(outcome.result.registers[31] == 0x0000000000000000ULL);
+  CHECK(outcome.result.hi == 0x0000000040000000ULL);
+  CHECK(outcome.result.lo == 0x0000000000000000ULL);
+  CHECK(outcome.result.memory_writes.empty());
+}
+
+void test_execution_hi_lo_failures() {
+  expect_exec_error(run_code({encode_r(1, 0, 8, 0, 0x10)}), ExecErrorCode::UnsupportedInstruction,
+                    "mfhi with nonzero rs");
+  expect_exec_error(run_code({encode_r(0, 1, 8, 0, 0x12)}), ExecErrorCode::UnsupportedInstruction,
+                    "mflo with nonzero rt");
+  expect_exec_error(run_code({encode_r(0, 0, 8, 1, 0x10)}), ExecErrorCode::UnsupportedInstruction,
+                    "mfhi with nonzero shamt");
+  expect_exec_error(run_code({encode_r(0, 1, 0, 0, 0x11)}), ExecErrorCode::UnsupportedInstruction,
+                    "mthi with nonzero rt");
+  expect_exec_error(run_code({encode_r(1, 0, 8, 0, 0x13)}), ExecErrorCode::UnsupportedInstruction,
+                    "mtlo with nonzero rd");
+  expect_exec_error(run_code({encode_r(0, 0, 0, 1, 0x11)}), ExecErrorCode::UnsupportedInstruction,
+                    "mthi with nonzero shamt");
+  expect_exec_error(run_code({encode_r(8, 9, 10, 1, 0x18)}), ExecErrorCode::UnsupportedInstruction,
+                    "mult with nonzero shamt");
+  expect_exec_error(run_code({encode_r(8, 9, 10, 1, 0x19)}), ExecErrorCode::UnsupportedInstruction,
+                    "multu with nonzero shamt");
+  expect_exec_error(run_code({encode_r(8, 9, 10, 0, 0x1A)}), ExecErrorCode::UnsupportedInstruction,
+                    "div with nonzero rd");
+  expect_exec_error(run_code({encode_r(8, 9, 0, 1, 0x1B)}), ExecErrorCode::UnsupportedInstruction,
+                    "divu with nonzero shamt");
+}
+
 void test_execution_failures() {
   expect_exec_error(run_code({0x00000015U}), ExecErrorCode::UnsupportedInstruction, "unsupported");
   expect_exec_error(run_code({encode_i(0x0F, 1, 8, 0)}), ExecErrorCode::UnsupportedInstruction,
@@ -1425,6 +1527,8 @@ int main() {
   test_execution_doubleword_memory();
   test_execution_doubleword_shifts();
   test_execution_doubleword_shift_failures();
+  test_execution_hi_lo_state();
+  test_execution_hi_lo_failures();
   test_execution_word_memory_alignment();
   test_execution_byte_and_half_memory();
   test_execution_failures();

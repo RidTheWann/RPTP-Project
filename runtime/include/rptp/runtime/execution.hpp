@@ -60,6 +60,8 @@ struct ExecResult {
   HaltReason halt_reason = HaltReason::UnmappedPc;
   std::size_t steps = 0;
   std::array<std::uint64_t, 32> registers{};
+  std::uint64_t hi = 0;
+  std::uint64_t lo = 0;
   std::vector<MemoryWrite> memory_writes;
   std::vector<std::uint32_t> trace;
 };
